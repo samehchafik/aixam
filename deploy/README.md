@@ -129,6 +129,7 @@ docker compose logs api | tail -30
 | `no pg_hba.conf entry for host "172.x.x.x"` | ligne pg_hba absente, ou PostgreSQL pas redemarre |
 | `Connection refused` | `listen_addresses` n'inclut pas la passerelle (`10.83.0.1`) |
 | bloque sur `Waiting for application startup.` | le TCP n'aboutit pas : mauvaise passerelle dans `listen_addresses`, ou pare-feu |
+| `Servname not supported for ai_socktype` | erreur d'une URI passee telle quelle a libpq, pas de l'application : un `/`, `@`, `:` ou `?` dans le mot de passe doit y etre encode (`%2F`...). Le moteur SQLAlchemy, lui, n'est pas concerne |
 | `could not translate host name "host.docker.internal"` | docker trop ancien pour `host-gateway` : mettre `172.17.0.1` dans `DATABASE_URL` |
 
 Tester la connexion **depuis le reseau du projet**, avec le DATABASE_URL reel
@@ -137,15 +138,19 @@ le reseau qu'empruntent les conteneurs :
 
 ```bash
 docker compose run --rm api python -c "
-import os, psycopg
-u = os.environ['DATABASE_URL'].replace('+psycopg', '')
-print('cible :', u.split('@')[-1])
-psycopg.connect(u, connect_timeout=5)
-print('connexion OK')"
+from sqlalchemy import text
+from app.db import engine
+print('cible :', engine.url.render_as_string(hide_password=True))
+with engine.connect() as c:
+    print('connexion OK :', c.execute(text('select version()')).scalar()[:40])"
 ```
 
-`connect_timeout=5` evite l'attente silencieuse : en cas de mauvaise
-passerelle, la reponse tombe en cinq secondes au lieu de bloquer.
+Le test passe par le moteur de l'application, pas par une URI construite a la
+main : c'est le seul moyen qu'un succes ici garantisse un succes au demarrage.
+Un `psycopg.connect(url)` direct donnerait des faux negatifs — libpq analyse
+l'URI selon la RFC 3986, ou un `/` non encode dans le mot de passe coupe
+l'adresse (`Servname not supported for ai_socktype`), alors que SQLAlchemy
+transmet les champs separement et s'en accommode.
 
 Verifier la passerelle reellement attribuee :
 
