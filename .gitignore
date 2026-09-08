@@ -1,0 +1,22 @@
+.env
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+apps/api/static/
+apps/api/media/renders/
+apps/kiosk/src-tauri/target/
+.DS_Store
+tsconfig.tsbuildinfo
+.venv/
+# Worktrees des sessions Claude Code : des depots a part, jamais du contenu.
+.claude/worktrees/
+
+# Le gitignore global de ce poste (~/.gitignore_global) exclut « README.md »
+# et « .gitignore » par des motifs nus, heritage d'un autre projet. Sans ces
+# deux exceptions, la doc de deploy/ et ce fichier meme n'entrent jamais dans
+# le depot -- et un clone sur le serveur se retrouve sans aucune regle
+# d'exclusion. Les regles du depot l'emportent sur le gitignore global.
+!.gitignore
+!README.md
