@@ -44,6 +44,17 @@ bin/restart.sh --admin | --front | --all   [--build] [--logs]
 bin/stop.sh                                [--volumes]
 ```
 
+**Tout passe par docker** : `bin/build.sh` compile les SPA dans un conteneur
+`node:22-alpine` jetable, donc ni node ni npm ne sont requis sur la machine —
+c'est ce qui permet de déployer sur un serveur nu. Les dépendances vivent dans
+un volume docker nommé, jamais dans `apps/*/node_modules` : le dépôt reste
+propre, et un `node_modules` compilé sur macOS ne peut plus empoisonner un
+build Linux (esbuild livre un binaire par plateforme). `NODE_IMAGE=` permet de
+changer d'image.
+
+(`make build-front` reste la variante qui compile avec le npm de la machine,
+pour le développement local.)
+
 `apps/api/static/` est monté en volume : après un `bin/build.sh`, un
 rechargement du navigateur suffit, sans redémarrer quoi que ce soit. Une seule
 stack sert les deux SPA — `--admin` et `--front` choisissent ce qui est

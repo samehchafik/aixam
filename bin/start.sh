@@ -55,6 +55,7 @@ docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- ouvrir Dock
 if [ ! -f "$ROOT/.env" ]; then
   say "pas de .env : copie depuis .env.example"
   cp "$ROOT/.env.example" "$ROOT/.env"
+  chown "$OWNER_UID:$OWNER_GID" "$ROOT/.env" 2>/dev/null || true
   warn "renseigner .env (mots de passe, envoi des emails) avant le salon"
 fi
 
