@@ -12,18 +12,24 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: 100%; margin: 0; overflow: hidden; background: #0b0f2a; }
+html, body, #root { height: 100%; margin: 0; overflow: hidden; background: #1a2a70; }
 body { color: var(--ink); user-select: none; }
 
 /* --- Scene ----------------------------------------------------------- */
-.stage-viewport { position: fixed; inset: 0; background: #0b0f2a; }
-.stage {
-  position: absolute; left: 50%; top: 50%; overflow: hidden;
-  transform-origin: center;
+/* Le decor porte sur toute la fenetre, pas sur la scene 16/9 : sur un ecran
+   qui n'est pas exactement en 16/9, la marge de mise a l'echelle se fond dans
+   le degrade au lieu de faire deux bandes bleu fonce sur les cotes. */
+.stage-viewport {
+  position: fixed; inset: 0;
   background:
     radial-gradient(60% 70% at 92% 92%, rgba(244, 185, 160, 0.95) 0%, rgba(244, 185, 160, 0.55) 30%, transparent 70%),
     radial-gradient(45% 55% at 70% 100%, rgba(155, 110, 190, 0.6) 0%, transparent 70%),
     linear-gradient(115deg, #1a2a70 0%, #2b2d78 40%, #4b3f8e 70%, #8a6aa8 100%);
+}
+.stage {
+  position: absolute; left: 50%; top: 50%; overflow: hidden;
+  transform-origin: center;
+  background: transparent;
 }
 
 .boot { height: 100%; display: grid; place-content: center; text-align: center; gap: 8px; }
