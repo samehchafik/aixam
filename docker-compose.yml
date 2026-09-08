@@ -26,9 +26,11 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      # DATABASE_URL du .env l'emporte : c'est ce qui permet de pointer sur le
-      # PostgreSQL de l'hote. Sans lui, on vise le service db ci-dessus.
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-aixam}:${POSTGRES_PASSWORD:-aixam}@db:5432/${POSTGRES_DB:-aixam}}
+      # Le seul reglage qui distingue les deux montages : `db`, le service
+      # ci-dessus, ou host.docker.internal pour le PostgreSQL de la machine.
+      # L'utilisateur, le mot de passe et la base viennent du .env comme pour
+      # le conteneur postgres -- ils ne sont ecrits qu'une fois.
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
     # Rend l'hote joignable depuis le conteneur sous le nom
     # host.docker.internal, y compris sous Linux. Sans effet tant qu'on ne
     # l'utilise pas.
@@ -57,7 +59,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-aixam}:${POSTGRES_PASSWORD:-aixam}@db:5432/${POSTGRES_DB:-aixam}}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

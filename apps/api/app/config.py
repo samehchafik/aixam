@@ -1,12 +1,25 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import URL
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://aixam:aixam@localhost:5432/aixam"
+    # La base se decrit par ses morceaux, les memes que consomme l'image
+    # postgres. Seul l'hote change entre les deux montages : `db`, le service
+    # du compose, ou `host.docker.internal` pour un PostgreSQL installe sur la
+    # machine. Pas d'URL a reecrire, donc pas d'identifiants en double.
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_user: str = "aixam"
+    postgres_password: str = "aixam"
+    postgres_db: str = "aixam"
+
+    # Echappatoire : un PostgreSQL distant, une socket, des options de SSL...
+    # Renseignee, elle l'emporte sur les cinq variables ci-dessus.
+    database_url: str = ""
 
     secret_key: str = "dev-secret-change-me"
     access_token_ttl_minutes: int = 60 * 12
@@ -66,6 +79,25 @@ class Settings(BaseSettings):
     # Duree de vie du code de verification et garde-fous anti-abus.
     verification_code_ttl_seconds: int = 15 * 60
     verification_max_attempts: int = 5
+
+    @property
+    def sqlalchemy_url(self) -> URL | str:
+        """L'adresse de la base, assemblee sans jamais coller de chaines.
+
+        `URL.create` echappe ce qu'il faut : un mot de passe contenant / @ :
+        ou ? passe sans encodage manuel, la ou une URL ecrite a la main serait
+        coupee au mauvais endroit.
+        """
+        if self.database_url:
+            return self.database_url
+        return URL.create(
+            "postgresql+psycopg",
+            username=self.postgres_user,
+            password=self.postgres_password,
+            host=self.postgres_host,
+            port=self.postgres_port,
+            database=self.postgres_db,
+        )
 
     @property
     def smtp_use_ssl(self) -> bool:

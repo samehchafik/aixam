@@ -85,10 +85,13 @@ PORT="${PORT:-8080}"
 # que de re-deduire le reglage de notre cote.
 SERVICES="$(cd "$ROOT" && docker compose config --services | sort | tr '\n' ' ')"
 if ! printf '%s' "$SERVICES" | grep -qw db; then
-  # Base hors profil : sans DATABASE_URL, l'API viserait le service db, qui
-  # n'existe pas -- et redemarrerait en boucle sur un hote introuvable.
-  grep -qE '^DATABASE_URL=.+' "$ROOT/.env" || die \
-    "base hors profil et DATABASE_URL absent de .env : l'API n'aurait aucune base (voir deploy/README.md)"
+  # Base hors profil, mais l'API vise toujours le service db : il n'existe
+  # pas, elle redemarrerait en boucle sur un hote introuvable.
+  CONFIG="$(cd "$ROOT" && docker compose config 2>/dev/null)"
+  if printf '%s' "$CONFIG" | grep -qE 'POSTGRES_HOST: *db$' \
+     && ! grep -qE '^DATABASE_URL=.+' "$ROOT/.env"; then
+    die "base hors profil mais POSTGRES_HOST vaut encore « db » : renseigner POSTGRES_HOST dans .env (voir deploy/README.md)"
+  fi
 fi
 
 say "demarrage : $SERVICES"

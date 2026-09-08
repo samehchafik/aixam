@@ -162,8 +162,12 @@ docker network inspect aixam_default -f '{{range .IPAM.Config}}{{.Gateway}} {{.S
 
 ```bash
 #COMPOSE_PROFILES=container-db
-DATABASE_URL=postgresql+psycopg://aixam:motdepasse@host.docker.internal:5432/aixam
+POSTGRES_HOST=host.docker.internal
 ```
+
+`POSTGRES_USER`, `POSTGRES_PASSWORD` et `POSTGRES_DB` servent dans les deux
+montages : rien a saisir deux fois, et aucun caractere a encoder — l'URL est
+assemblee par SQLAlchemy, pas par concatenation.
 
 Le service `db` est declare sous le profil `container-db`. Commenter la
 premiere ligne suffit a ce qu'il ne soit plus dans la stack — `depends_on`
@@ -180,9 +184,10 @@ docker est trop ancien pour `host-gateway`, mettre `172.17.0.1` a la place.
 ./bin/start.sh --all
 ```
 
-Le script refuse de partir si la base est hors profil et que `DATABASE_URL`
-manque : l'API viserait alors un hote inexistant et redemarrerait en boucle.
-Il le demande a `docker compose config`, il ne rededuit pas le reglage.
+Le script refuse de partir si la base est hors profil et que `POSTGRES_HOST`
+vaut encore `db` : l'API viserait un service qui n'existe pas et redemarrerait
+en boucle. Il le demande a `docker compose config`, il ne rededuit pas le
+reglage.
 
 **Verifier :**
 
