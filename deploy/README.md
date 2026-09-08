@@ -113,6 +113,20 @@ host    aixam    aixam    10.83.0.0/16    scram-sha-256
 sudo systemctl restart postgresql
 ```
 
+**Ouvrir le pare-feu pour ce sous-reseau.** Etape facile a oublier, et son
+symptome n'aide pas : avec `ufw` en `deny incoming` par defaut, les paquets
+venant du pont docker sont jetes en silence. Pas de refus, pas d'erreur
+d'authentification — la connexion reste simplement suspendue, et l'API se fige
+sur `Waiting for application startup.`
+
+```bash
+sudo ufw status verbose                                       # actif ?
+sudo ufw allow from 10.83.0.0/16 to any port 5432 proto tcp
+```
+
+La regle est limitee au sous-reseau des conteneurs : elle n'ouvre pas
+PostgreSQL sur Internet.
+
 ### Si l'API ne repond pas
 
 Elle redemarre en boucle : le journal dit pourquoi en une ligne.
@@ -152,7 +166,32 @@ l'URI selon la RFC 3986, ou un `/` non encode dans le mot de passe coupe
 l'adresse (`Servname not supported for ai_socktype`), alors que SQLAlchemy
 transmet les champs separement et s'en accommode.
 
-Verifier la passerelle reellement attribuee :
+Distinguer resolution de nom et blocage reseau, en cinq secondes :
+
+```bash
+docker compose run --rm api python -c "
+import socket
+print('host.docker.internal ->', socket.gethostbyname('host.docker.internal'))
+s = socket.socket(); s.settimeout(5)
+try:
+    s.connect(('host.docker.internal', 5432)); print('port 5432 : ouvert')
+except Exception as e:
+    print('port 5432 :', e)"
+```
+
+| Resultat | Cause |
+|---|---|
+| le nom ne se resout pas | `extra_hosts` absent, ou docker trop ancien pour `host-gateway` |
+| `timed out` | pare-feu : la regle `ufw` ci-dessus manque |
+| `Connection refused` | PostgreSQL n'ecoute pas sur cette adresse (`listen_addresses`) |
+| `port 5432 : ouvert` | le reseau va bien, chercher du cote de `pg_hba` ou du mot de passe |
+
+Verifier ce que l'hote ecoute, et la passerelle reellement attribuee :
+
+```bash
+sudo ss -lntp | grep 5432
+```
+
 
 ```bash
 docker network inspect aixam_default -f '{{range .IPAM.Config}}{{.Gateway}} {{.Subnet}}{{end}}'
