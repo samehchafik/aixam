@@ -73,12 +73,16 @@ volumes:
   media:
 
 # Sous-reseau fige. Sans lui, docker choisit une plage libre a la creation du
-# reseau (172.18, 172.19...) et la passerelle change d'une machine a l'autre,
-# voire d'un `compose down` au suivant. Or c'est par cette passerelle que le
-# conteneur joint un PostgreSQL installe sur l'hote : elle doit etre connue
-# pour figurer dans listen_addresses et pg_hba.conf.
+# reseau et la passerelle change d'une machine a l'autre, voire d'un `compose
+# down` au suivant. Or c'est par cette passerelle que le conteneur joint un
+# PostgreSQL installe sur l'hote : elle doit etre connue pour figurer dans
+# listen_addresses et pg_hba.conf.
+#
+# Si la plage est deja prise sur la machine (docker refuse alors le reseau
+# avec « Pool overlaps with other one on this address space »), en choisir
+# une autre via DOCKER_SUBNET dans .env.
 networks:
   default:
     ipam:
       config:
-        - subnet: 172.28.0.0/16
+        - subnet: ${DOCKER_SUBNET:-172.28.0.0/16}

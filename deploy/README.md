@@ -68,9 +68,21 @@ Les tables sont creees au premier demarrage de l'API : une base vide suffit.
 **Rendre PostgreSQL joignable depuis le conteneur.** Attention au piege : les
 conteneurs ne sont **pas** sur le pont docker par defaut (`172.17.0.1`), mais
 sur le reseau du projet, `aixam_default`. Le compose lui fixe le sous-reseau
-`172.28.0.0/16`, donc la passerelle est **`172.28.0.1`** — sans ce reglage
-docker choisirait une plage libre au hasard, differente d'une machine a
-l'autre.
+`DOCKER_SUBNET`, `172.28.0.0/16` par defaut, donc la passerelle est la
+premiere adresse de la plage : **`172.28.0.1`**. Sans ce reglage docker
+choisirait une plage libre au hasard, differente d'une machine a l'autre.
+
+Si docker refuse le reseau — *« Pool overlaps with other one on this address
+space »* — la plage est deja prise sur la machine. Voir ce qui est occupe :
+
+```bash
+docker network ls -q | xargs -r docker network inspect \
+  -f '{{.Name}} {{range .IPAM.Config}}{{.Subnet}}{{end}}'
+```
+
+puis en choisir une libre dans `.env`, par exemple `DOCKER_SUBNET=10.83.0.0/16`
+— la passerelle devient alors `10.83.0.1`, a reporter dans `listen_addresses`
+et `pg_hba.conf` ci-dessous.
 
 Les fichiers sont dans `/etc/postgresql/<version>/main/` — `ls /etc/postgresql`
 donne la votre. Dans `postgresql.conf` :
