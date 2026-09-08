@@ -97,16 +97,39 @@ presque toujours du bloc `location /ws/`.
 
 ## Ce que les fichiers font, et pourquoi
 
-- **La borne est remontée à la racine** de son domaine par la barre oblique
-  finale de `proxy_pass http://aixam_api/kiosk/;`. Le bundle est compilé avec
-  `base: './'`, donc il fonctionne à n'importe quelle profondeur.
-- **`/api/`, `/media/` et `/ws/` passent sans réécriture** sur les deux
-  domaines : la borne et le back-office les appellent en relatif.
+Les deux sont des proxys vers `http://127.0.0.1:8080`. Le back-office tient
+en un seul `location` ; la borne en demande deux, pour une seule raison.
+
+**L'API sert la borne sous `/kiosk/` et le back-office à sa racine.** Le vhost
+de la borne la remonte donc à la racine de son domaine :
+
+```nginx
+location ~ ^/(api|ws|media|healthz) { proxy_pass http://127.0.0.1:8080; }
+location /                          { proxy_pass http://127.0.0.1:8080/kiosk/; }
+```
+
+C'est la barre oblique finale du second `proxy_pass` qui fait la substitution :
+`/` devient `/kiosk/`, `/assets/x.js` devient `/kiosk/assets/x.js`. Le bundle
+est compilé avec `base: './'`, donc il fonctionne à n'importe quelle
+profondeur. Le premier `location` protège ce que l'API sert à sa racine :
+sans lui, `/api/kiosk/register` partirait vers `/kiosk/api/kiosk/register`.
+
+*Variante plus simple, si la borne peut vivre sur
+`https://aixam.ifrit.fr/kiosk/`* : supprimer les deux `location` et n'en
+garder qu'un, `location / { proxy_pass http://127.0.0.1:8080; }`. La conf
+devient identique à celle du back-office.
+
+Trois réglages restent nécessaires quoi qu'il arrive :
+
 - **`client_max_body_size 16m`** : `/api/relay/send` reçoit la création en
   pièce jointe base64, jusqu'à 8 Mio. Le défaut de nginx, 1 Mo, la refuserait
   en 413 — et l'email partirait sans le JPEG.
-- **`proxy_read_timeout 3600s` sur `/ws/`** : sinon nginx coupe un canal
-  inactif au bout de 60 s et le grand écran se fige entre deux visiteurs.
+- **les en-têtes `Upgrade` et `proxy_read_timeout 3600s`** sur le vhost de la
+  borne : la synchronisation des deux écrans passe par un WebSocket
+  (`/ws/screens`). Sans les en-têtes la négociation échoue, sans le timeout
+  nginx coupe un canal inactif au bout de 60 s et le grand écran se fige
+  entre deux visiteurs. Ils sont déclarés au niveau `server`, donc hérités
+  par les deux `location`.
 - **`location /kiosk { return 404; }`** sur le domaine admin : deux entrées
   pour deux publics.
 
