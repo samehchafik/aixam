@@ -65,14 +65,18 @@ sudo -u postgres createdb --owner=aixam aixam
 
 Les tables sont creees au premier demarrage de l'API : une base vide suffit.
 
-**Rendre PostgreSQL joignable depuis le conteneur.** Le conteneur passe par la
-passerelle du pont docker, `172.17.0.1` par defaut. Les fichiers sont dans
-`/etc/postgresql/<version>/main/` — `ls /etc/postgresql` donne la votre.
+**Rendre PostgreSQL joignable depuis le conteneur.** Attention au piege : les
+conteneurs ne sont **pas** sur le pont docker par defaut (`172.17.0.1`), mais
+sur le reseau du projet, `aixam_default`. Le compose lui fixe le sous-reseau
+`172.28.0.0/16`, donc la passerelle est **`172.28.0.1`** — sans ce reglage
+docker choisirait une plage libre au hasard, differente d'une machine a
+l'autre.
 
-Dans `postgresql.conf` :
+Les fichiers sont dans `/etc/postgresql/<version>/main/` — `ls /etc/postgresql`
+donne la votre. Dans `postgresql.conf` :
 
 ```
-listen_addresses = 'localhost,172.17.0.1'
+listen_addresses = 'localhost,172.28.0.1'
 ```
 
 Surtout pas `'*'` : ce serait ouvrir PostgreSQL sur l'interface publique.
@@ -89,7 +93,7 @@ sudo -u postgres psql -tAc 'SHOW password_encryption'
 la 13). Mettre la meme valeur dans la ligne :
 
 ```
-host    aixam    aixam    172.16.0.0/12    scram-sha-256
+host    aixam    aixam    172.28.0.0/16    scram-sha-256
 ```
 
 ```bash
@@ -110,18 +114,31 @@ docker compose logs api | tail -30
 | `database "aixam" does not exist` | `createdb` pas fait |
 | `password authentication failed` | mot de passe, ou methode pg_hba qui ne correspond pas a `password_encryption` |
 | `no pg_hba.conf entry for host "172.x.x.x"` | ligne pg_hba absente, ou PostgreSQL pas redemarre |
-| `Connection refused` | `listen_addresses` n'inclut pas `172.17.0.1` |
+| `Connection refused` | `listen_addresses` n'inclut pas `172.28.0.1` |
+| bloque sur `Waiting for application startup.` | le TCP n'aboutit pas : mauvaise passerelle dans `listen_addresses`, ou pare-feu |
 | `could not translate host name "host.docker.internal"` | docker trop ancien pour `host-gateway` : mettre `172.17.0.1` dans `DATABASE_URL` |
 
-Tester la connexion seule, sans l'application, depuis un conteneur jetable :
+Tester la connexion **depuis le reseau du projet**, avec le DATABASE_URL reel
+du `.env` — un test depuis le pont par defaut ne prouverait rien, ce n'est pas
+le reseau qu'empruntent les conteneurs :
 
 ```bash
-docker run --rm --add-host host.docker.internal:host-gateway postgres:16-alpine \
-  psql "postgresql://aixam:motdepasse@host.docker.internal:5432/aixam" -c '\conninfo'
+docker compose run --rm api python -c "
+import os, psycopg
+u = os.environ['DATABASE_URL'].replace('+psycopg', '')
+print('cible :', u.split('@')[-1])
+psycopg.connect(u, connect_timeout=5)
+print('connexion OK')"
 ```
 
-Si cette commande passe et que l'API echoue encore, le probleme est dans
-`DATABASE_URL` du `.env`, pas dans PostgreSQL.
+`connect_timeout=5` evite l'attente silencieuse : en cas de mauvaise
+passerelle, la reponse tombe en cinq secondes au lieu de bloquer.
+
+Verifier la passerelle reellement attribuee :
+
+```bash
+docker network inspect aixam_default -f '{{range .IPAM.Config}}{{.Gateway}} {{.Subnet}}{{end}}'
+```
 
 **Basculer**, dans `.env`, en deux lignes :
 
