@@ -87,7 +87,6 @@ export function Settings() {
       <h2>Envoi des emails</h2>
       <MailConfig onLoaded={setMail} />
 
-      <h2>Remontee des donnees</h2>
       <SyncPanel />
 
       <h2>Bornes</h2>

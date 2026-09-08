@@ -13,7 +13,9 @@ type Client = {
   created_at: string
 }
 
-/** Qui a le droit de faire expedier ses emails par CE back-office. */
+/** Qui a le droit de s'appuyer sur CE back-office : faire expedier ses emails,
+ *  et remonter ses donnees vers lui. Un meme jeton ouvre les deux, chaque role
+ *  restant ferme tant qu'il n'est pas active cote serveur. */
 export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
   const [rows, setRows] = useState<Client[]>([])
   const [name, setName] = useState('')
@@ -59,9 +61,9 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
   return (
     <>
       <p className="muted hint">
-        Chaque back-office autorise a poster par ici a son propre token, son quota et son
-        interrupteur. Un token suffit a envoyer : il ne se colle que sur des machines de
-        confiance, et se coupe d'ici en un clic.
+        Chaque back-office autorise a s'appuyer sur celui-ci — envoi d'emails, remontee
+        des donnees — a son propre token, son quota et son interrupteur. Un token suffit :
+        il ne se colle que sur des machines de confiance, et se coupe d'ici en un clic.
       </p>
 
       {fresh && (
@@ -104,7 +106,7 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="muted">Aucun client. Personne ne peut faire expedier d'emails par ici.</p>
+        <p className="muted">Aucun client. Personne ne peut s'appuyer sur ce back-office.</p>
       ) : (
         <table>
           <thead>

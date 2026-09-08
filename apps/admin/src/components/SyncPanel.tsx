@@ -13,7 +13,9 @@ type SyncCfg = {
 const dateFr = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('fr-FR') : 'jamais'
 
-/** Remontee des donnees du stand vers le serveur. Sens unique. */
+/** Remontee vers la base maitre. Sens unique : ce back-office pousse, il ne
+ *  recoit pas. Sur la base maitre elle-meme, le panneau se contente d'afficher
+ *  ce qu'elle detient -- il n'y a rien a y synchroniser. */
 export function SyncPanel() {
   const [cfg, setCfg] = useState<SyncCfg | null>(null)
   const [token, setToken] = useState('')
@@ -27,6 +29,27 @@ export function SyncPanel() {
   }, [])
 
   if (!cfg) return <p className="muted">Chargement...</p>
+
+  // Cette instance EST la base maitre : elle recoit, elle n'envoie pas.
+  if (cfg.server_enabled) {
+    return (
+      <>
+        <h2>Base maitre</h2>
+        <p className="muted hint">
+          Ce back-office est la base maitre : les remontees arrivent des back-offices
+          des stands, qui poussent vers lui. Il n'y a rien a synchroniser d'ici.
+        </p>
+        <table>
+          <thead><tr><th /><th>Recus</th></tr></thead>
+          <tbody>
+            <tr><td>Visiteurs</td><td>{cfg.local.visitors}</td></tr>
+            <tr><td>Creations</td><td>{cfg.local.designs}</td></tr>
+            <tr><td>Evenements</td><td>{cfg.local.events}</td></tr>
+          </tbody>
+        </table>
+      </>
+    )
+  }
 
   const save = async () => {
     setCfg(
@@ -58,7 +81,7 @@ export function SyncPanel() {
       "Tout renvoyer reexpedie l'integralite des donnees. Sans danger (rien n'est duplique), " +
       "mais un visiteur efface cote serveur y reapparaitra. Continuer ?")) return
     setBusy(true)
-    setMessage(full ? 'Renvoi complet en cours...' : 'Envoi en cours...')
+    setMessage(full ? 'Renvoi complet en cours...' : 'Synchronisation en cours...')
     try {
       const r = await api<{ ok: boolean; error?: string; totaux?: Record<string, number> }>(
         `/api/admin/sync/push${full ? '?full=true' : ''}`,
@@ -66,7 +89,7 @@ export function SyncPanel() {
       )
       setMessage(
         r.ok
-          ? `Termine : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} creation(s), ${r.totaux!.events} evenement(s) envoyes.`
+          ? `Termine : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} creation(s), ${r.totaux!.events} evenement(s) envoyes a la base maitre.`
           : `Echec : ${r.error}`,
       )
       load()
@@ -76,14 +99,18 @@ export function SyncPanel() {
   }
 
   return (
-    <div className="settings">
+    <>
+      <h2>Synchronisation vers la base maitre</h2>
+      <div className="settings">
       <p className="muted hint">
-        Le stand produit, le serveur consolide. L'envoi ne part que dans ce sens, et
-        renvoyer deux fois ne cree pas de doublon : chaque ligne garde son identifiant.
+        Ce back-office produit, la base maitre consolide. L'envoi ne part que dans ce
+        sens, et il ne part que quand vous le demandez — rien n'est automatique.
+        Synchroniser deux fois ne cree pas de doublon : chaque ligne garde son
+        identifiant.
       </p>
 
       <label>
-        <span>Adresse du back-office serveur</span>
+        <span>Adresse de la base maitre</span>
         <input
           type="text"
           placeholder="https://aixam-admin.ifrit.fr"
@@ -113,7 +140,7 @@ export function SyncPanel() {
       </div>
 
       <table>
-        <thead><tr><th /><th>En local</th><th>Envoye jusqu'au</th></tr></thead>
+        <thead><tr><th /><th>En local</th><th>Synchronise jusqu'au</th></tr></thead>
         <tbody>
           <tr><td>Visiteurs</td><td>{cfg.local.visitors}</td><td className="muted">{dateFr(cfg.cursors.visitors)}</td></tr>
           <tr><td>Creations</td><td>{cfg.local.designs}</td><td className="muted">{dateFr(cfg.cursors.designs)}</td></tr>
@@ -122,11 +149,12 @@ export function SyncPanel() {
       </table>
 
       <div className="toolbar">
-        <button disabled={busy} onClick={() => push(false)}>Envoyer les nouveautes</button>
+        <button disabled={busy} onClick={() => push(false)}>Synchroniser maintenant</button>
         <button className="link" disabled={busy} onClick={() => push(true)}>Tout renvoyer</button>
       </div>
-      <p className="muted hint">Dernier envoi : {dateFr(cfg.last_push_at)}</p>
+      <p className="muted hint">Derniere synchronisation : {dateFr(cfg.last_push_at)}</p>
       {message && <p className="muted hint">{message}</p>}
-    </div>
+      </div>
+    </>
   )
 }
