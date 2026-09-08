@@ -53,6 +53,12 @@ l'URL WebSocket en découle automatiquement en `wss://`.
 
 Puis recompiler : `./bin/build.sh --front`.
 
+Une fois deploye, ce `config.json` est **conserve d'un build a l'autre** : il
+porte des valeurs d'installation, pas de code. Vous pouvez donc le corriger
+directement dans `apps/api/static/kiosk/config.json` — il est lu a l'execution,
+un rechargement du navigateur suffit — sans qu'une recompilation ne l'ecrase.
+`--reset-config` reprend celui des sources si besoin.
+
 ## 3. PostgreSQL : conteneur ou serveur
 
 Par defaut la base tourne **en conteneur** (service `db`, volume `pgdata`) :

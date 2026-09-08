@@ -11,6 +11,11 @@
 # depot reste propre, et un node_modules compile sur macOS ne peut plus
 # empoisonner un build Linux (esbuild livre un binaire par plateforme).
 #
+# Le config.json deja deploye est conserve d'un build a l'autre : il porte le
+# jeton de la borne et l'adresse de l'API, des valeurs d'installation qu'on ne
+# veut pas voir disparaitre en recompilant. --reset-config reprend celui des
+# sources.
+#
 # apps/api/static/ est monte en volume par docker compose : une fois la SPA
 # compilee, un simple rechargement du navigateur suffit. Reconstruire l'image
 # de l'API n'est necessaire que si requirements.txt ou le Dockerfile bougent
@@ -27,7 +32,8 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --docker (reconstruit aussi l'image de l'API), -h"
+  echo "Options : --docker (reconstruit aussi l'image de l'API),"
+  echo "          --reset-config (reprend le config.json des sources), -h"
   echo "Variables : NODE_IMAGE (defaut $NODE_IMAGE)"
 }
 
@@ -57,8 +63,24 @@ build_one() {
   # borne deja compilee a cote (ce que fait `make build-front`, qui vide tout).
   say "$3 : deploiement dans static/$2"
   mkdir -p "$STATIC"
+
+  # config.json de la borne porte des valeurs d'INSTALLATION -- jeton de la
+  # borne, adresse de l'API -- pas des valeurs de code. Le reprendre des
+  # sources a chaque build ferait perdre le reglage du salon sans rien dire.
+  local garde=""
+  if [ "$2" = "kiosk" ] && [ "$RESET_CONFIG" -eq 0 ] && [ -f "$out/config.json" ]; then
+    garde="$(mktemp)"
+    cp "$out/config.json" "$garde"
+  fi
+
   rm -rf "$out"
   cp -R "$src/dist" "$out"
+
+  if [ -n "$garde" ]; then
+    cp "$garde" "$out/config.json"
+    rm -f "$garde"
+    say "$3 : config.json en place conserve (--reset-config pour reprendre celui des sources)"
+  fi
   chown -R "$OWNER_UID:$OWNER_GID" "$STATIC" 2>/dev/null || true
 
   # config.json est lu par le navigateur, pas par le serveur : laisse a
@@ -77,7 +99,7 @@ build_one() {
   fi
 }
 
-ADMIN=0 FRONT=0 DOCKER=0
+ADMIN=0 FRONT=0 DOCKER=0 RESET_CONFIG=0
 [ $# -gt 0 ] || { usage; exit 1; }
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -85,6 +107,7 @@ while [ $# -gt 0 ]; do
     --front|--kiosk) FRONT=1 ;;
     --all)    ADMIN=1; FRONT=1 ;;
     --docker) DOCKER=1 ;;
+    --reset-config) RESET_CONFIG=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir -h)" ;;
   esac
