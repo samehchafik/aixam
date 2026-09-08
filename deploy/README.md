@@ -47,7 +47,74 @@ l'URL WebSocket en découle automatiquement en `wss://`.
 
 Puis recompiler : `./bin/build.sh --front`.
 
-## 3. nginx
+## 3. PostgreSQL : conteneur ou serveur
+
+Par defaut la base tourne **en conteneur** (service `db`, volume `pgdata`) :
+c'est le montage du stand, ou l'on ne veut rien installer sur la machine.
+
+Sur un serveur qui a deja son PostgreSQL et ses habitudes de sauvegarde, on
+peut lui confier la base. Le service `db` reste declare mais n'est pas
+demarre.
+
+**Creer le role et la base :**
+
+```bash
+sudo -u postgres createuser --pwprompt aixam
+sudo -u postgres createdb --owner=aixam aixam
+```
+
+Les tables sont creees au premier demarrage de l'API : une base vide suffit.
+
+**Rendre PostgreSQL joignable depuis le conteneur.** Le conteneur passe par la
+passerelle du pont docker, `172.17.0.1` par defaut. Dans
+`/etc/postgresql/16/main/postgresql.conf` :
+
+```
+listen_addresses = 'localhost,172.17.0.1'
+```
+
+Surtout pas `'*'` : ce serait ouvrir PostgreSQL sur l'interface publique.
+
+Puis dans `pg_hba.conf`, autoriser le sous-reseau des ponts docker :
+
+```
+host    aixam    aixam    172.16.0.0/12    scram-sha-256
+```
+
+```bash
+sudo systemctl restart postgresql
+```
+
+**Pointer l'API dessus**, dans `.env` :
+
+```bash
+DATABASE_URL=postgresql+psycopg://aixam:motdepasse@host.docker.internal:5432/aixam
+```
+
+`host.docker.internal` est resolu grace au `extra_hosts` du compose. Si votre
+docker est trop ancien pour `host-gateway`, mettre `172.17.0.1` a la place.
+
+**Demarrer :**
+
+```bash
+./bin/start.sh --all --host-db
+```
+
+`--host-db` ajoute `--no-deps` : sans lui, `depends_on` demarrerait quand meme
+la base en conteneur. Le script refuse de partir si `DATABASE_URL` manque, ce
+qui evite une API en boucle sur un hote introuvable.
+
+**Verifier :**
+
+```bash
+docker compose logs api | tail -20                 # aucune erreur de connexion
+sudo -u postgres psql -d aixam -c '\dt'            # les tables sont la
+```
+
+La sauvegarde devient celle du serveur, avec vos outils habituels — c'est
+precisement l'interet du montage.
+
+## 4. nginx
 
 ```bash
 sudo apt update && sudo apt install -y nginx
@@ -62,7 +129,7 @@ sudo nginx -t && sudo systemctl reload nginx
 À ce stade les deux domaines répondent **en HTTP**. Vérifier avant d'aller
 plus loin — un domaine qui ne répond pas en 80 fera échouer certbot.
 
-## 4. HTTPS avec Let's Encrypt
+## 5. HTTPS avec Let's Encrypt
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -81,7 +148,7 @@ vérifier sans attendre 60 jours :
 sudo certbot renew --dry-run
 ```
 
-## 5. Vérifier
+## 6. Vérifier
 
 ```bash
 curl -I https://aixam.ifrit.fr                    # la borne, 200
