@@ -62,6 +62,13 @@ done
 
 command -v npm >/dev/null || die "npm introuvable"
 
+# npm n'a jamais besoin de root, et en root il laisse node_modules/, dist/ et
+# static/ appartenant a root : le build suivant, lance normalement, echoue en
+# EACCES sur votre propre depot. Mieux vaut refuser que reparer au chown.
+if [ "$(id -u)" -eq 0 ] && [ "${ALLOW_ROOT:-0}" != "1" ]; then
+  die "ne pas lancer en root (sudo) -- relancer sans sudo, ou ALLOW_ROOT=1 si vous savez ce que vous faites"
+fi
+
 if [ $ADMIN -eq 1 ]; then build_one admin admin "back-office"; fi
 if [ $FRONT -eq 1 ]; then build_one kiosk kiosk "borne"; fi
 

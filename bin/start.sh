@@ -41,6 +41,13 @@ done
 
 # --- Verifications qui evitent un message docker incomprehensible ---
 
+# Sous Linux sans groupe docker, sudo est legitime ici -- on previent sans
+# bloquer. Le .env cree et, avec --build, les dossiers compiles appartiendront
+# alors a root.
+if [ "$(id -u)" -eq 0 ]; then
+  warn "lance en root : .env et les fichiers compilés appartiendront a root"
+fi
+
 command -v docker >/dev/null || die "docker introuvable"
 docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- ouvrir Docker Desktop, puis relancer"
 
