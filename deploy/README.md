@@ -181,8 +181,7 @@ except Exception as e:
 
 | Resultat | Cause |
 |---|---|
-| le nom ne se resout pas | `extra_hosts` absent, ou docker trop ancien pour `host-gateway` |
-| `timed out` | pare-feu : la regle `ufw` ci-dessus manque |
+| `timed out` / `ConnectionTimeout` | pare-feu : la regle `ufw` ci-dessus manque, ou ne couvre pas la source |
 | `Connection refused` | PostgreSQL n'ecoute pas sur cette adresse (`listen_addresses`) |
 | `port 5432 : ouvert` | le reseau va bien, chercher du cote de `pg_hba` ou du mot de passe |
 
@@ -201,7 +200,17 @@ docker network inspect aixam_default -f '{{range .IPAM.Config}}{{.Gateway}} {{.S
 
 ```bash
 #COMPOSE_PROFILES=container-db
-POSTGRES_HOST=host.docker.internal
+POSTGRES_HOST=10.83.0.1
+```
+
+`10.83.0.1` est la passerelle du reseau, c'est-a-dire la premiere adresse de
+`DOCKER_SUBNET` — la meme que dans `listen_addresses` et `pg_hba.conf`.
+Preferez-la a `host.docker.internal` : ce nom est resolu vers l'adresse du
+pont **par defaut** (`172.17.0.1`), pas vers la passerelle de notre reseau.
+Le verifier au besoin :
+
+```bash
+docker compose run --rm api getent hosts host.docker.internal
 ```
 
 `POSTGRES_USER`, `POSTGRES_PASSWORD` et `POSTGRES_DB` servent dans les deux
@@ -213,9 +222,6 @@ premiere ligne suffit a ce qu'il ne soit plus dans la stack — `depends_on`
 porte `required: false`, donc l'API et le worker demarrent sans lui. Il n'y a
 aucune option a passer : `docker compose up -d` comme `./bin/start.sh --all`
 font ce qu'il faut, et `docker compose ps` ne montre plus que deux services.
-
-`host.docker.internal` est resolu grace au `extra_hosts` du compose. Si votre
-docker est trop ancien pour `host-gateway`, mettre `172.17.0.1` a la place.
 
 **Demarrer :**
 
