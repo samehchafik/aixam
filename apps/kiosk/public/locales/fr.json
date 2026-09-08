@@ -1,0 +1,65 @@
+{
+  "ribbon": "Crée ta propre planche de bord",
+  "brand": {
+    "line1": "PIMP",
+    "line2": "TON",
+    "line3": "SKIN"
+  },
+  "attract": {
+    "title": "Crée ton propre skin EASY",
+    "cta": "Touche l'écran pour commencer"
+  },
+  "register": {
+    "title": "Crée ton propre design",
+    "lead": "Pour la collection SKIN EASY 2027.",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "email": "Email",
+    "postalCode": "Code postal",
+    "consent": "J'accepte de recevoir les actualités AIXAM. Mes données sont conservées 12 mois et je peux demander leur suppression à tout moment.",
+    "submit": "Continuer",
+    "sending": "Envoi…",
+    "skip": "Je passe"
+  },
+  "verify": {
+    "title": "Vérifie ton email",
+    "lead": "Saisis le code à 6 chiffres que nous venons de t'envoyer.",
+    "submit": "Valider",
+    "checking": "Vérification…",
+    "wrong": "Code incorrect. {remaining} essai(s) restant(s)."
+  },
+  "editor": {
+    "backgroundsTitle": "Choisis un fond à ton skin",
+    "objectsTitle": "Choisis un ou des objets à poser sur ton skin",
+    "colorTile": "choisis ta couleur",
+    "colorPickerTitle": "Choisis ta couleur",
+    "hintEmpty": "Choisis un fond et des objets pour pimper ton skin perso.",
+    "hintBackground": "Modifie la disposition de ton fond avec deux doigts.",
+    "hintObject": "Modifie la disposition de ton objet avec deux doigts.",
+    "deleteBackground": "Supprime ce fond",
+    "deleteObject": "Supprime cet objet",
+    "resetBackground": "Réinitialise ce fond",
+    "resetObject": "Réinitialise cet objet",
+    "submit": "Valider mon skin",
+    "sending": "Envoi…",
+    "restart": "Recommencer",
+    "submitError": "Envoi impossible. Réessaie dans un instant."
+  },
+  "done": {
+    "title": "Merci {firstName} !",
+    "lead": "Ta création vient de t'être envoyée par email au format JPEG.",
+    "share": "Partage-la avec #EASYbyAIXAM — elle pourra être sélectionnée pour la future production de SKIN EASY.",
+    "finish": "Terminer"
+  },
+  "display": {
+    "attractTitle": "Crée ton propre SKIN EASY",
+    "attractCta": "Rendez-vous sur l'écran tactile",
+    "creationOf": "La création de {firstName}",
+    "shareCta": "Partage ta création #EASYbyAIXAM"
+  },
+  "boot": {
+    "loading": "Chargement…",
+    "unavailable": "Borne indisponible",
+    "hint": "Vérifie config.json (apiBaseUrl, kioskToken)."
+  }
+}

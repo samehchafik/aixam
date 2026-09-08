@@ -1,0 +1,148 @@
+{
+  "items": [
+    {
+      "id": "sunburst",
+      "file": "sunburst.jpg",
+      "label": {
+        "fr": "Soleil rétro",
+        "en": "Retro sunburst",
+        "es": "Sol retro"
+      }
+    },
+    {
+      "id": "artdeco-cream",
+      "file": "artdeco-cream.jpg",
+      "label": {
+        "fr": "Art déco crème",
+        "en": "Cream art deco",
+        "es": "Art déco crema"
+      }
+    },
+    {
+      "id": "matrix",
+      "file": "matrix.jpg",
+      "label": {
+        "fr": "Pluie numérique",
+        "en": "Digital rain",
+        "es": "Lluvia digital"
+      }
+    },
+    {
+      "id": "graffiti",
+      "file": "graffiti.jpg",
+      "label": {
+        "fr": "Mur graffiti",
+        "en": "Graffiti wall",
+        "es": "Muro grafiti"
+      }
+    },
+    {
+      "id": "pastel",
+      "file": "pastel.jpg",
+      "label": {
+        "fr": "Dégradé pastel",
+        "en": "Pastel gradient",
+        "es": "Degradado pastel"
+      }
+    },
+    {
+      "id": "circuit",
+      "file": "circuit.jpg",
+      "label": {
+        "fr": "Circuit imprimé",
+        "en": "Circuit board",
+        "es": "Circuito impreso"
+      }
+    },
+    {
+      "id": "neon-maze",
+      "file": "neon-maze.jpg",
+      "label": {
+        "fr": "Labyrinthe néon",
+        "en": "Neon maze",
+        "es": "Laberinto neón"
+      }
+    },
+    {
+      "id": "holographic",
+      "file": "holographic.jpg",
+      "label": {
+        "fr": "Holographique",
+        "en": "Holographic",
+        "es": "Holográfico"
+      }
+    },
+    {
+      "id": "artdeco-green",
+      "file": "artdeco-green.jpg",
+      "label": {
+        "fr": "Art déco vert",
+        "en": "Green art deco",
+        "es": "Art déco verde"
+      }
+    },
+    {
+      "id": "smileys",
+      "file": "smileys.jpg",
+      "label": {
+        "fr": "Smileys",
+        "en": "Smileys",
+        "es": "Smileys"
+      }
+    },
+    {
+      "id": "brush",
+      "file": "brush.jpg",
+      "label": {
+        "fr": "Coups de pinceau",
+        "en": "Brush strokes",
+        "es": "Pinceladas"
+      }
+    },
+    {
+      "id": "checker",
+      "file": "checker.jpg",
+      "label": {
+        "fr": "Damier",
+        "en": "Checkerboard",
+        "es": "Damero"
+      }
+    },
+    {
+      "id": "stripes",
+      "file": "stripes.jpg",
+      "label": {
+        "fr": "Rayures rétro",
+        "en": "Retro stripes",
+        "es": "Rayas retro"
+      }
+    },
+    {
+      "id": "dots",
+      "file": "dots.jpg",
+      "label": {
+        "fr": "Pois",
+        "en": "Polka dots",
+        "es": "Lunares"
+      }
+    },
+    {
+      "id": "swirl",
+      "file": "swirl.jpg",
+      "label": {
+        "fr": "Tourbillon",
+        "en": "Swirl",
+        "es": "Remolino"
+      }
+    },
+    {
+      "id": "night-city",
+      "file": "night-city.jpg",
+      "label": {
+        "fr": "Ville la nuit",
+        "en": "Night city",
+        "es": "Ciudad nocturna"
+      }
+    }
+  ]
+}

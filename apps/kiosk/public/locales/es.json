@@ -1,0 +1,65 @@
+{
+  "ribbon": "Crea tu propio salpicadero",
+  "brand": {
+    "line1": "PIMP",
+    "line2": "TU",
+    "line3": "SKIN"
+  },
+  "attract": {
+    "title": "Crea tu propio skin EASY",
+    "cta": "Toca la pantalla para empezar"
+  },
+  "register": {
+    "title": "Crea tu propio diseño",
+    "lead": "Para la colección SKIN EASY 2027.",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "email": "Email",
+    "postalCode": "Código postal",
+    "consent": "Acepto recibir novedades de AIXAM. Mis datos se conservan 12 meses y puedo solicitar su eliminación en cualquier momento.",
+    "submit": "Continuar",
+    "sending": "Enviando…",
+    "skip": "Saltar"
+  },
+  "verify": {
+    "title": "Verifica tu email",
+    "lead": "Introduce el código de 6 cifras que acabamos de enviarte.",
+    "submit": "Validar",
+    "checking": "Verificando…",
+    "wrong": "Código incorrecto. Te queda(n) {remaining} intento(s)."
+  },
+  "editor": {
+    "backgroundsTitle": "Elige un fondo para tu skin",
+    "objectsTitle": "Elige uno o varios objetos para poner en tu skin",
+    "colorTile": "elige tu color",
+    "colorPickerTitle": "Elige tu color",
+    "hintEmpty": "Elige un fondo y objetos para tunear tu skin.",
+    "hintBackground": "Ajusta tu fondo con dos dedos.",
+    "hintObject": "Ajusta tu objeto con dos dedos.",
+    "deleteBackground": "Quitar este fondo",
+    "deleteObject": "Quitar este objeto",
+    "resetBackground": "Restablecer este fondo",
+    "resetObject": "Restablecer este objeto",
+    "submit": "Validar mi skin",
+    "sending": "Enviando…",
+    "restart": "Empezar de nuevo",
+    "submitError": "No se pudo enviar. Inténtalo de nuevo en un momento."
+  },
+  "done": {
+    "title": "¡Gracias {firstName}!",
+    "lead": "Tu creación acaba de enviarse a tu email en formato JPEG.",
+    "share": "Compártela con #EASYbyAIXAM — podría ser seleccionada para la próxima producción de SKIN EASY.",
+    "finish": "Terminar"
+  },
+  "display": {
+    "attractTitle": "Crea tu propio SKIN EASY",
+    "attractCta": "Ve a la pantalla táctil",
+    "creationOf": "La creación de {firstName}",
+    "shareCta": "Comparte tu creación #EASYbyAIXAM"
+  },
+  "boot": {
+    "loading": "Cargando…",
+    "unavailable": "Terminal no disponible",
+    "hint": "Revisa config.json (apiBaseUrl, kioskToken)."
+  }
+}

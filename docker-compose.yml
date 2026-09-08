@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aixam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aixam}
+      POSTGRES_DB: ${POSTGRES_DB:-aixam}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aixam} -d ${POSTGRES_DB:-aixam}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-aixam}:${POSTGRES_PASSWORD:-aixam}@db:5432/${POSTGRES_DB:-aixam}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8080}:8000"
+    volumes:
+      - media:/app/media
+      - ./apps/api/static:/app/static:ro
+
+  # Worker d'envoi des emails (file outbox). Separe de l'API pour qu'une panne
+  # SMTP n'impacte jamais la borne.
+  worker:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-aixam}:${POSTGRES_PASSWORD:-aixam}@db:5432/${POSTGRES_DB:-aixam}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "app.workers.outbox"]
+    volumes:
+      - media:/app/media
+
+volumes:
+  pgdata:
+  media:

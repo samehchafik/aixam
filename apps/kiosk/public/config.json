@@ -1,0 +1,9 @@
+{
+  "apiBaseUrl": "http://localhost:8080",
+  "kioskToken": "dev-kiosk-token",
+  "displayMonitorIndex": 1,
+  "touchMonitorIndex": 0,
+  "idleTimeoutSeconds": 90,
+  "locale": "fr",
+  "demoMode": true
+}

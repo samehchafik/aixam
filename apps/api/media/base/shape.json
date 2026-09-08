@@ -1,0 +1,10 @@
+{
+  "width": 3000,
+  "height": 300,
+  "cornerRadius": 95,
+  "notch": {
+    "width": 510,
+    "height": 170,
+    "radius": 34
+  }
+}

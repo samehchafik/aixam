@@ -1,0 +1,11 @@
+{% extends "_base.html" %}
+{% block content %}
+<p style="margin:0 0 8px;font-size:16px">Test d'envoi</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.5">
+  Si vous lisez ceci, la chaine complete fonctionne : file d'attente, worker,
+  et transport <strong>{{ transport }}</strong>.
+</p>
+<p style="margin:0;font-size:13px;color:#71717a">
+  Email declenche depuis le back-office. Aucune action attendue.
+</p>
+{% endblock %}

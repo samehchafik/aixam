@@ -1,0 +1,184 @@
+{
+  "items": [
+    {
+      "id": "sunglasses",
+      "file": "sunglasses.png",
+      "label": {
+        "fr": "Lunettes pixel",
+        "en": "Pixel shades",
+        "es": "Gafas pixel"
+      }
+    },
+    {
+      "id": "freedom-blue",
+      "file": "freedom-blue.png",
+      "label": {
+        "fr": "Freedom bleu",
+        "en": "Blue Freedom",
+        "es": "Freedom azul"
+      }
+    },
+    {
+      "id": "freedom-purple",
+      "file": "freedom-purple.png",
+      "label": {
+        "fr": "Freedom violet",
+        "en": "Purple Freedom",
+        "es": "Freedom morado"
+      }
+    },
+    {
+      "id": "freedom-green",
+      "file": "freedom-green.png",
+      "label": {
+        "fr": "Freedom vert",
+        "en": "Green Freedom",
+        "es": "Freedom verde"
+      }
+    },
+    {
+      "id": "flower-pink",
+      "file": "flower-pink.png",
+      "label": {
+        "fr": "Fleur rose",
+        "en": "Pink flower",
+        "es": "Flor rosa"
+      }
+    },
+    {
+      "id": "flower-blue",
+      "file": "flower-blue.png",
+      "label": {
+        "fr": "Fleur bleue",
+        "en": "Blue flower",
+        "es": "Flor azul"
+      }
+    },
+    {
+      "id": "flower-orange",
+      "file": "flower-orange.png",
+      "label": {
+        "fr": "Fleur orange",
+        "en": "Orange flower",
+        "es": "Flor naranja"
+      }
+    },
+    {
+      "id": "heart-green",
+      "file": "heart-green.png",
+      "label": {
+        "fr": "Cœur vert",
+        "en": "Green heart",
+        "es": "Corazón verde"
+      }
+    },
+    {
+      "id": "heart-orange",
+      "file": "heart-orange.png",
+      "label": {
+        "fr": "Cœur orange",
+        "en": "Orange heart",
+        "es": "Corazón naranja"
+      }
+    },
+    {
+      "id": "heart-pink",
+      "file": "heart-pink.png",
+      "label": {
+        "fr": "Cœur rose",
+        "en": "Pink heart",
+        "es": "Corazón rosa"
+      }
+    },
+    {
+      "id": "paisley-blue",
+      "file": "paisley-blue.png",
+      "label": {
+        "fr": "Paisley bleu",
+        "en": "Blue paisley",
+        "es": "Cachemir azul"
+      }
+    },
+    {
+      "id": "paisley-purple",
+      "file": "paisley-purple.png",
+      "label": {
+        "fr": "Paisley violet",
+        "en": "Purple paisley",
+        "es": "Cachemir morado"
+      }
+    },
+    {
+      "id": "branch-white",
+      "file": "branch-white.png",
+      "label": {
+        "fr": "Branche blanche",
+        "en": "White branch",
+        "es": "Rama blanca"
+      }
+    },
+    {
+      "id": "branch-pink",
+      "file": "branch-pink.png",
+      "label": {
+        "fr": "Branche rose",
+        "en": "Pink branch",
+        "es": "Rama rosa"
+      }
+    },
+    {
+      "id": "branch-black",
+      "file": "branch-black.png",
+      "label": {
+        "fr": "Branche noire",
+        "en": "Black branch",
+        "es": "Rama negra"
+      }
+    },
+    {
+      "id": "easy-retro",
+      "file": "easy-retro.png",
+      "label": {
+        "fr": "EASY rétro",
+        "en": "Retro EASY",
+        "es": "EASY retro"
+      }
+    },
+    {
+      "id": "star",
+      "file": "star.png",
+      "label": {
+        "fr": "Étoile",
+        "en": "Star",
+        "es": "Estrella"
+      }
+    },
+    {
+      "id": "peace",
+      "file": "peace.png",
+      "label": {
+        "fr": "Peace",
+        "en": "Peace",
+        "es": "Paz"
+      }
+    },
+    {
+      "id": "bolt",
+      "file": "bolt.png",
+      "label": {
+        "fr": "Éclair",
+        "en": "Bolt",
+        "es": "Rayo"
+      }
+    },
+    {
+      "id": "smiley",
+      "file": "smiley.png",
+      "label": {
+        "fr": "Smiley",
+        "en": "Smiley",
+        "es": "Smiley"
+      }
+    }
+  ]
+}

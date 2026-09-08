@@ -1,0 +1,65 @@
+{
+  "ribbon": "Create your own dashboard",
+  "brand": {
+    "line1": "PIMP",
+    "line2": "YOUR",
+    "line3": "SKIN"
+  },
+  "attract": {
+    "title": "Create your own EASY skin",
+    "cta": "Touch the screen to start"
+  },
+  "register": {
+    "title": "Create your own design",
+    "lead": "For the SKIN EASY 2027 collection.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "postalCode": "Postal code",
+    "consent": "I agree to receive AIXAM news. My data is kept for 12 months and I can request its deletion at any time.",
+    "submit": "Continue",
+    "sending": "Sending…",
+    "skip": "Skip"
+  },
+  "verify": {
+    "title": "Verify your email",
+    "lead": "Enter the 6-digit code we just sent you.",
+    "submit": "Confirm",
+    "checking": "Checking…",
+    "wrong": "Wrong code. {remaining} attempt(s) left."
+  },
+  "editor": {
+    "backgroundsTitle": "Pick a background for your skin",
+    "objectsTitle": "Pick one or more objects to place on your skin",
+    "colorTile": "pick your colour",
+    "colorPickerTitle": "Pick your colour",
+    "hintEmpty": "Pick a background and objects to pimp your own skin.",
+    "hintBackground": "Adjust your background with two fingers.",
+    "hintObject": "Adjust your object with two fingers.",
+    "deleteBackground": "Remove this background",
+    "deleteObject": "Remove this object",
+    "resetBackground": "Reset this background",
+    "resetObject": "Reset this object",
+    "submit": "Confirm my skin",
+    "sending": "Sending…",
+    "restart": "Start over",
+    "submitError": "Could not send. Please try again in a moment."
+  },
+  "done": {
+    "title": "Thank you {firstName}!",
+    "lead": "Your creation has just been emailed to you as a JPEG.",
+    "share": "Share it with #EASYbyAIXAM — it could be selected for the next SKIN EASY production.",
+    "finish": "Finish"
+  },
+  "display": {
+    "attractTitle": "Create your own SKIN EASY",
+    "attractCta": "Head to the touch screen",
+    "creationOf": "{firstName}'s creation",
+    "shareCta": "Share your creation #EASYbyAIXAM"
+  },
+  "boot": {
+    "loading": "Loading…",
+    "unavailable": "Kiosk unavailable",
+    "hint": "Check config.json (apiBaseUrl, kioskToken)."
+  }
+}
