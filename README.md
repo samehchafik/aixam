@@ -35,6 +35,37 @@ make seed           # catalogue de démo (formes générées) — à remplacer p
 make up             # build des fronts + docker compose up
 ```
 
+Pour ne toucher qu'une des deux SPA, `bin/` évite de tout recompiler :
+
+```bash
+bin/build.sh   --admin | --front | --all   [--docker]
+bin/start.sh   --admin | --front | --all   [--build] [--logs]
+bin/restart.sh --admin | --front | --all   [--build] [--logs]
+bin/stop.sh                                [--volumes]
+```
+
+`apps/api/static/` est monté en volume : après un `bin/build.sh`, un
+rechargement du navigateur suffit, sans redémarrer quoi que ce soit. Une seule
+stack sert les deux SPA — `--admin` et `--front` choisissent ce qui est
+compilé et l'adresse affichée, pas des conteneurs différents. D'où l'absence
+de ces flags sur `bin/stop.sh` : tout s'arrête ensemble.
+
+`bin/stop.sh` conserve les données ; `--volumes` efface la base et demande
+confirmation.
+
+### Les ports
+
+En docker, **un seul port** — `API_PORT`, 8080 par défaut — et deux chemins :
+
+| | Adresse |
+|---|---|
+| Back-office | `http://localhost:8080` |
+| Borne | `http://localhost:8080/kiosk/` |
+| Grand écran | `http://localhost:8080/kiosk/#/display` |
+
+Les ports séparés n'existent qu'en développement vite, sans docker : **5173**
+pour la borne, **5174** pour le back-office (qui proxifie `/api` vers le 8080).
+
 - Back-office : http://localhost:8080 (`ADMIN_EMAIL` / `ADMIN_PASSWORD` du `.env`)
 - Borne : http://localhost:8080/kiosk/ (protégé par `KIOSK_BASIC_USER` / `KIOSK_BASIC_PASSWORD`)
 - Grand écran : http://localhost:8080/kiosk/#/display
