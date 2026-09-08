@@ -1,9 +1,12 @@
 services:
-  # La base en conteneur : le montage par defaut, celui du stand. Sur un
-  # serveur qui a deja son PostgreSQL, on ne demarre pas ce service et on
-  # renseigne DATABASE_URL dans .env -- voir deploy/README.md.
+  # La base en conteneur. Sous profil : elle ne demarre que si .env contient
+  # COMPOSE_PROFILES=container-db, ce qui est le cas par defaut. Sur un
+  # serveur qui a deja son PostgreSQL, on retire cette ligne du .env et on
+  # renseigne DATABASE_URL -- voir deploy/README.md. Rien d'autre a faire :
+  # `docker compose up -d` fait alors ce qu'il faut, sans option.
   db:
     image: postgres:16-alpine
+    profiles: ["container-db"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aixam}
@@ -34,6 +37,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        # Base hors profil (PostgreSQL de la machine) : on demarre sans elle.
+        required: false
     ports:
       # Derriere un reverse proxy, mettre API_BIND=127.0.0.1 dans .env : sans
       # ca l'API reste joignable en direct sur le port 8080, donc en clair et
@@ -58,6 +63,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
     command: ["python", "-m", "app.workers.outbox"]
     volumes:
       - media:/app/media

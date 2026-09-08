@@ -5,9 +5,6 @@
 #   bin/start.sh --front      borne       : http://localhost:8080/kiosk/
 #   bin/start.sh --all        les deux
 #
-# --host-db : ne pas demarrer la base en conteneur, utiliser le PostgreSQL
-# deja installe sur la machine. Demande DATABASE_URL dans .env.
-#
 # Une seule stack (db + api + worker) sert les deux SPA : --admin et --front
 # ne demarrent pas des conteneurs differents, ils choisissent ce qu'on
 # verifie avant et l'adresse qu'on affiche apres.
@@ -22,12 +19,12 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --build (compile la SPA avant), --logs (suit les logs),"
-  echo "          --host-db (PostgreSQL de la machine au lieu du conteneur), -h"
+  echo "Options : --build (compile la SPA avant), --logs (suit les logs), -h"
+  echo "Base : reglee dans .env (COMPOSE_PROFILES / DATABASE_URL), pas ici."
   echo "Voir aussi : bin/stop.sh, bin/restart.sh"
 }
 
-ADMIN=0 FRONT=0 BUILD=0 LOGS=0 HOST_DB=0
+ADMIN=0 FRONT=0 BUILD=0 LOGS=0
 [ $# -gt 0 ] || { usage; exit 1; }
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -35,7 +32,6 @@ while [ $# -gt 0 ]; do
     --front|--kiosk) FRONT=1 ;;
     --all)    ADMIN=1; FRONT=1 ;;
     --build)  BUILD=1 ;;
-    --host-db) HOST_DB=1 ;;
     --logs|-f) LOGS=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir -h)" ;;
@@ -84,18 +80,19 @@ if [ $FRONT -eq 1 ]; then check_built kiosk "la borne" --front; fi
 PORT="$(grep -E '^API_PORT=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2)"
 PORT="${PORT:-8080}"
 
-if [ $HOST_DB -eq 1 ]; then
-  # Sans DATABASE_URL, le compose vise le service db -- qu'on ne demarre
-  # justement pas ici. L'API tournerait en boucle sur un hote introuvable.
-  grep -qE '^DATABASE_URL=.+' "$ROOT/.env" \
-    || die "--host-db demande DATABASE_URL dans .env (voir deploy/README.md)"
-  # --no-deps : sans lui, depends_on demarrerait la base en conteneur.
-  say "demarrage (api, worker) -- base : PostgreSQL de la machine"
-  ( cd "$ROOT" && docker compose up -d --no-deps api worker )
-else
-  say "demarrage de la stack (db, api, worker)"
-  ( cd "$ROOT" && docker compose up -d )
+# Ou tourne la base est decide par .env (COMPOSE_PROFILES), pas par ce
+# script. On demande donc a compose ce qu'il va reellement demarrer, plutot
+# que de re-deduire le reglage de notre cote.
+SERVICES="$(cd "$ROOT" && docker compose config --services | sort | tr '\n' ' ')"
+if ! printf '%s' "$SERVICES" | grep -qw db; then
+  # Base hors profil : sans DATABASE_URL, l'API viserait le service db, qui
+  # n'existe pas -- et redemarrerait en boucle sur un hote introuvable.
+  grep -qE '^DATABASE_URL=.+' "$ROOT/.env" || die \
+    "base hors profil et DATABASE_URL absent de .env : l'API n'aurait aucune base (voir deploy/README.md)"
 fi
+
+say "demarrage : $SERVICES"
+( cd "$ROOT" && docker compose up -d )
 
 say "attente de l'API sur le port $PORT"
 for _ in $(seq 1 60); do

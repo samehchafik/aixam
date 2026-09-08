@@ -85,11 +85,18 @@ host    aixam    aixam    172.16.0.0/12    scram-sha-256
 sudo systemctl restart postgresql
 ```
 
-**Pointer l'API dessus**, dans `.env` :
+**Basculer**, dans `.env`, en deux lignes :
 
 ```bash
+#COMPOSE_PROFILES=container-db
 DATABASE_URL=postgresql+psycopg://aixam:motdepasse@host.docker.internal:5432/aixam
 ```
+
+Le service `db` est declare sous le profil `container-db`. Commenter la
+premiere ligne suffit a ce qu'il ne soit plus dans la stack — `depends_on`
+porte `required: false`, donc l'API et le worker demarrent sans lui. Il n'y a
+aucune option a passer : `docker compose up -d` comme `./bin/start.sh --all`
+font ce qu'il faut, et `docker compose ps` ne montre plus que deux services.
 
 `host.docker.internal` est resolu grace au `extra_hosts` du compose. Si votre
 docker est trop ancien pour `host-gateway`, mettre `172.17.0.1` a la place.
@@ -97,12 +104,12 @@ docker est trop ancien pour `host-gateway`, mettre `172.17.0.1` a la place.
 **Demarrer :**
 
 ```bash
-./bin/start.sh --all --host-db
+./bin/start.sh --all
 ```
 
-`--host-db` ajoute `--no-deps` : sans lui, `depends_on` demarrerait quand meme
-la base en conteneur. Le script refuse de partir si `DATABASE_URL` manque, ce
-qui evite une API en boucle sur un hote introuvable.
+Le script refuse de partir si la base est hors profil et que `DATABASE_URL`
+manque : l'API viserait alors un hote inexistant et redemarrerait en boucle.
+Il le demande a `docker compose config`, il ne rededuit pas le reglage.
 
 **Verifier :**
 
