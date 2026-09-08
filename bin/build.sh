@@ -21,8 +21,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATIC="$ROOT/apps/api/static"
 NODE_IMAGE="${NODE_IMAGE:-node:22-alpine}"
 
-say() { printf '\033[36m==>\033[0m %s\n' "$*"; }
-die() { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
+say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[33mattention:\033[0m %s\n' "$*" >&2; }
+die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
@@ -59,6 +60,21 @@ build_one() {
   rm -rf "$out"
   cp -R "$src/dist" "$out"
   chown -R "$OWNER_UID:$OWNER_GID" "$STATIC" 2>/dev/null || true
+
+  # config.json est lu par le navigateur, pas par le serveur : laisse a
+  # localhost, la borne appelle le poste du VISITEUR. Le symptome est une
+  # demande d'acces au reseau local dans Chrome, puis rien qui fonctionne.
+  if [ "$2" = "kiosk" ] && [ -f "$out/config.json" ]; then
+    if grep -q '"apiBaseUrl"[[:space:]]*:[[:space:]]*"http://localhost' "$out/config.json"; then
+      warn "borne : apiBaseUrl pointe sur localhost. Derriere un nom de domaine,"
+      warn "        le vider dans apps/kiosk/public/config.json -- la borne prendra"
+      warn "        alors l'origine de la page. (Absolu requis en mode Tauri.)"
+    fi
+    if grep -q '"kioskToken"[[:space:]]*:[[:space:]]*"dev-kiosk-token"' "$out/config.json"; then
+      warn "borne : kioskToken est encore celui d'exemple, public dans le depot."
+      warn "        Le remplacer par celui de Reglages > Bornes."
+    fi
+  fi
 }
 
 ADMIN=0 FRONT=0 DOCKER=0

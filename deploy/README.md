@@ -32,6 +32,12 @@ répond plus.
 
 ## 2. Régler la borne pour le proxy
 
+> Étape la plus facile à oublier, et son symptôme n'est pas parlant : Chrome
+> affiche *« aixam.ifrit.fr souhaite accéder à d'autres applis et services sur
+> cet appareil »*. La page essaie de joindre `localhost` — c'est-à-dire le
+> poste du **visiteur**, pas le serveur. `bin/build.sh --front` le signale
+> désormais avant que vous ne le découvriez au navigateur.
+
 `apps/kiosk/public/config.json` pointe par défaut sur `http://localhost:8080`,
 ce qui ne marche pas derrière un proxy. **Laisser `apiBaseUrl` vide** : la
 borne prend alors l'origine de la page, donc `https://aixam.ifrit.fr` — et
