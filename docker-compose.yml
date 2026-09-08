@@ -25,7 +25,11 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${API_PORT:-8080}:8000"
+      # Derriere un reverse proxy, mettre API_BIND=127.0.0.1 dans .env : sans
+      # ca l'API reste joignable en direct sur le port 8080, donc en clair et
+      # sans passer par nginx. Le defaut reste ouvert car sur le stand la
+      # borne joint l'API par le reseau local.
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-8080}:8000"
     volumes:
       - media:/app/media
       - ./apps/api/static:/app/static:ro

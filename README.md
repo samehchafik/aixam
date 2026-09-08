@@ -103,6 +103,16 @@ cd apps/admin && npm run dev                          # http://localhost:5174
 `config.json` est lu **à l'exécution**, jamais compilé dans le bundle : changer
 de host ne demande aucun rebuild.
 
+## Mise en ligne derrière nginx
+
+Deux domaines pour une seule stack — la borne sur l'un, le back-office sur
+l'autre — avec HTTPS Let's Encrypt : voir [deploy/README.md](deploy/README.md)
+et les vhosts dans `deploy/nginx/`.
+
+Deux réglages à ne pas oublier là-bas : `API_BIND=127.0.0.1` dans `.env` (sans
+quoi l'API reste joignable en clair sur le 8080, hors du proxy) et
+`apiBaseUrl` vide dans le `config.json` de la borne.
+
 ## Envoi des emails
 
 Le code de vérification et la création en JPEG partent tous les deux par la
