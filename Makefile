@@ -1,4 +1,4 @@
-.PHONY: help setup build-front up down logs seed test-mail reset
+.PHONY: help setup build-front up down logs seed test test-mail test-sync reset
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -28,9 +28,14 @@ logs: ## Suit les logs api + worker
 seed: ## Genere fonds/objets de demo + index.json (a remplacer par les assets AIXAM)
 	.venv/bin/python scripts/generate_assets.py
 
-test-mail: ## Teste le relais de mailing (demande un PostgreSQL joignable)
+test: test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
+
+test-mail: ## Teste le relais de mailing
 	cd apps/api && ../../.venv/bin/python tests/test_relay.py
 	cd apps/api && ../../.venv/bin/python tests/test_relay_chain.py
+
+test-sync: ## Teste la remontee des donnees du stand vers le serveur
+	cd apps/api && ../../.venv/bin/python tests/test_sync_chain.py
 
 reset: ## Remet la base a zero (DESTRUCTIF)
 	docker compose down -v

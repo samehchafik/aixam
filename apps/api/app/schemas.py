@@ -155,3 +155,70 @@ class MailConfigIn(BaseModel):
 
 class MailTestIn(BaseModel):
     to: EmailStr
+
+
+# --- Remontee des donnees du stand vers le serveur ---
+#
+# Les identifiants voyagent : `visitors` et `designs` ont des cles UUID, donc
+# une ligne garde le meme identifiant des deux cotes et se reinsere-ou-se-met-
+# a-jour sans remapping. C'est ce qui rend un renvoi inoffensif.
+#
+# Ce qui ne voyage pas : `render_path` (un chemin local) et `kiosk_id` (la
+# borne n'existe pas sur le serveur). Le JPEG non plus -- `layers` est la
+# source de verite, le serveur sait re-rendre.
+
+
+class SyncVisitorIn(BaseModel):
+    id: uuid.UUID
+    first_name: str = Field(max_length=120)
+    last_name: str = Field(max_length=120)
+    email: EmailStr
+    postal_code: str = Field(max_length=16)
+    email_verified_at: datetime | None = None
+    consent_marketing: bool = False
+    consent_at: datetime | None = None
+    created_at: datetime
+
+
+class SyncDesignIn(BaseModel):
+    id: uuid.UUID
+    visitor_id: uuid.UUID | None = None
+    session_id: str = Field(max_length=64)
+    layers: dict | list = {}
+    status: str = Field(max_length=20)
+    shared_hint: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class SyncEventIn(BaseModel):
+    """Cle entiere auto-incrementee cote base : les identifiants se
+    telescoperaient entre instances. On ne les transmet donc pas, et le
+    dedoublonnage se fait sur (session_id, name, created_at)."""
+
+    session_id: str | None = Field(default=None, max_length=64)
+    visitor_id: uuid.UUID | None = None
+    name: str = Field(max_length=80)
+    payload: dict = {}
+    created_at: datetime
+
+
+class SyncPushIn(BaseModel):
+    visitors: list[SyncVisitorIn] = []
+    designs: list[SyncDesignIn] = []
+    events: list[SyncEventIn] = []
+
+
+class SyncPushOut(BaseModel):
+    visitors: int = 0
+    designs: int = 0
+    events: int = 0
+    events_ignores: int = 0
+
+
+class SyncConfigIn(BaseModel):
+    """Comme pour le relais : `None` veut dire « ne touche pas », chaine vide
+    « efface ». Le jeton n'etant jamais relu, l'absence ne doit pas l'effacer."""
+
+    url: str | None = None
+    token: str | None = None

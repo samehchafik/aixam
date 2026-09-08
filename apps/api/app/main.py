@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from app.api import admin, auth, kiosk, relay, ws
+from app.api import admin, auth, kiosk, relay, sync, ws
 from app.config import settings
 from app.db import Base, SessionLocal, engine
 from app.deps import require_kiosk_basic_auth
@@ -64,6 +64,11 @@ app.include_router(ws.router)
 # erreur dans l'admin d'une machine posee sur un stand.
 if settings.relay_server_enabled:
     app.include_router(relay.router)
+
+# La remontee des donnees du stand. Meme principe, role distinct : accepter
+# des visiteurs nominatifs n'est pas accepter de poster un email.
+if settings.sync_server_enabled:
+    app.include_router(sync.router)
 
 
 @app.get("/healthz")

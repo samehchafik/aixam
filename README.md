@@ -113,6 +113,35 @@ Deux réglages à ne pas oublier là-bas : `API_BIND=127.0.0.1` dans `.env` (san
 quoi l'API reste joignable en clair sur le 8080, hors du proxy) et
 `apiBaseUrl` vide dans le `config.json` de la borne.
 
+## Remontee des donnees du stand
+
+Au salon, le back-office tourne sur le portable de l'equipe, avec sa propre
+base : le reseau d'un stand ne se prete pas a travailler en direct sur le
+serveur. **Reglages → Remontee des donnees** envoie ensuite visiteurs,
+creations et evenements vers le back-office serveur.
+
+Sens unique, par construction : le stand produit, le serveur consolide. Il n'y
+a donc jamais deux versions d'une meme ligne a departager — la categorie de
+bugs qui fait echouer les synchronisations bidirectionnelles.
+
+Ce qui rend l'operation sure : `visitors` et `designs` ont des cles **UUID**,
+donc une ligne garde le meme identifiant des deux cotes et se
+reinsere-ou-se-met-a-jour sans remapping. Renvoyer un lot deja parti est sans
+effet. Les evenements, dont la cle est un entier local, se dedoublonnent sur
+`(session_id, name, created_at)`. Trois curseurs, un par table, ne sont avances
+qu'apres un lot accepte : une coupure fait recommencer, jamais perdre.
+
+Le JPEG ne voyage pas — `layers` est la source de verite et le serveur sait
+re-rendre. Le chemin du rendu local et l'identifiant de borne ne voyagent pas
+non plus : ils n'ont pas de sens sur le serveur.
+
+Authentification par le meme jeton que le relais d'emails, avec sa revocation
+et sa page d'admin. Cote serveur, `SYNC_SERVER_ENABLED=true` ouvre le role.
+
+**La limite a connaitre** : sans marqueurs de suppression, un visiteur efface
+cote serveur (droit a l'effacement) reapparait si vous faites un « Tout
+renvoyer ». L'envoi incremental, lui, ne le ressuscite pas.
+
 ## Envoi des emails
 
 Le code de vérification et la création en JPEG partent tous les deux par la

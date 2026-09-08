@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { MailConfig, type MailCfg } from '../components/MailConfig'
 import { RelayClients } from '../components/RelayClients'
+import { SyncPanel } from '../components/SyncPanel'
 
 type Config = {
   verification_bypass: boolean
@@ -85,6 +86,9 @@ export function Settings() {
 
       <h2>Envoi des emails</h2>
       <MailConfig onLoaded={setMail} />
+
+      <h2>Remontee des donnees</h2>
+      <SyncPanel />
 
       <h2>Bornes</h2>
       <table>

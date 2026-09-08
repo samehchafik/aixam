@@ -26,6 +26,7 @@ from app.models import (
 )
 from app.schemas import (
     MailConfigIn,
+    SyncConfigIn,
     MailTestIn,
     RelayClientIn,
     RelayClientPatch,
@@ -36,6 +37,7 @@ from app.services import mailer
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
+from app.services import sync_push
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(current_admin)])
 
@@ -370,3 +372,54 @@ def delete_relay_client(client_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Client de relais inconnu")
     db.delete(client)
     db.commit()
+
+
+# --- Remontee des donnees vers le serveur ---
+
+
+@router.get("/sync")
+def read_sync_config(db: Session = Depends(get_db)) -> dict:
+    """Ce qu'on a en local, ou on l'envoie, et jusqu'ou on est alle."""
+    count = lambda m: db.scalar(select(func.count()).select_from(m)) or 0  # noqa: E731
+    return {
+        "url": sync_push.remote_url(db),
+        "token_set": bool(sync_push.remote_token(db)),
+        "server_enabled": settings.sync_server_enabled,
+        "local": {
+            "visitors": count(Visitor),
+            "designs": count(Design),
+            "events": count(Event),
+        },
+        "cursors": {
+            nom: get_setting(db, cle, None)
+            for _, _, cle, nom in sync_push.SOURCES
+        },
+        "last_push_at": get_setting(db, "sync_last_push_at", None),
+    }
+
+
+@router.put("/sync")
+def write_sync_config(payload: SyncConfigIn, db: Session = Depends(get_db)) -> dict:
+    if payload.url is not None:
+        set_setting(db, "sync_url", payload.url.strip())
+    if payload.token is not None:
+        set_setting(db, "sync_token", payload.token.strip())
+    db.commit()
+    return read_sync_config(db)
+
+
+@router.post("/sync/test")
+def test_sync(db: Session = Depends(get_db)) -> dict:
+    try:
+        return {"ok": True, "remote": sync_push.status(db)}
+    except SendError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+@router.post("/sync/push")
+def run_sync_push(full: bool = False, db: Session = Depends(get_db)) -> dict:
+    """Envoie ce qui a change. `full=true` renvoie tout, pour reparer."""
+    try:
+        return {"ok": True, "totaux": sync_push.push(db, tout=full)}
+    except SendError as exc:
+        return {"ok": False, "error": str(exc)}

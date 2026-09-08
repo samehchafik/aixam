@@ -63,6 +63,19 @@ class Settings(BaseSettings):
     # Ouvre /api/relay/*. Ferme par defaut : un back-office n'accepte de
     # poster pour autrui que si on le lui a demande.
     relay_server_enabled: bool = False
+
+    # Accepter les remontees de donnees d'un autre back-office. Distinct du
+    # relais d'emails : recevoir des visiteurs nominatifs n'est pas le meme
+    # engagement que poster un message. Un client de relais authentifie l'un
+    # comme l'autre, mais chaque role s'ouvre separement.
+    sync_server_enabled: bool = False
+    sync_batch_size: int = 200
+
+    # --- Remontee, cote client : le back-office du stand ---
+    # Vides, on retombe sur l'adresse et le jeton du relais d'emails : c'est
+    # le meme serveur distant et le meme client. Les separer reste possible.
+    sync_url: str = ""
+    sync_token: str = ""
     relay_default_daily_quota: int = 2000
     relay_rate_limit_per_minute: int = 120
     relay_max_body_bytes: int = 512 * 1024
