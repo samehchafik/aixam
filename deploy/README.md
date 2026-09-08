@@ -68,8 +68,10 @@ Les tables sont creees au premier demarrage de l'API : une base vide suffit.
 **Rendre PostgreSQL joignable depuis le conteneur.** Attention au piege : les
 conteneurs ne sont **pas** sur le pont docker par defaut (`172.17.0.1`), mais
 sur le reseau du projet, `aixam_default`. Le compose lui fixe le sous-reseau
-`DOCKER_SUBNET`, `172.28.0.0/16` par defaut, donc la passerelle est la
-premiere adresse de la plage : **`172.28.0.1`**. Sans ce reglage docker
+`DOCKER_SUBNET`, `10.83.0.0/16` par defaut, donc la passerelle est la
+premiere adresse de la plage : **`10.83.0.1`**. La valeur est hors de
+172.17-172.31, la plage ou docker se sert quand il attribue un reseau seul :
+un projet cree plus tard ne peut donc pas nous la prendre. Sans ce reglage docker
 choisirait une plage libre au hasard, differente d'une machine a l'autre.
 
 Si docker refuse le reseau — *« Pool overlaps with other one on this address
@@ -80,15 +82,14 @@ docker network ls -q | xargs -r docker network inspect \
   -f '{{.Name}} {{range .IPAM.Config}}{{.Subnet}}{{end}}'
 ```
 
-puis en choisir une libre dans `.env`, par exemple `DOCKER_SUBNET=10.83.0.0/16`
-— la passerelle devient alors `10.83.0.1`, a reporter dans `listen_addresses`
-et `pg_hba.conf` ci-dessous.
+puis en choisir une libre dans `.env` — la passerelle est la premiere adresse
+de la plage, a reporter dans `listen_addresses` et `pg_hba.conf` ci-dessous.
 
 Les fichiers sont dans `/etc/postgresql/<version>/main/` — `ls /etc/postgresql`
 donne la votre. Dans `postgresql.conf` :
 
 ```
-listen_addresses = 'localhost,172.28.0.1'
+listen_addresses = 'localhost,10.83.0.1'
 ```
 
 Surtout pas `'*'` : ce serait ouvrir PostgreSQL sur l'interface publique.
@@ -105,7 +106,7 @@ sudo -u postgres psql -tAc 'SHOW password_encryption'
 la 13). Mettre la meme valeur dans la ligne :
 
 ```
-host    aixam    aixam    172.28.0.0/16    scram-sha-256
+host    aixam    aixam    10.83.0.0/16    scram-sha-256
 ```
 
 ```bash
@@ -126,7 +127,7 @@ docker compose logs api | tail -30
 | `database "aixam" does not exist` | `createdb` pas fait |
 | `password authentication failed` | mot de passe, ou methode pg_hba qui ne correspond pas a `password_encryption` |
 | `no pg_hba.conf entry for host "172.x.x.x"` | ligne pg_hba absente, ou PostgreSQL pas redemarre |
-| `Connection refused` | `listen_addresses` n'inclut pas `172.28.0.1` |
+| `Connection refused` | `listen_addresses` n'inclut pas la passerelle (`10.83.0.1`) |
 | bloque sur `Waiting for application startup.` | le TCP n'aboutit pas : mauvaise passerelle dans `listen_addresses`, ou pare-feu |
 | `could not translate host name "host.docker.internal"` | docker trop ancien pour `host-gateway` : mettre `172.17.0.1` dans `DATABASE_URL` |
 
