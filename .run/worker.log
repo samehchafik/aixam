@@ -1,0 +1,37 @@
+2026-09-09 15:38:38,395 WARNING base pas prete (ProgrammingError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:38:40,413 INFO worker outbox demarre (transport : smtp)
+2026-09-09 15:53:54,775 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:53:56,795 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:53:58,818 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:00,853 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:02,874 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:04,894 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:06,915 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:08,936 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:10,959 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:12,986 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:15,011 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:17,035 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:19,052 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:21,070 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:23,094 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:25,114 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:27,143 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:29,163 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:31,175 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:33,191 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:35,215 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:37,236 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:39,251 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:41,269 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:43,287 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:45,313 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:47,330 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:49,345 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:51,370 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:53,398 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:55,413 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:57,433 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:54:59,458 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:55:01,474 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
+2026-09-09 15:55:26,558 INFO worker outbox demarre (transport : relay)

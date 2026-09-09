@@ -93,7 +93,10 @@ if [ $FRONT -eq 1 ]; then check_built kiosk "la borne" --front; fi
 
 # --- Demarrage ---
 
-PORT="$(grep -E '^API_PORT=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2)"
+# `|| true` indispensable : sans API_PORT dans le .env, grep sort en erreur et
+# `set -e` tuait le script AVANT le defaut ci-dessous -- sans le moindre
+# message, puisque `die` n'etait jamais atteint.
+PORT="$(grep -E '^API_PORT=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2 || true)"
 PORT="${PORT:-8080}"
 
 if [ $SANS_DOCKER -eq 1 ]; then
@@ -136,7 +139,9 @@ else
   if ! printf '%s' "$SERVICES" | grep -qw db; then
     # Base hors profil, mais l'API vise toujours le service db : il n'existe
     # pas, elle redemarrerait en boucle sur un hote introuvable.
-    CONFIG="$(cd "$ROOT" && docker compose config 2>/dev/null)"
+    # Meme piege que pour PORT : une substitution qui echoue tue le script
+    # sans un mot, `set -e` s'appliquant a l'affectation.
+    CONFIG="$(cd "$ROOT" && docker compose config 2>/dev/null || true)"
     if printf '%s' "$CONFIG" | grep -qE 'POSTGRES_HOST: *db$' \
        && ! grep -qE '^DATABASE_URL=.+' "$ROOT/.env"; then
       die "base hors profil mais POSTGRES_HOST vaut encore « db » : renseigner POSTGRES_HOST dans .env (voir deploy/README.md)"
