@@ -63,7 +63,14 @@ class Visitor(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     first_name: Mapped[str] = mapped_column(String(120))
     last_name: Mapped[str] = mapped_column(String(120))
-    email: Mapped[str] = mapped_column(String(255), index=True)
+    # Unique : l'email identifie la personne. `register` reprend deja la ligne
+    # existante, mais la contrainte est ce qui garantit qu'aucun chemin -- bug
+    # futur, import, deux bornes qui inscrivent la meme adresse en meme temps
+    # -- ne puisse recreer un doublon.
+    #
+    # Sur une base existante, `create_all` ne l'ajoute pas : il ne sait creer
+    # que des tables. Passer par `python -m app.tools.dedupe_visitors`.
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     postal_code: Mapped[str] = mapped_column(String(16))
 
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

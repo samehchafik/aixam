@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -66,6 +67,17 @@ def register(
     kiosk: Kiosk = Depends(current_kiosk),
     db: Session = Depends(get_db),
 ) -> RegisterOut:
+    try:
+        return _enregistrer(payload, kiosk, db)
+    except IntegrityError:
+        # Deux bornes ont inscrit la meme adresse au meme instant : la
+        # contrainte d'unicite a tranche. Au second passage, le SELECT trouve
+        # la ligne et l'on emprunte le chemin « visiteur connu ».
+        db.rollback()
+        return _enregistrer(payload, kiosk, db)
+
+
+def _enregistrer(payload: RegisterIn, kiosk: Kiosk, db: Session) -> RegisterOut:
     now = datetime.now(UTC)
     email = payload.email.strip().lower()
 

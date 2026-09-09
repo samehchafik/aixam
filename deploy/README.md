@@ -333,6 +333,33 @@ avertissement, et le correctif que vous venez de tirer reste sans effet.
 Seuls `media/` et `apps/api/static/` sont montés : un changement de front seul
 se contente de `./bin/build.sh --all` puis d'un rechargement du navigateur.
 
+## Doublons de visiteurs, une fois
+
+Les versions anterieures creaient une ligne par inscription : la meme personne
+qui recommencait apparaissait deux fois. Le code ne le fait plus, et la
+contrainte d'unicite l'interdit desormais — mais elle ne s'ajoute pas toute
+seule a une base existante (`create_all` ne sait creer que des tables).
+
+```bash
+sudo -u postgres psql -d aixam -c "SELECT email, count(*) FROM visitors GROUP BY email HAVING count(*) > 1"
+```
+
+Si la liste n'est pas vide, voir ce qui serait fait, puis le faire :
+
+```bash
+docker compose run --rm api python -m app.tools.dedupe_visitors --dry-run
+docker compose run --rm api python -m app.tools.dedupe_visitors
+```
+
+La ligne la **plus ancienne** est conservee — c'est la vraie date de premiere
+venue, et celle vers laquelle les creations pointent. Elle herite de ce que
+les autres avaient de plus : la verification, le consentement, et les
+nom/prenom les plus recents. Creations et evenements sont rattaches **avant**
+suppression : sans cela, la cle etrangere en `ON DELETE SET NULL` les
+anonymiserait.
+
+La commande est rejouable et pose la contrainte meme s'il n'y a aucun doublon.
+
 ## Ce que les fichiers font, et pourquoi
 
 Les deux sont des proxys vers `http://127.0.0.1:8080`. Le back-office tient

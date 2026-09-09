@@ -122,4 +122,62 @@ with SessionLocal() as db:
     check("consent_marketing repasse a false",
           db.scalar(select(Visitor.consent_marketing).where(Visitor.email == EMAIL)) is False)
 
+
+
+print("\n[7] La contrainte d'unicite, posee par l'outil de fusion")
+from sqlalchemy import text
+
+from app.models import Design
+from app.tools import dedupe_visitors
+
+# La base de test est neuve, donc deja contrainte. On revient au schema
+# d'avant pour reproduire ce qu'une version anterieure a laisse en production.
+with SessionLocal() as db:
+    db.execute(text("DROP INDEX IF EXISTS ix_visitors_email"))
+    db.execute(text("CREATE INDEX ix_visitors_email ON visitors (email)"))
+    db.commit()
+
+with SessionLocal() as db:
+    garde = db.scalar(select(Visitor).where(Visitor.email == EMAIL))
+    ancien_id = garde.id
+    db.add(Design(visitor_id=garde.id, session_id="sess-0001", layers={}, status="draft"))
+    doublon = Visitor(first_name="Sam", last_name="C", email=EMAIL, postal_code="75011",
+                      consent_marketing=True)
+    db.add(doublon)
+    db.commit()
+    doublon_id = doublon.id
+    db.add(Design(visitor_id=doublon_id, session_id="sess-9999", layers={}, status="draft"))
+    db.commit()
+check("doublon fabrique", compter(Visitor) == 3, compter(Visitor))
+
+with SessionLocal() as db:
+    check("l'outil le voit", dedupe_visitors.doublons(db) == [EMAIL], dedupe_visitors.doublons(db))
+
+dedupe_visitors.main()
+
+with SessionLocal() as db:
+    restants = db.scalars(select(Visitor).where(Visitor.email == EMAIL)).all()
+    check("une seule ligne apres fusion", len(restants) == 1, len(restants))
+    check("c'est la plus ancienne qui survit", restants[0].id == ancien_id)
+    check("les nom/prenom les plus recents sont conserves", restants[0].first_name == "Sam")
+    check("le consentement est conserve", restants[0].consent_marketing is True)
+    check("la verification est conservee", restants[0].email_verified_at is not None)
+    orphelines = db.scalars(select(Design).where(Design.visitor_id.is_(None))).all()
+    check("aucune creation orpheline", len(orphelines) == 0, len(orphelines))
+    rattachees = db.scalars(select(Design).where(Design.visitor_id == ancien_id)).all()
+    check("les deux creations sont rattachees a la ligne gardee", len(rattachees) == 2, len(rattachees))
+
+with SessionLocal() as db:
+    try:
+        db.add(Visitor(first_name="X", last_name="Y", email=EMAIL, postal_code="75001"))
+        db.commit()
+        check("la base refuse un doublon", False, "insertion acceptee")
+    except Exception:
+        db.rollback()
+        check("la base refuse un doublon", True)
+
+print("\n[8] L'outil est rejouable")
+dedupe_visitors.main()
+check("relance sans erreur, base inchangee", compter(Visitor) == 2, compter(Visitor))
+
 sys.exit(report())
