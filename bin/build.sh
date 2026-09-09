@@ -168,7 +168,7 @@ fi
 if [ $ADMIN -eq 1 ]; then build_one admin admin "back-office"; fi
 if [ $FRONT -eq 1 ]; then build_one kiosk kiosk "borne"; fi
 
-if [ $DOCKER -eq 1 ]; then
+if [ $API_IMAGE -eq 1 ]; then
   say "reconstruction de l'image API"
   ( cd "$ROOT" && docker compose build api worker )
   # Temoin de fraicheur, lu par start.sh et restart.sh. `find -newer` compare
