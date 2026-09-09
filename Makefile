@@ -28,11 +28,14 @@ logs: ## Suit les logs api + worker
 seed: ## Genere fonds/objets de demo + index.json (a remplacer par les assets AIXAM)
 	.venv/bin/python scripts/generate_assets.py
 
-test: test-borne test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
+test: test-borne test-bo test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
 
 test-borne: ## Teste le parcours visiteur (inscription, doublons, verification, rendu)
 	cd apps/api && ../../.venv/bin/python tests/test_register_duplicate.py
 	cd apps/api && ../../.venv/bin/python tests/test_render_background.py
+
+test-bo: ## Teste la galerie des creations du back-office (filtre, tri)
+	cd apps/api && ../../.venv/bin/python tests/test_designs_listing.py
 
 test-mail: ## Teste le relais de mailing
 	cd apps/api && ../../.venv/bin/python tests/test_relay.py

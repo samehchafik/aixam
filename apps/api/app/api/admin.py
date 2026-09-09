@@ -140,18 +140,59 @@ def visitors_csv(consented_only: bool = True, db: Session = Depends(get_db)) -> 
     )
 
 
+def _tri_par_nom(sens: str) -> tuple:
+    """Tri alphabetique sur l'auteur, insensible a la casse.
+
+    `nulls_last` est explicite parce que Postgres place les NULL en tete en
+    ordre descendant : sans lui, un « Z -> A » commencerait par le paquet des
+    creations anonymisees (purge RGPD), qui n'ont plus de nom du tout.
+    """
+    ordre = (lambda col: col.asc()) if sens == "asc" else (lambda col: col.desc())
+    return (
+        ordre(func.lower(Visitor.last_name)).nulls_last(),
+        ordre(func.lower(Visitor.first_name)).nulls_last(),
+        Design.created_at.desc(),
+    )
+
+
+DESIGN_SORTS: dict[str, tuple] = {
+    "date_desc": (Design.created_at.desc(),),
+    "date_asc": (Design.created_at.asc(),),
+    "name_asc": _tri_par_nom("asc"),
+    "name_desc": _tri_par_nom("desc"),
+}
+
+
 @router.get("/designs")
-def designs(limit: int = Query(60, le=300), offset: int = 0, db: Session = Depends(get_db)) -> dict:
+def designs(
+    limit: int = Query(60, le=300),
+    offset: int = 0,
+    search: str = "",
+    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|name_asc|name_desc)$"),
+    db: Session = Depends(get_db),
+) -> dict:
     # Jointure externe : une creation peut n'avoir plus de visiteur -- une
     # suppression RGPD l'anonymise (ON DELETE SET NULL) sans l'effacer. Une
     # jointure interne la ferait disparaitre de l'admin.
-    stmt = (
-        select(Design, Visitor)
-        .outerjoin(Visitor, Design.visitor_id == Visitor.id)
-        .order_by(Design.created_at.desc())
-    )
-    total = db.scalar(select(func.count()).select_from(Design)) or 0
-    rows = db.execute(stmt.limit(limit).offset(offset)).all()
+    jointure = lambda stmt: stmt.outerjoin(Visitor, Design.visitor_id == Visitor.id)  # noqa: E731
+    stmt = jointure(select(Design, Visitor))
+    compte = jointure(select(func.count()).select_from(Design))
+
+    if search:
+        # Une creation anonymisee n'a plus ni nom ni adresse : elle sort donc
+        # des resultats des qu'un filtre est saisi, ce qui est l'intention.
+        pattern = f"%{search.lower()}%"
+        filtre = (
+            func.lower(Visitor.email).like(pattern)
+            | func.lower(Visitor.last_name).like(pattern)
+            | func.lower(Visitor.first_name).like(pattern)
+        )
+        stmt, compte = stmt.where(filtre), compte.where(filtre)
+
+    # Le total suit le filtre : sinon l'entete annoncerait 800 creations pour
+    # trois lignes affichees.
+    total = db.scalar(compte) or 0
+    rows = db.execute(stmt.order_by(*DESIGN_SORTS[sort]).limit(limit).offset(offset)).all()
     return {
         "total": total,
         "items": [
