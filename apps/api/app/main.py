@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
@@ -92,7 +92,18 @@ def _serve_spa(root: Path, sub_path: str) -> FileResponse:
 
 # La borne. Protegee par HTTP Basic quand KIOSK_BASIC_USER est defini, ce qui
 # permet d'exposer le lien https pendant le developpement.
+#
+# La barre oblique finale n'est pas cosmetique : le bundle est compile en
+# chemins relatifs (`base: './'`, pour tourner aussi bien sous /kiosk/ que
+# depuis un fichier local en mode Tauri). Servi a /kiosk, `./assets/x.js` se
+# resout donc a /assets/x.js -- ou c'est le back-office qui repond son
+# index.html. Le navigateur refuse d'executer du HTML comme script, et la
+# borne reste blanche sans rien dire. On redirige plutot que de servir.
 @app.get("/kiosk", dependencies=[Depends(require_kiosk_basic_auth)])
+def kiosk_racine() -> RedirectResponse:
+    return RedirectResponse("/kiosk/", status_code=308)
+
+
 @app.get("/kiosk/{sub_path:path}", dependencies=[Depends(require_kiosk_basic_auth)])
 def kiosk_spa(sub_path: str = "") -> FileResponse:
     return _serve_spa(STATIC / "kiosk", sub_path)
