@@ -66,28 +66,55 @@ def register(
     kiosk: Kiosk = Depends(current_kiosk),
     db: Session = Depends(get_db),
 ) -> RegisterOut:
-    visitor = Visitor(
-        first_name=payload.first_name.strip(),
-        last_name=payload.last_name.strip(),
-        email=payload.email.lower(),
-        postal_code=payload.postal_code.strip(),
-        consent_marketing=payload.consent_marketing,
-        consent_at=datetime.now(UTC) if payload.consent_marketing else None,
+    now = datetime.now(UTC)
+    email = payload.email.strip().lower()
+
+    # L'email identifie la personne. Sans cette recherche, une deuxieme
+    # inscription creait une deuxieme ligne et un deuxieme code : le visiteur
+    # recevait deux emails identiques, en tapait un au hasard, et brulait ses
+    # essais jusqu'au 429 sans issue possible depuis la borne.
+    visitor = db.scalar(
+        select(Visitor).where(Visitor.email == email).order_by(Visitor.created_at.desc())
     )
-    db.add(visitor)
+    connu = visitor is not None
+
+    if visitor is None:
+        visitor = Visitor(email=email)
+        db.add(visitor)
+
+    visitor.first_name = payload.first_name.strip()
+    visitor.last_name = payload.last_name.strip()
+    visitor.postal_code = payload.postal_code.strip()
+    if payload.consent_marketing and not visitor.consent_marketing:
+        visitor.consent_at = now
+    visitor.consent_marketing = payload.consent_marketing
     db.flush()
 
     bypass = bool(get_setting(db, "verification_bypass", settings.allow_verification_bypass))
-    if bypass:
-        visitor.email_verified_at = datetime.now(UTC)
-    else:
+    # Deja verifie lors d'un passage precedent : on ne redemande pas un code
+    # pour une adresse dont on sait qu'elle lui appartient.
+    deja_verifie = visitor.email_verified_at is not None
+    if bypass and not deja_verifie:
+        visitor.email_verified_at = now
+
+    verification_requise = not bypass and not deja_verifie
+    if verification_requise:
+        # Un seul code valable a la fois : les precedents sont retires, pour
+        # qu'un ancien email dans la boite du visiteur ne puisse plus egarer.
+        for ancien in db.scalars(
+            select(VerificationCode).where(
+                VerificationCode.visitor_id == visitor.id,
+                VerificationCode.consumed_at.is_(None),
+            )
+        ):
+            ancien.consumed_at = now
+
         code = generate_numeric_code()
         db.add(
             VerificationCode(
                 visitor_id=visitor.id,
                 code_hash=hash_secret(code),
-                expires_at=datetime.now(UTC)
-                + timedelta(seconds=settings.verification_code_ttl_seconds),
+                expires_at=now + timedelta(seconds=settings.verification_code_ttl_seconds),
             )
         )
         mailer.queue_email(
@@ -99,9 +126,15 @@ def register(
             ),
         )
 
-    _log(db, kiosk, "visitor_registered", visitor_id=visitor.id, session_id=payload.session_id)
+    _log(
+        db,
+        kiosk,
+        "visitor_returned" if connu else "visitor_registered",
+        visitor_id=visitor.id,
+        session_id=payload.session_id,
+    )
     db.commit()
-    return RegisterOut(visitor_id=visitor.id, verification_required=not bypass)
+    return RegisterOut(visitor_id=visitor.id, verification_required=verification_requise)
 
 
 @router.post("/verify", response_model=VerifyOut)

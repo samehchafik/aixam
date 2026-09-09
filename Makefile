@@ -1,4 +1,4 @@
-.PHONY: help setup build-front up down logs seed test test-mail test-sync reset
+.PHONY: help setup build-front up down logs seed test test-borne test-mail test-sync reset
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -28,7 +28,10 @@ logs: ## Suit les logs api + worker
 seed: ## Genere fonds/objets de demo + index.json (a remplacer par les assets AIXAM)
 	.venv/bin/python scripts/generate_assets.py
 
-test: test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
+test: test-borne test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
+
+test-borne: ## Teste le parcours visiteur (inscription, doublons, verification)
+	cd apps/api && ../../.venv/bin/python tests/test_register_duplicate.py
 
 test-mail: ## Teste le relais de mailing
 	cd apps/api && ../../.venv/bin/python tests/test_relay.py
