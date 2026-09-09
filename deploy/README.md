@@ -333,6 +333,16 @@ avertissement, et le correctif que vous venez de tirer reste sans effet.
 Seuls `media/` et `apps/api/static/` sont montés : un changement de front seul
 se contente de `./bin/build.sh --all` puis d'un rechargement du navigateur.
 
+Le symptôme d'une image restée en arrière n'aide pas — un `ModuleNotFoundError`
+sur un fichier pourtant présent dans le dépôt, ou un correctif sans effet.
+`bin/start.sh` et `bin/restart.sh` préviennent désormais quand du code Python
+est plus récent que la dernière construction. Pour vérifier ce que l'image
+contient réellement :
+
+```bash
+docker compose run --rm api ls app/tools
+```
+
 ## Doublons de visiteurs, une fois
 
 Les versions anterieures creaient une ligne par inscription : la meme personne

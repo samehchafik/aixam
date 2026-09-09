@@ -171,6 +171,9 @@ if [ $FRONT -eq 1 ]; then build_one kiosk kiosk "borne"; fi
 if [ $DOCKER -eq 1 ]; then
   say "reconstruction de l'image API"
   ( cd "$ROOT" && docker compose build api worker )
+  # Temoin de fraicheur, lu par start.sh et restart.sh. `find -newer` compare
+  # des dates de fichiers : portable, et sans analyse de format de date.
+  touch "$ROOT/.api-image-built"
 fi
 
 say "termine. Demarrer avec bin/start.sh"

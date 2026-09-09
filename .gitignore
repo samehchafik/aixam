@@ -13,6 +13,9 @@ tsconfig.tsbuildinfo
 # Worktrees des sessions Claude Code : des depots a part, jamais du contenu.
 .claude/worktrees/
 
+# Temoin de la derniere construction de l'image API : local a la machine.
+.api-image-built
+
 # Le gitignore global de ce poste (~/.gitignore_global) exclut « README.md »
 # et « .gitignore » par des motifs nus, heritage d'un autre projet. Sans ces
 # deux exceptions, la doc de deploy/ et ce fichier meme n'entrent jamais dans

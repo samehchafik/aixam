@@ -102,6 +102,16 @@ if ! printf '%s' "$SERVICES" | grep -qw db; then
   fi
 fi
 
+# Le Dockerfile fait `COPY . .` : le code Python vit DANS l'image. Sans
+# reconstruction, le conteneur repart sur l'ancien code sans rien signaler --
+# et l'on cherche la panne ailleurs (un module absent, un correctif sans
+# effet). On ne bloque pas : c'est parfois volontaire.
+TEMOIN="$ROOT/.api-image-built"
+if [ ! -f "$TEMOIN" ] || [ -n "$(find "$ROOT/apps/api" -name '*.py' -newer "$TEMOIN" -print -quit 2>/dev/null)" ]; then
+  warn "du code Python est plus recent que l'image de l'API."
+  warn "        Reconstruire : ./bin/build.sh --api-image"
+fi
+
 say "demarrage : $SERVICES"
 ( cd "$ROOT" && docker compose up -d )
 
