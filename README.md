@@ -157,6 +157,19 @@ et sa page d'admin. Cote serveur, `SYNC_SERVER_ENABLED=true` ouvre le role.
 cote serveur (droit a l'effacement) reapparait si vous faites un « Tout
 renvoyer ». L'envoi incremental, lui, ne le ressuscite pas.
 
+## Reprendre la main sur le back-office
+
+Le compte d'administration n'est cree qu'au tout premier demarrage : modifier
+`ADMIN_EMAIL` ou `ADMIN_PASSWORD` ensuite ne change rien.
+
+```bash
+cd apps/api && ../../.venv/bin/python -m app.tools.reset_admin        # depuis .env
+cd apps/api && ../../.venv/bin/python -m app.tools.reset_admin --email vous@exemple.fr --password '...'
+```
+
+`--list` affiche les comptes sans rien changer. En conteneur :
+`docker compose run --rm api python -m app.tools.reset_admin`.
+
 ## Envoi des emails
 
 Le code de vérification et la création en JPEG partent tous les deux par la

@@ -343,6 +343,24 @@ contient réellement :
 docker compose run --rm api ls app/tools
 ```
 
+## Reprendre la main sur le compte d'administration
+
+`bootstrap()` ne cree un administrateur que s'il n'en existe **aucun** :
+changer `ADMIN_EMAIL` ou `ADMIN_PASSWORD` dans `.env` apres le premier
+demarrage reste sans effet, et rien ne le signale.
+
+```bash
+docker compose run --rm api python -m app.tools.reset_admin --list
+docker compose run --rm api python -m app.tools.reset_admin
+```
+
+Sans arguments, la commande reprend `ADMIN_EMAIL` et `ADMIN_PASSWORD` du
+`.env` ; `--email` et `--password` passent outre. Le compte est cree s'il
+manque, mis a jour et reactive s'il existe. Elle refuse un domaine reserve
+(`.local`, `.test`…), que la connexion rejetterait ensuite.
+
+Sans docker : `cd apps/api && ../../.venv/bin/python -m app.tools.reset_admin`.
+
 ## Doublons de visiteurs, une fois
 
 Les versions anterieures creaient une ligne par inscription : la meme personne

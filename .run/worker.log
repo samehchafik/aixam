@@ -35,3 +35,4 @@
 2026-09-09 15:54:59,458 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
 2026-09-09 15:55:01,474 WARNING base pas prete (OperationalError) -- nouvelle tentative dans 2.0s
 2026-09-09 15:55:26,558 INFO worker outbox demarre (transport : relay)
+2026-09-09 16:01:08,018 INFO worker outbox demarre (transport : relay)
