@@ -19,7 +19,13 @@
     "consent": "Acepto recibir novedades de AIXAM. Mis datos se conservan 12 meses y puedo solicitar su eliminación en cualquier momento.",
     "submit": "Continuar",
     "sending": "Enviando…",
-    "skip": "Saltar"
+    "skip": "Saltar",
+    "errors": {
+      "required": "Campo obligatorio.",
+      "name": "Al menos 2 caracteres.",
+      "email": "Correo electrónico no válido. Comprueba la «@» y el punto del dominio.",
+      "postalCode": "Código postal no válido."
+    }
   },
   "verify": {
     "title": "Verifica tu email",

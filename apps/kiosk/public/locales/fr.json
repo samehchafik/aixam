@@ -19,7 +19,13 @@
     "consent": "J'accepte de recevoir les actualités AIXAM. Mes données sont conservées 12 mois et je peux demander leur suppression à tout moment.",
     "submit": "Continuer",
     "sending": "Envoi…",
-    "skip": "Je passe"
+    "skip": "Je passe",
+    "errors": {
+      "required": "Champ obligatoire.",
+      "name": "Au moins 2 caractères.",
+      "email": "Adresse email invalide. Vérifiez le « @ » et le point du domaine.",
+      "postalCode": "Code postal invalide."
+    }
   },
   "verify": {
     "title": "Vérifie ton email",

@@ -37,6 +37,50 @@ export type KioskSettings = {
   attract_interval_seconds: number
 }
 
+/**
+ * Erreur de validation renvoyee par l'API (422), rangee par champ.
+ *
+ * FastAPI decrit chaque faute par un `loc` du genre `["body", "email"]` et un
+ * `msg` en anglais. Le formulaire s'en sert pour colorer le bon champ et
+ * afficher SA traduction, plutot que la prose du serveur.
+ */
+export class ValidationError extends Error {
+  constructor(message: string, readonly fields: Record<string, string>) {
+    super(message)
+    this.name = 'ValidationError'
+  }
+}
+
+type Faute = { loc?: unknown[]; msg?: unknown }
+
+/** Range les fautes d'un 422 par nom de champ. */
+function fautesParChamp(detail: Faute[]): Record<string, string> {
+  const sortie: Record<string, string> = {}
+  for (const f of detail) {
+    const champ = Array.isArray(f.loc) ? f.loc[f.loc.length - 1] : null
+    if (typeof champ === 'string' && typeof f.msg === 'string') sortie[champ] = f.msg
+  }
+  return sortie
+}
+
+/**
+ * Un message lisible a partir d'une erreur FastAPI.
+ *
+ * `detail` est une chaine pour un refus metier, mais un TABLEAU d'objets pour
+ * une erreur de validation. Sans ce tri, `new Error(tableau)` affichait
+ * « [object Object] » en rouge devant le visiteur.
+ */
+function erreurDepuis(corps: unknown, status: number): Error {
+  const detail = (corps as { detail?: unknown })?.detail
+  if (typeof detail === 'string') return new Error(detail)
+  if (Array.isArray(detail)) {
+    const champs = fautesParChamp(detail as Faute[])
+    const messages = Object.values(champs)
+    if (messages.length) return new ValidationError(messages.join(' — '), champs)
+  }
+  return new Error(`HTTP ${status}`)
+}
+
 export class ApiClient {
   constructor(private config: KioskConfig) {}
 
@@ -63,8 +107,7 @@ export class ApiClient {
       },
     })
     if (!res.ok) {
-      const detail = await res.json().catch(() => ({}))
-      throw new Error(detail.detail ?? `HTTP ${res.status}`)
+      throw erreurDepuis(await res.json().catch(() => ({})), res.status)
     }
     return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
   }

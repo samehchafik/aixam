@@ -9,6 +9,12 @@ export type KioskConfig = {
   locale: string
   /** Mode demo : bouton « Je passe » sur le formulaire pour aller droit a l'editeur. */
   demoMode?: boolean
+  /**
+   * Affiche le selecteur FR/EN/ES. Masque par defaut : le salon demarre en
+   * francais seul. Les traductions restent chargees, il suffit de repasser ce
+   * drapeau a true dans config.json -- lu a l'execution, sans recompiler.
+   */
+  showLangSwitch?: boolean
 }
 
 export type ScreenRole = 'touch' | 'display'

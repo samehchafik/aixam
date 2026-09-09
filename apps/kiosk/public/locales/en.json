@@ -19,7 +19,13 @@
     "consent": "I agree to receive AIXAM news. My data is kept for 12 months and I can request its deletion at any time.",
     "submit": "Continue",
     "sending": "Sending…",
-    "skip": "Skip"
+    "skip": "Skip",
+    "errors": {
+      "required": "Required field.",
+      "name": "At least 2 characters.",
+      "email": "Invalid email address. Check the “@” and the dot in the domain.",
+      "postalCode": "Invalid postcode."
+    }
   },
   "verify": {
     "title": "Verify your email",
