@@ -39,6 +39,7 @@ test-bo: ## Teste la galerie des creations du back-office (filtre, tri)
 	cd apps/api && ../../.venv/bin/python tests/test_designs_listing.py
 
 test-mail: ## Teste le relais de mailing
+	cd apps/api && ../../.venv/bin/python tests/test_email_format.py
 	cd apps/api && ../../.venv/bin/python tests/test_relay.py
 	cd apps/api && ../../.venv/bin/python tests/test_relay_chain.py
 

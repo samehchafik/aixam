@@ -37,3 +37,7 @@
 2026-09-09 15:55:26,558 INFO worker outbox demarre (transport : relay)
 2026-09-09 16:01:08,018 INFO worker outbox demarre (transport : relay)
 2026-09-09 16:02:36,433 INFO worker outbox demarre (transport : relay)
+2026-09-09 16:03:56,957 INFO HTTP Request: POST https://aixam-admin.ifrit.fr/api/relay/send "HTTP/1.1 200 OK"
+2026-09-09 16:03:56,959 INFO email 66772e27-b000-4518-9743-0d0606d37e66 envoye a contact@chafik.net
+2026-09-09 16:04:52,461 INFO HTTP Request: POST https://aixam-admin.ifrit.fr/api/relay/send "HTTP/1.1 200 OK"
+2026-09-09 16:04:52,464 INFO email 7a7583b0-e876-4c87-99d0-65e1b06b4b37 envoye a contact@chafik.net

@@ -14,7 +14,9 @@ ni la file, ni le backoff, ni l'admin.
 
 from __future__ import annotations
 
+import html
 import mimetypes
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -86,3 +88,30 @@ def load_attachment(path: str | None) -> Attachment | None:
         content=file.read_bytes(),
         content_type=ctype or "application/octet-stream",
     )
+
+
+# --- Version texte ---
+#
+# Un corps texte reduit a « cet email necessite un client HTML » est un signal
+# de spam a lui seul : les filtres comparent les deux versions et se mefient
+# d'un message qui n'en propose qu'une vraie. On derive donc le texte du HTML,
+# plutot que de le bacler.
+
+# Un bloc ferme separe des paragraphes, une <br> une simple ligne : sans
+# cette distinction, un HTML ecrit sans retours a la ligne donnait un pave.
+_PARAGRAPHES = re.compile(r"(?i)</(p|div|tr|h[1-6])>")
+_LIGNES = re.compile(r"(?i)<br\s*/?>")
+_INVISIBLE = re.compile(r"(?is)<(script|style)[^>]*>.*?</\1>")
+_BALISES = re.compile(r"<[^>]+>")
+_LIGNES_VIDES = re.compile(r"\n{3,}")
+
+
+def html_vers_texte(html_source: str) -> str:
+    """Une version texte lisible du corps HTML."""
+    texte = _INVISIBLE.sub("", html_source)
+    texte = _PARAGRAPHES.sub("\n\n", texte)
+    texte = _LIGNES.sub("\n", texte)
+    texte = _BALISES.sub("", texte)
+    texte = html.unescape(texte)
+    texte = "\n".join(ligne.strip() for ligne in texte.splitlines())
+    return _LIGNES_VIDES.sub("\n\n", texte).strip() + "\n"

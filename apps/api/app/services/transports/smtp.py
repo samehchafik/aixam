@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import smtplib
 from email.message import EmailMessage
+from email.utils import format_datetime, make_msgid
+from datetime import datetime, timezone
 
 from app.config import settings
 
-from . import Outgoing, PermanentSendError, SendError
+from . import Outgoing, PermanentSendError, SendError, html_vers_texte
 
 
 def build_message(message: Outgoing) -> EmailMessage:
@@ -21,9 +23,15 @@ def build_message(message: Outgoing) -> EmailMessage:
     msg["Subject"] = message.subject
     msg["From"] = f"{settings.mail_from_name} <{settings.mail_from}>"
     msg["To"] = message.to_email
-    msg.set_content(
-        "Cet email necessite un client compatible HTML.", subtype="plain", charset="utf-8"
-    )
+    # Date et Message-ID sont exiges par la RFC 5322 et leur absence est
+    # sanctionnee telle quelle par les filtres (MISSING_DATE, MISSING_MID).
+    # Python ne les ajoute pas, et smtplib non plus : certains serveurs les
+    # rattrapent, l'API Brevo non. On ne compte donc sur personne.
+    msg["Date"] = format_datetime(datetime.now(timezone.utc))
+    msg["Message-ID"] = make_msgid(domain=settings.mail_from.rpartition("@")[2] or None)
+    if settings.mail_reply_to:
+        msg["Reply-To"] = settings.mail_reply_to
+    msg.set_content(html_vers_texte(message.body_html), subtype="plain", charset="utf-8")
     msg.add_alternative(message.body_html, subtype="html", charset="utf-8")
     if message.attachment:
         msg.add_attachment(

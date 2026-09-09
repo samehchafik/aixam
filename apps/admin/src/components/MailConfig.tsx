@@ -14,6 +14,10 @@ export type MailCfg = {
   relay_token_set: boolean
   relay_server_enabled: boolean
   relay_default_daily_quota: number
+  mail_reply_to: string
+  from_domain: string
+  smtp_domain: string
+  domains_aligned: boolean
 }
 
 const EXPLAIN: Record<MailCfg['transport'], string> = {
@@ -118,6 +122,24 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
           {cfg.smtp_configured
             ? `Serveur : ${cfg.smtp_host}:${cfg.smtp_port} — expediteur ${cfg.mail_from}`
             : 'SMTP_HOST n’est pas renseigne dans le .env : aucun email ne partira.'}
+        </p>
+      )}
+
+      {cfg.transport === 'smtp' && cfg.smtp_configured && !cfg.domains_aligned && (
+        <p className="warn">
+          L’expediteur est en <strong>@{cfg.from_domain}</strong> mais la boite
+          authentifiee en <strong>@{cfg.smtp_domain}</strong>. SPF et DKIM signeront
+          pour le second : si <code>{cfg.from_domain}</code> publie un DMARC en{' '}
+          <code>p=reject</code>, l’email sera <strong>rejete</strong>, pas classe en
+          spam. Mettre MAIL_FROM sur le domaine de la boite, ou faire autoriser
+          l’expediteur dans le SPF et le DKIM de {cfg.from_domain}.
+        </p>
+      )}
+
+      {cfg.transport === 'smtp' && cfg.smtp_configured && !cfg.mail_reply_to && (
+        <p className="muted hint">
+          Aucune adresse de reponse (MAIL_REPLY_TO) : un expediteur qui n’accepte
+          pas de reponse pese un peu dans le classement en spam.
         </p>
       )}
 

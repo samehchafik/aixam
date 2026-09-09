@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     smtp_ssl: bool = False
     mail_from: str = "noreply@aixam.com"
     mail_from_name: str = "AIXAM"
+    # Une adresse a laquelle un visiteur peut vraiment repondre. Un expediteur
+    # qui n'accepte aucune reponse est un signal negatif de plus.
+    mail_reply_to: str = ""
 
     brevo_api_key: str = ""
     brevo_api_url: str = "https://api.brevo.com/v3/smtp/email"

@@ -313,6 +313,18 @@ def read_mail_config(db: Session = Depends(get_db)) -> dict:
         "smtp_host": settings.smtp_host,
         "smtp_port": settings.smtp_port,
         "smtp_configured": bool(settings.smtp_host),
+        "mail_reply_to": settings.mail_reply_to,
+        # Alignement DMARC : l'expediteur doit appartenir au domaine que la
+        # connexion SMTP authentifie, sinon SPF et DKIM signent pour un autre
+        # domaine que celui affiche -- et un DMARC en p=reject fait rejeter,
+        # pas classer en spam.
+        "from_domain": settings.mail_from.rpartition("@")[2].lower(),
+        "smtp_domain": settings.smtp_user.rpartition("@")[2].lower(),
+        "domains_aligned": (
+            not settings.smtp_user
+            or settings.mail_from.rpartition("@")[2].lower()
+            == settings.smtp_user.rpartition("@")[2].lower()
+        ),
         "brevo_configured": bool(settings.brevo_api_key),
         "relay_url": relay_transport.relay_url(db),
         "relay_token_set": bool(relay_transport.relay_token(db)),

@@ -304,3 +304,37 @@ INFO:     ('127.0.0.1', 55429) - "WebSocket /ws/screens?token=dev-kiosk-token&ro
 INFO:     connection open
 INFO:     127.0.0.1:55594 - "GET /api/admin/timeline?hours=24 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:55592 - "GET /api/admin/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55722 - "POST /api/kiosk/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55722 - "POST /api/kiosk/events HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:55754 - "GET /api/admin/timeline?hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55752 - "GET /api/admin/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55752 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55754 - "GET /assets/index-Bm-4Cybx.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55752 - "GET /assets/index-Mp8IKKNl.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55775 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55752 - "GET /api/admin/timeline?hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55754 - "GET /api/admin/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:55754 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55825 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55869 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/events HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/events HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/events HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:55869 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/events HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/events HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:55869 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55869 - "POST /api/kiosk/designs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55993 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56038 - "GET /api/admin/emails HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56040 - "GET /api/admin/kiosks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56038 - "GET /api/admin/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56038 - "GET /api/admin/mail HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56040 - "GET /api/admin/sync HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56210 - "PUT /api/admin/sync HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56213 - "POST /api/admin/sync/test HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56239 - "GET /favicon.ico HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56239 - "GET /api/admin/designs?limit=60&search=&sort=date_desc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56239 - "GET /media/renders/40427c13b4614421a4c0bae71a3a415a.jpg HTTP/1.1" 200 OK

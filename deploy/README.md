@@ -343,6 +343,45 @@ contient réellement :
 docker compose run --rm api ls app/tools
 ```
 
+## Delivrabilite : ne pas finir en indesirable
+
+**Le point decisif est le domaine de `MAIL_FROM`.** Il doit etre celui que la
+connexion SMTP authentifie. Sinon SPF et DKIM signent pour un domaine, l'email
+en affiche un autre, et l'alignement DMARC echoue.
+
+```bash
+dig +short TXT _dmarc.<domaine>          # p=reject ? p=quarantine ?
+dig +short TXT <domaine> | grep spf      # qui a le droit d'envoyer
+```
+
+Un domaine en `p=reject` fait **rejeter** l'email, pas classer en spam : le
+visiteur ne recoit rien et rien ne le signale a l'expediteur. C'est le cas de
+`aixam.com`, dont le SPF (`+a +mx -all`) n'autorise ni OVH ni Brevo :
+expedier en `@aixam.com` depuis une boite OVH ne peut pas fonctionner sans que
+le proprietaire du domaine ajoute l'expediteur a son SPF et signe en DKIM.
+
+Le back-office previent quand les deux domaines divergent (Reglages > Envoi
+des emails).
+
+Si vous passez a Brevo, son SPF doit figurer dans le domaine expediteur
+(`include:spf.brevo.com`) et ses clefs DKIM y etre publiees.
+
+### Ce dont le code s'occupe deja
+
+- `Date` et `Message-ID` sur chaque message : leur absence est sanctionnee
+  telle quelle (`MISSING_DATE`, `MISSING_MID`), et ni Python ni smtplib ne les
+  ajoutent.
+- une **vraie** version texte, derivee du HTML. Un corps texte reduit a « cet
+  email necessite un client HTML » est un signal a lui seul.
+- `Reply-To` si `MAIL_REPLY_TO` est renseigne.
+- l'envoi par une file avec backoff, qui evite les rafales.
+
+### Ce qui reste a faire hors du code
+
+- Publier un **DMARC** sur le domaine expediteur (`ifrit.fr` n'en a pas).
+- Chauffer l'adresse : quelques envois avant le salon, pas mille d'un coup.
+- Verifier le rendu chez Gmail, Outlook et Apple Mail avant l'ouverture.
+
 ## Reprendre la main sur le compte d'administration
 
 `bootstrap()` ne cree un administrateur que s'il n'en existe **aucun** :
