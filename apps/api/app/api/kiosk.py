@@ -35,7 +35,7 @@ from app.schemas import (
 from app.security import generate_numeric_code, hash_secret, verify_secret
 from app.services import mailer
 from app.services.assets import load_catalog
-from app.services.renderer import render_design
+from app.services.renderer import render_design, render_url
 from app.services.settings_store import get_setting
 
 router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
@@ -205,7 +205,10 @@ def save_design(
         visitor_id=payload.visitor_id,
         kiosk_id=kiosk.id,
         session_id=payload.session_id,
-        layers={"layers": [layer.model_dump() for layer in payload.layers]},
+        # exclude_none : l'ABSENCE d'echelle est le signal « ce fond couvre la
+        # planche ». La serialiser a None la transformerait en valeur, que le
+        # rendu lirait comme une echelle nulle.
+        layers={"layers": [layer.model_dump(exclude_none=True) for layer in payload.layers]},
         status=DesignStatus.submitted,
     )
     db.add(design)
@@ -242,7 +245,7 @@ def save_design(
         status=design.status.value,
         # Les rendus sont servis en statique depuis /media : le nom de fichier est
         # un UUID, et un <img src> ne peut de toute facon pas porter de header.
-        render_url=f"/{design.render_path}" if design.render_path else None,
+        render_url=render_url(design.render_path),
     )
 
 

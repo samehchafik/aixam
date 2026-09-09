@@ -65,6 +65,24 @@ def _paste_sprite(canvas: Image.Image, sprite: Image.Image, layer: dict, width: 
     canvas.alpha_composite(sprite, (cx - sprite.width // 2, cy - sprite.height // 2))
 
 
+def render_url(path: str | None) -> str | None:
+    """URL publique d'un rendu, quel que soit MEDIA_DIR.
+
+    `/media` est monte sur MEDIA_DIR : l'URL est donc le chemin RELATIF a ce
+    dossier. Coller le chemin stocke marchait tant que MEDIA_DIR restait
+    relatif (`media`, le cas du conteneur) et produisait `//Users/...` des
+    qu'on lui donnait un chemin absolu.
+    """
+    if not path:
+        return None
+    chemin = Path(path)
+    try:
+        chemin = chemin.relative_to(MEDIA)
+    except ValueError:
+        pass
+    return f"/media/{chemin.as_posix()}"
+
+
 def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> Path:
     """Compose les calques, applique le masque, ecrit un JPEG."""
     catalog = load_catalog()
@@ -86,8 +104,10 @@ def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> 
             if not rel:
                 continue
             sprite = Image.open(MEDIA / rel).convert("RGBA")
-            if kind == "background" and "scale" not in layer:
-                # Fond jamais manipule : on couvre toute la planche.
+            if kind == "background" and layer.get("scale") is None:
+                # Fond jamais manipule : on couvre toute la planche. `.get`
+                # plutot que `in` : une valeur nulle explicite veut dire la
+                # meme chose qu'une clef absente, et les deux nous arrivent.
                 layer = {**layer, "scale": max(1.0, (sprite.width / sprite.height) * height / width)}
             _paste_sprite(canvas, sprite, layer, width, height)
 

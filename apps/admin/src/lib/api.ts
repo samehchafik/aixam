@@ -33,6 +33,10 @@ function messageDErreur(corps: unknown, status: number): string {
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, {
+    // Un back-office ne doit jamais montrer un etat perime : sans en-tete de
+    // cache cote API, le navigateur rejoue volontiers une reponse GET, et
+    // l'ecran ment apres une synchronisation ou un envoi.
+    cache: 'no-store',
     ...init,
     headers: {
       'Content-Type': 'application/json',

@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 
-type Row = { id: string; status: string; created_at: string; render_url: string | null }
+type Row = {
+  id: string
+  status: string
+  created_at: string
+  render_url: string | null
+  visitor_name: string | null
+  visitor_email: string | null
+}
 
 export function Designs() {
   const [rows, setRows] = useState<Row[]>([])
@@ -21,7 +28,13 @@ export function Designs() {
             ) : (
               <div className="placeholder">{row.status}</div>
             )}
-            <figcaption>{new Date(row.created_at).toLocaleString('fr-FR')}</figcaption>
+            <figcaption>
+              {/* Sans nom : le visiteur a ete supprime (RGPD) ou la creation
+                  a ete faite en mode demo, sans inscription. */}
+              <strong>{row.visitor_name ?? 'Anonyme'}</strong>
+              {row.visitor_email && <span className="email">{row.visitor_email}</span>}
+              <span>{new Date(row.created_at).toLocaleString('fr-FR')}</span>
+            </figcaption>
           </figure>
         ))}
       </div>

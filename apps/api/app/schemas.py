@@ -53,7 +53,11 @@ class Layer(BaseModel):
     hex: str | None = None
     x: float = 0.5
     y: float = 0.5
-    scale: float = 0.2
+    # None a un sens : un fond que le visiteur n'a pas manipule n'a pas
+    # d'echelle, et couvre alors toute la planche. Un defaut numerique ici
+    # detruisait cette information -- le fond etait rendu comme un objet, a
+    # 20 % de la largeur. Le front applique la meme regle (`effectiveScale`).
+    scale: float | None = None
     rotation: float = 0.0
     opacity: float = 1.0
     z: int = 0

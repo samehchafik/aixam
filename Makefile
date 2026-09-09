@@ -30,8 +30,9 @@ seed: ## Genere fonds/objets de demo + index.json (a remplacer par les assets AI
 
 test: test-borne test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
 
-test-borne: ## Teste le parcours visiteur (inscription, doublons, verification)
+test-borne: ## Teste le parcours visiteur (inscription, doublons, verification, rendu)
 	cd apps/api && ../../.venv/bin/python tests/test_register_duplicate.py
+	cd apps/api && ../../.venv/bin/python tests/test_render_background.py
 
 test-mail: ## Teste le relais de mailing
 	cd apps/api && ../../.venv/bin/python tests/test_relay.py

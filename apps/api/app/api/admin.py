@@ -34,6 +34,7 @@ from app.schemas import (
 )
 from app.security import generate_relay_token, generate_token, hash_secret
 from app.services import mailer
+from app.services.renderer import render_url
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
@@ -141,9 +142,16 @@ def visitors_csv(consented_only: bool = True, db: Session = Depends(get_db)) -> 
 
 @router.get("/designs")
 def designs(limit: int = Query(60, le=300), offset: int = 0, db: Session = Depends(get_db)) -> dict:
-    stmt = select(Design).order_by(Design.created_at.desc())
+    # Jointure externe : une creation peut n'avoir plus de visiteur -- une
+    # suppression RGPD l'anonymise (ON DELETE SET NULL) sans l'effacer. Une
+    # jointure interne la ferait disparaitre de l'admin.
+    stmt = (
+        select(Design, Visitor)
+        .outerjoin(Visitor, Design.visitor_id == Visitor.id)
+        .order_by(Design.created_at.desc())
+    )
     total = db.scalar(select(func.count()).select_from(Design)) or 0
-    rows = db.scalars(stmt.limit(limit).offset(offset)).all()
+    rows = db.execute(stmt.limit(limit).offset(offset)).all()
     return {
         "total": total,
         "items": [
@@ -152,9 +160,11 @@ def designs(limit: int = Query(60, le=300), offset: int = 0, db: Session = Depen
                 "status": d.status.value,
                 "created_at": d.created_at.isoformat(),
                 "visitor_id": str(d.visitor_id) if d.visitor_id else None,
-                "render_url": f"/{d.render_path}" if d.render_path else None,
+                "visitor_name": f"{v.first_name} {v.last_name}".strip() if v else None,
+                "visitor_email": v.email if v else None,
+                "render_url": render_url(d.render_path),
             }
-            for d in rows
+            for d, v in rows
         ],
     }
 

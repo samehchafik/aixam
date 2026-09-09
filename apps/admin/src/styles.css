@@ -93,3 +93,8 @@ tr.row-muted td { opacity: 0.55; }
 .reveal p { margin: 0 0 12px; font-size: 14px; }
 .reveal code { display: block; padding: 10px 12px; font-size: 13px; word-break: break-all; }
 .reveal .toolbar { margin: 12px 0 0; }
+
+/* Legende d'une creation : auteur, adresse, date -- trois lignes serrees. */
+.grid figcaption { display: grid; gap: 2px; padding: 10px 12px; }
+.grid figcaption strong { color: var(--text); font-size: 13px; }
+.grid figcaption .email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
