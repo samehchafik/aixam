@@ -8,6 +8,11 @@
 # Une seule stack (db + api + worker) sert les deux SPA : --admin et --front
 # ne demarrent pas des conteneurs differents, ils choisissent ce qu'on
 # verifie avant et l'adresse qu'on affiche apres.
+#
+# --local : tout sur cette machine, sans docker. L'API et le worker tournent
+# depuis .venv, sur le PostgreSQL indique par POSTGRES_HOST dans .env. Pour
+# compiler en local mais tourner en conteneur, garder BUILD_MODE=local et ne
+# pas passer --local.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,13 +24,13 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --build (compile la SPA avant), --local | --docker (ou la"
-  echo "          compiler, voir bin/build.sh), --logs (suit les logs), -h"
-  echo "Base : reglee dans .env (COMPOSE_PROFILES / DATABASE_URL), pas ici."
+  echo "Options : --build (compile la SPA avant), --local (sans docker),"
+  echo "          --logs (suit les logs), -h"
+  echo "Base : reglee dans .env (COMPOSE_PROFILES / POSTGRES_HOST), pas ici."
   echo "Voir aussi : bin/stop.sh, bin/restart.sh"
 }
 
-ADMIN=0 FRONT=0 BUILD=0 LOGS=0 BUILD_ARGS=
+ADMIN=0 FRONT=0 BUILD=0 LOGS=0 SANS_DOCKER=0 BUILD_ARGS=
 [ $# -gt 0 ] || { usage; exit 1; }
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -34,7 +39,8 @@ while [ $# -gt 0 ]; do
     --all)    ADMIN=1; FRONT=1 ;;
     --build)  BUILD=1 ;;
     # Transmis tel quel a build.sh : ou compiler ne regarde que lui.
-    --local|--docker) BUILD_ARGS="${BUILD_ARGS:-} $1" ;;
+    --local)  SANS_DOCKER=1; BUILD_ARGS="${BUILD_ARGS:-} --local" ;;
+    --docker) BUILD_ARGS="${BUILD_ARGS:-} --docker" ;;
     --logs|-f) LOGS=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir -h)" ;;
@@ -53,8 +59,10 @@ done
 OWNER_UID="$(id -u)"; OWNER_GID="$(id -g)"
 if [ -n "${SUDO_UID:-}" ]; then OWNER_UID="$SUDO_UID"; OWNER_GID="${SUDO_GID:-$SUDO_UID}"; fi
 
-command -v docker >/dev/null || die "docker introuvable"
-docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- ouvrir Docker Desktop, puis relancer"
+if [ $SANS_DOCKER -eq 0 ]; then
+  command -v docker >/dev/null || die "docker introuvable -- ou tout lancer sur cette machine : --local"
+  docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- ouvrir Docker Desktop, ou tout lancer sur cette machine : --local"
+fi
 
 # docker compose lit .env via env_file : sans lui, la stack ne demarre pas.
 if [ ! -f "$ROOT/.env" ]; then
@@ -88,32 +96,66 @@ if [ $FRONT -eq 1 ]; then check_built kiosk "la borne" --front; fi
 PORT="$(grep -E '^API_PORT=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2)"
 PORT="${PORT:-8080}"
 
-# Ou tourne la base est decide par .env (COMPOSE_PROFILES), pas par ce
-# script. On demande donc a compose ce qu'il va reellement demarrer, plutot
-# que de re-deduire le reglage de notre cote.
-SERVICES="$(cd "$ROOT" && docker compose config --services | sort | tr '\n' ' ')"
-if ! printf '%s' "$SERVICES" | grep -qw db; then
-  # Base hors profil, mais l'API vise toujours le service db : il n'existe
-  # pas, elle redemarrerait en boucle sur un hote introuvable.
-  CONFIG="$(cd "$ROOT" && docker compose config 2>/dev/null)"
-  if printf '%s' "$CONFIG" | grep -qE 'POSTGRES_HOST: *db$' \
-     && ! grep -qE '^DATABASE_URL=.+' "$ROOT/.env"; then
-    die "base hors profil mais POSTGRES_HOST vaut encore « db » : renseigner POSTGRES_HOST dans .env (voir deploy/README.md)"
+if [ $SANS_DOCKER -eq 1 ]; then
+  # Sans conteneur : l'API et le worker tournent depuis .venv, lances DEPUIS
+  # apps/api -- c'est de la que les chemins relatifs `static` et `media` du
+  # .env prennent leur sens.
+  VENV="$ROOT/.venv/bin"
+  [ -x "$VENV/uvicorn" ] || die "$VENV/uvicorn introuvable -- creer l'environnement : python3 -m venv .venv && .venv/bin/pip install -r apps/api/requirements.txt"
+
+  mkdir -p "$ROOT/.run"
+  demarrer() {   # $1 = nom du processus, $2... = commande
+    local nom="$1"; shift
+    local pid="$ROOT/.run/$nom.pid"
+    if [ -f "$pid" ] && kill -0 "$(cat "$pid")" 2>/dev/null; then
+      warn "$nom tourne deja (pid $(cat "$pid")) -- bin/stop.sh --local pour l'arreter"
+      return
+    fi
+    # `exec` est ce qui rend le pid utilisable : sans lui, $! designe le
+    # sous-shell, qui meurt aussitot en laissant le serveur vivant -- et
+    # `bin/stop.sh --local` tuait alors une enveloppe deja morte, laissant le
+    # port occupe au demarrage suivant.
+    (
+      cd "$ROOT/apps/api" || exit 1
+      set -a; . "$ROOT/.env"; set +a
+      exec nohup "$@" >> "$ROOT/.run/$nom.log" 2>&1
+    ) &
+    echo $! > "$pid"
+  }
+
+  say "demarrage sans docker : api, worker"
+  # L'API d'abord : c'est elle qui cree les tables au demarrage. Le worker
+  # sait patienter, mais autant lui epargner l'attente.
+  demarrer api "$VENV/uvicorn" app.main:app --host 127.0.0.1 --port "$PORT"
+  demarrer worker "$VENV/python" -m app.workers.outbox
+else
+  # Ou tourne la base est decide par .env (COMPOSE_PROFILES), pas par ce
+  # script. On demande donc a compose ce qu'il va reellement demarrer, plutot
+  # que de re-deduire le reglage de notre cote.
+  SERVICES="$(cd "$ROOT" && docker compose config --services | sort | tr '\n' ' ')"
+  if ! printf '%s' "$SERVICES" | grep -qw db; then
+    # Base hors profil, mais l'API vise toujours le service db : il n'existe
+    # pas, elle redemarrerait en boucle sur un hote introuvable.
+    CONFIG="$(cd "$ROOT" && docker compose config 2>/dev/null)"
+    if printf '%s' "$CONFIG" | grep -qE 'POSTGRES_HOST: *db$' \
+       && ! grep -qE '^DATABASE_URL=.+' "$ROOT/.env"; then
+      die "base hors profil mais POSTGRES_HOST vaut encore « db » : renseigner POSTGRES_HOST dans .env (voir deploy/README.md)"
+    fi
   fi
-fi
 
-# Le Dockerfile fait `COPY . .` : le code Python vit DANS l'image. Sans
-# reconstruction, le conteneur repart sur l'ancien code sans rien signaler --
-# et l'on cherche la panne ailleurs (un module absent, un correctif sans
-# effet). On ne bloque pas : c'est parfois volontaire.
-TEMOIN="$ROOT/.api-image-built"
-if [ ! -f "$TEMOIN" ] || [ -n "$(find "$ROOT/apps/api" -name '*.py' -newer "$TEMOIN" -print -quit 2>/dev/null)" ]; then
-  warn "du code Python est plus recent que l'image de l'API."
-  warn "        Reconstruire : ./bin/build.sh --api-image"
-fi
+  # Le Dockerfile fait `COPY . .` : le code Python vit DANS l'image. Sans
+  # reconstruction, le conteneur repart sur l'ancien code sans rien signaler
+  # -- et l'on cherche la panne ailleurs. On ne bloque pas : c'est parfois
+  # volontaire.
+  TEMOIN="$ROOT/.api-image-built"
+  if [ ! -f "$TEMOIN" ] || [ -n "$(find "$ROOT/apps/api" -name '*.py' -newer "$TEMOIN" -print -quit 2>/dev/null)" ]; then
+    warn "du code Python est plus recent que l'image de l'API."
+    warn "        Reconstruire : ./bin/build.sh --api-image"
+  fi
 
-say "demarrage : $SERVICES"
-( cd "$ROOT" && docker compose up -d )
+  say "demarrage : $SERVICES"
+  ( cd "$ROOT" && docker compose up -d )
+fi
 
 say "attente de l'API sur le port $PORT"
 for _ in $(seq 1 60); do
@@ -123,7 +165,11 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 if [ "${READY:-0}" != "1" ]; then
-  warn "l'API ne repond toujours pas -- voir : docker compose logs api"
+  if [ $SANS_DOCKER -eq 1 ]; then
+    warn "l'API ne repond toujours pas -- voir : tail .run/api.log"
+  else
+    warn "l'API ne repond toujours pas -- voir : docker compose logs api"
+  fi
   exit 1
 fi
 
@@ -139,4 +185,8 @@ fi
 echo
 
 if [ $LOGS -eq 1 ]; then exec docker compose -f "$ROOT/docker-compose.yml" logs -f api worker; fi
-say "logs : make logs    arret : bin/stop.sh    redemarrage : bin/restart.sh"
+if [ $SANS_DOCKER -eq 1 ]; then
+  say "logs : tail -f .run/api.log    arret : bin/stop.sh --local"
+else
+  say "logs : make logs    arret : bin/stop.sh    redemarrage : bin/restart.sh"
+fi

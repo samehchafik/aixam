@@ -91,7 +91,29 @@ def recover_stale() -> None:
         db.commit()
 
 
+def attendre_le_schema(delai: float = 2.0, essais: int = 60) -> None:
+    """Patiente jusqu'a ce que les tables existent.
+
+    C'est l'API qui les cree, a son demarrage. Le worker part en meme temps et
+    peut la devancer : sans cette attente il mourait sur « relation
+    email_outbox does not exist ». En conteneur, `restart: unless-stopped` le
+    relancait jusqu'a ce que ca passe -- bruyamment ; lance a la main, il ne
+    revenait jamais.
+    """
+    for reste in range(essais, 0, -1):
+        try:
+            with SessionLocal() as db:
+                db.execute(select(EmailOutbox.id).limit(1))
+            return
+        except Exception as exc:
+            if reste == 1:
+                raise
+            log.warning("base pas prete (%s) -- nouvelle tentative dans %ss", type(exc).__name__, delai)
+            time.sleep(delai)
+
+
 def main() -> None:
+    attendre_le_schema()
     with SessionLocal() as db:
         log.info("worker outbox demarre (transport : %s)", current_transport(db))
     recover_stale()

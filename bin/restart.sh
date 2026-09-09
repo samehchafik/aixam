@@ -16,7 +16,8 @@ die() { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --build (recompile avant), --logs (suit les logs), -h"
+  echo "Options : --build (recompile avant), --local (sans docker),"
+  echo "          --logs (suit les logs), -h"
 }
 
 [ $# -gt 0 ] || { usage; exit 1; }
@@ -28,11 +29,16 @@ for arg in "$@"; do
   esac
 done
 
-command -v docker >/dev/null || die "docker introuvable"
-docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- ouvrir Docker Desktop, puis relancer"
+SANS_DOCKER=0
+for arg in "$@"; do if [ "$arg" = "--local" ]; then SANS_DOCKER=1; fi; done
+
+if [ $SANS_DOCKER -eq 0 ]; then
+  command -v docker >/dev/null || die "docker introuvable -- ou tout relancer sur cette machine : --local"
+  docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- ouvrir Docker Desktop, ou tout relancer sur cette machine : --local"
+fi
 
 # stop.sh sans argument : les flags de cible ne le concernent pas, ils
 # servent au demarrage qui suit (quoi verifier, quelle adresse afficher).
 say "redemarrage"
-"$ROOT/bin/stop.sh"
+if [ $SANS_DOCKER -eq 1 ]; then "$ROOT/bin/stop.sh" --local; else "$ROOT/bin/stop.sh"; fi
 "$ROOT/bin/start.sh" "$@"

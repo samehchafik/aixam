@@ -2,6 +2,7 @@
 # Arrete la stack docker.
 #
 #   bin/stop.sh               arrete les conteneurs, garde les donnees
+#   bin/stop.sh --local       arrete l'api et le worker lances sans docker
 #   bin/stop.sh --volumes     supprime aussi la base et les medias (DESTRUCTIF)
 #
 # Pas de --admin ni --front ici : une seule stack sert les deux SPA, il n'y a
@@ -17,13 +18,14 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --volumes, -h"
+  echo "Options : --local, --volumes, -h"
 }
 
-VOLUMES=0
+VOLUMES=0 SANS_DOCKER=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --volumes|-v) VOLUMES=1 ;;
+    --local) SANS_DOCKER=1 ;;
     --admin|--front|--kiosk|--all)
       warn "$1 sans effet : une seule stack sert les deux SPA, tout s'arrete ensemble" ;;
     -h|--help) usage; exit 0 ;;
@@ -31,6 +33,21 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+if [ $SANS_DOCKER -eq 1 ]; then
+  # Processus lances par `bin/start.sh --local`, suivis par leur pid.
+  arrete=0
+  for nom in api worker; do
+    pid="$ROOT/.run/$nom.pid"
+    if [ -f "$pid" ] && kill -0 "$(cat "$pid")" 2>/dev/null; then
+      kill "$(cat "$pid")" && arrete=$((arrete + 1))
+      say "$nom arrete (pid $(cat "$pid"))"
+    fi
+    rm -f "$pid"
+  done
+  [ $arrete -gt 0 ] || say "rien ne tournait"
+  exit 0
+fi
 
 command -v docker >/dev/null || die "docker introuvable"
 docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- rien a arreter"

@@ -39,10 +39,17 @@ Pour ne toucher qu'une des deux SPA, `bin/` évite de tout recompiler :
 
 ```bash
 bin/build.sh   --admin | --front | --all   [--docker | --local] [--api-image]
-bin/start.sh   --admin | --front | --all   [--build] [--docker | --local] [--logs]
-bin/restart.sh --admin | --front | --all   [--build] [--docker | --local] [--logs]
-bin/stop.sh                                [--volumes]
+bin/start.sh   --admin | --front | --all   [--build] [--local] [--logs]
+bin/restart.sh --admin | --front | --all   [--build] [--local] [--logs]
+bin/stop.sh                                [--local] [--volumes]
 ```
+
+**`--local` sur `start`, `restart` et `stop`** : tout sur cette machine, sans
+docker. L'API et le worker d'emails tournent depuis `.venv`, sur le PostgreSQL
+indiqué par `POSTGRES_HOST` — il n'y a **pas** de commande à lancer à part, le
+worker démarre avec l'API et s'arrête avec elle. Ses journaux sont dans
+`.run/`. Pour compiler en local mais tourner en conteneur, garder
+`BUILD_MODE=local` et ne pas passer `--local` à `start`.
 
 **Où compiler** — `BUILD_MODE=docker` (défaut) ou `local`, surchargeable par
 `--docker` / `--local` :
