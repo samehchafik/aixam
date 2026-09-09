@@ -204,6 +204,28 @@ type NodeProps = {
   onChange: (patch: Partial<Layer>) => void
 }
 
+/**
+ * Cadrage d'un fond : il doit couvrir la planche, quoi qu'ait fait le visiteur.
+ *
+ * L'echelle « couvre » vaut exactement la largeur de la planche, au pixel
+ * pres : deplacer le fond d'un cheveu decouvrait un bord, qui apparaissait en
+ * blanc. On borne donc l'echelle par le bas, et le centre assez pour que les
+ * quatre bords restent dedans. Meme calcul que `cadrer_fond` cote serveur.
+ */
+export function coverBackground(
+  layer: Layer,
+  image: HTMLImageElement | null,
+  skinWidth: number,
+  skinHeight: number,
+) {
+  const couverture = image ? Math.max(1, (image.width / image.height) * (skinHeight / skinWidth)) : 1
+  const scale = Math.max(couverture, layer.scale ?? couverture)
+  const fw = scale
+  const fh = image ? (scale * skinWidth * (image.height / image.width)) / skinHeight : 1
+  const borner = (v: number, f: number) => Math.min(Math.max(v, 1 - f / 2), f / 2)
+  return { scale, x: borner(layer.x, fw), y: borner(layer.y, fh) }
+}
+
 /** Echelle effective d'un calque : un fond sans echelle couvre la planche. */
 export function effectiveScale(layer: Layer, image: HTMLImageElement | null, skinWidth: number, skinHeight: number) {
   if (layer.scale !== undefined) return layer.scale
@@ -231,18 +253,36 @@ function LayerNode({ layer, src, skinWidth, skinHeight, interactive, register, o
 
   if (!image) return null
 
-  const scale = effectiveScale(layer, image, skinWidth, skinHeight)
+  const fond = layer.type === 'background'
+  const cadre = fond ? coverBackground(layer, image, skinWidth, skinHeight) : null
+  const scale = cadre ? cadre.scale : effectiveScale(layer, image, skinWidth, skinHeight)
   const w = scale * skinWidth
   const h = (image.height / image.width) * w
 
-  const commit = (node: Konva.Node, extra: Partial<Layer> = {}) =>
-    onChange({ x: node.x() / skinWidth, y: node.y() / skinHeight, rotation: node.rotation(), ...extra })
+  const commit = (node: Konva.Node, extra: Partial<Layer> = {}) => {
+    const patch: Partial<Layer> = {
+      x: node.x() / skinWidth,
+      y: node.y() / skinHeight,
+      rotation: node.rotation(),
+      ...extra,
+    }
+    if (fond) {
+      const borne = coverBackground({ ...layer, ...patch } as Layer, image, skinWidth, skinHeight)
+      patch.x = borne.x
+      patch.y = borne.y
+      // On n'ecrit une echelle que si le geste en a change une : sans cela, un
+      // simple deplacement figerait la couverture, que « reinitialiser le
+      // fond » recalcule justement en la supprimant.
+      if ('scale' in extra) patch.scale = borne.scale
+    }
+    onChange(patch)
+  }
 
   return (
     <Group
       ref={register}
-      x={layer.x * skinWidth}
-      y={layer.y * skinHeight}
+      x={(cadre ? cadre.x : layer.x) * skinWidth}
+      y={(cadre ? cadre.y : layer.y) * skinHeight}
       rotation={layer.rotation}
       opacity={layer.opacity}
       draggable={interactive}

@@ -47,6 +47,38 @@ def _asset_index(catalog: dict) -> dict[str, str]:
     }
 
 
+def cadrer_fond(layer: dict, sprite_ratio: float, width: int, height: int) -> dict:
+    """Garantit qu'un fond couvre la planche, quoi qu'ait fait le visiteur.
+
+    L'echelle « couvre » vaut exactement la largeur de la planche : au pixel
+    pres. Deplacer le fond d'un cheveu decouvrait donc un bord, qui
+    apparaissait en blanc sur la creation -- et le visiteur, lui, ne voyait
+    qu'un fond legerement decale.
+
+    On force donc deux choses : une echelle au moins egale a la couverture, et
+    un centre assez rentre pour que les quatre bords restent dedans.
+
+    `sprite_ratio` = largeur / hauteur de l'image source.
+    Limite connue : une rotation du fond n'est pas prise en compte ici.
+    """
+    couverture = max(1.0, sprite_ratio * height / width)
+    echelle = max(couverture, float(layer.get("scale") or 0.0))
+
+    # Taille du sprite, en fractions de la planche.
+    fw = echelle
+    fh = (echelle * width / sprite_ratio) / height
+
+    def borner(valeur: float, fraction: float) -> float:
+        return min(max(valeur, 1 - fraction / 2), fraction / 2)
+
+    return {
+        **layer,
+        "scale": echelle,
+        "x": borner(float(layer.get("x", 0.5)), fw),
+        "y": borner(float(layer.get("y", 0.5)), fh),
+    }
+
+
 def _paste_sprite(canvas: Image.Image, sprite: Image.Image, layer: dict, width: int, height: int) -> None:
     target_w = max(1, int(width * float(layer.get("scale", 0.2))))
     target_h = max(1, int(sprite.height * target_w / sprite.width))
@@ -104,11 +136,8 @@ def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> 
             if not rel:
                 continue
             sprite = Image.open(MEDIA / rel).convert("RGBA")
-            if kind == "background" and layer.get("scale") is None:
-                # Fond jamais manipule : on couvre toute la planche. `.get`
-                # plutot que `in` : une valeur nulle explicite veut dire la
-                # meme chose qu'une clef absente, et les deux nous arrivent.
-                layer = {**layer, "scale": max(1.0, (sprite.width / sprite.height) * height / width)}
+            if kind == "background":
+                layer = cadrer_fond(layer, sprite.width / sprite.height, width, height)
             _paste_sprite(canvas, sprite, layer, width, height)
 
     canvas.putalpha(build_mask(shape, width, height))

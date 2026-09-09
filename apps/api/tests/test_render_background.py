@@ -64,10 +64,23 @@ check("bord gauche couvert", not proche(gauche, BLANC), gauche)
 check("centre couvert", not proche(milieu, BLANC), milieu)
 check("bord droit couvert", not proche(droite, BLANC), droite)
 
-print("\n[2] Fond que le visiteur a reduit : son echelle est respectee")
-img = rendre(Layer(type="background", assetId=FOND, scale=0.2))
-check("le centre porte le fond", not proche(couleur(img, 0.5), BLANC))
-check("les bords restent nus", proche(couleur(img, 0.02), BLANC), couleur(img, 0.02))
+print("\n[2] L'echelle d'un fond ne descend jamais sous la couverture")
+# Un fond plus petit que la planche laisserait du blanc : ce n'est plus un
+# fond. En revanche l'agrandir reste permis -- le visiteur zoome dans le motif.
+from app.services.assets import load_catalog as _c
+from app.services.renderer import MEDIA, cadrer_fond
+from PIL import Image as _I
+
+source = _I.open(MEDIA / next(b["image"] for b in catalogue["backgrounds"] if b["id"] == FOND))
+ratio = source.width / source.height
+couverture = cadrer_fond({}, ratio, W, H)["scale"]
+check("un fond sans echelle prend la couverture", couverture >= 1.0, couverture)
+check("une echelle plus petite est relevee",
+      cadrer_fond({"scale": 0.5}, ratio, W, H)["scale"] == couverture)
+check("une echelle plus grande est respectee",
+      cadrer_fond({"scale": 2.0}, ratio, W, H)["scale"] == 2.0)
+check("le centre est ramene dans les bornes",
+      cadrer_fond({"x": 0.0}, ratio, W, H)["x"] == 0.5, cadrer_fond({"x": 0.0}, ratio, W, H)["x"])
 
 print("\n[3] Aplat de couleur : toute la planche")
 img = rendre(Layer(type="background", hex="#D42B1E"))
@@ -75,7 +88,37 @@ attendu = (212, 43, 30)
 for fraction, nom in ((0.02, "bord gauche"), (0.5, "centre"), (0.98, "bord droit")):
     check(f"{nom} a la bonne couleur", proche(couleur(img, fraction), attendu), couleur(img, fraction))
 
-print("\n[4] Un objet garde bien son echelle")
+print("\n[4] Un fond deplace ou reduit couvre quand meme")
+# L'echelle « couvre » vaut exactement la largeur de la planche : sans
+# bornage, un fond deplace d'un cheveu laissait une marge blanche sur un
+# bord -- et le visiteur ne voyait qu'un motif legerement decale.
+from app.services.shape import build_mask
+
+masque = build_mask(forme, W, H)
+
+
+def colonnes_blanches(img: Image.Image) -> int:
+    """Colonnes VISIBLES (hors encoche et angles) entierement blanches."""
+    total = 0
+    for x in range(W):
+        pixels = [img.getpixel((PAD + x, PAD + y)) for y in range(H) if masque.getpixel((x, y)) > 200]
+        if pixels and all(proche(c, BLANC, 4) for c in pixels):
+            total += 1
+    return total
+
+
+for titre, calque in (
+    ("centre", Layer(type="background", assetId=FOND)),
+    ("deplace a gauche", Layer(type="background", assetId=FOND, x=0.42)),
+    ("pousse a fond a gauche", Layer(type="background", assetId=FOND, x=0.0)),
+    ("pousse a fond a droite", Layer(type="background", assetId=FOND, x=1.0)),
+    ("reduit sous la couverture", Layer(type="background", assetId=FOND, scale=0.5)),
+    ("agrandi et decale", Layer(type="background", assetId=FOND, scale=1.4, x=0.9, y=0.9)),
+):
+    n = colonnes_blanches(rendre(calque))
+    check(f"{titre} : aucune marge", n == 0, f"{n} colonne(s)")
+
+print("\n[5] Un objet garde bien son echelle")
 objet = catalogue["objects"][0]["id"]
 img = rendre(Layer(type="background", hex="#FFFFFF"), Layer(type="object", assetId=objet, scale=0.05, z=1))
 check("l'objet n'a pas envahi la planche", proche(couleur(img, 0.02), BLANC), couleur(img, 0.02))
