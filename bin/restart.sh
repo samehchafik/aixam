@@ -22,7 +22,7 @@ usage() {
 [ $# -gt 0 ] || { usage; exit 1; }
 for arg in "$@"; do
   case "$arg" in
-    --admin|--front|--kiosk|--all|--build|--logs|-f) ;;
+    --admin|--front|--kiosk|--all|--build|--logs|-f|--local|--docker) ;;
     -h|--help) usage; exit 0 ;;
     *) die "option inconnue : $arg (voir -h)" ;;
   esac

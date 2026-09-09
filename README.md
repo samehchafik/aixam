@@ -38,22 +38,29 @@ make up             # build des fronts + docker compose up
 Pour ne toucher qu'une des deux SPA, `bin/` évite de tout recompiler :
 
 ```bash
-bin/build.sh   --admin | --front | --all   [--docker]
-bin/start.sh   --admin | --front | --all   [--build] [--logs]
-bin/restart.sh --admin | --front | --all   [--build] [--logs]
+bin/build.sh   --admin | --front | --all   [--docker | --local] [--api-image]
+bin/start.sh   --admin | --front | --all   [--build] [--docker | --local] [--logs]
+bin/restart.sh --admin | --front | --all   [--build] [--docker | --local] [--logs]
 bin/stop.sh                                [--volumes]
 ```
 
-**Tout passe par docker** : `bin/build.sh` compile les SPA dans un conteneur
-`node:22-alpine` jetable, donc ni node ni npm ne sont requis sur la machine —
-c'est ce qui permet de déployer sur un serveur nu. Les dépendances vivent dans
-un volume docker nommé, jamais dans `apps/*/node_modules` : le dépôt reste
-propre, et un `node_modules` compilé sur macOS ne peut plus empoisonner un
-build Linux (esbuild livre un binaire par plateforme). `NODE_IMAGE=` permet de
-changer d'image.
+**Où compiler** — `BUILD_MODE=docker` (défaut) ou `local`, surchargeable par
+`--docker` / `--local` :
 
-(`make build-front` reste la variante qui compile avec le npm de la machine,
-pour le développement local.)
+| Mode | Ce qu'il faut sur la machine | Pour |
+|---|---|---|
+| `docker` | rien | déployer sur un serveur nu |
+| `local` | node et npm | itérer : quelques secondes au lieu d'une minute |
+
+En mode docker, les dépendances vivent dans un **volume nommé**, jamais dans
+`apps/*/node_modules` : les deux modes n'écrasent donc pas leurs installations
+respectives, et un `node_modules` compilé sur macOS ne peut pas empoisonner un
+build Linux (esbuild livre un binaire par plateforme). `NODE_IMAGE=` change
+l'image.
+
+`--api-image` reconstruit en plus l'image docker de l'API — utile seulement
+quand `requirements.txt` ou le `Dockerfile` bougent, jamais pour un changement
+de front.
 
 `apps/api/static/` est monté en volume : après un `bin/build.sh`, un
 rechargement du navigateur suffit, sans redémarrer quoi que ce soit. Une seule

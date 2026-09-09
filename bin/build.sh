@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Compile une SPA et la depose la ou l'API la sert. Tout passe par docker :
-# aucun node, aucun npm n'est requis sur la machine.
+# Compile une SPA et la depose la ou l'API la sert.
 #
 #   bin/build.sh --admin      back-office -> apps/api/static/admin
 #   bin/build.sh --front      borne       -> apps/api/static/kiosk
 #   bin/build.sh --all        les deux
 #
-# La compilation tourne dans un conteneur node jetable. Les dependances
-# vivent dans un volume docker nomme, jamais dans apps/*/node_modules : le
-# depot reste propre, et un node_modules compile sur macOS ne peut plus
-# empoisonner un build Linux (esbuild livre un binaire par plateforme).
+# OU compile-t-on : BUILD_MODE=docker (defaut) ou local, surchargeable par
+# --docker / --local. En docker, aucun node ni npm n'est requis sur la
+# machine -- c'est ce qui permet de deployer sur un serveur nu. En local,
+# c'est le npm du poste qui travaille : quelques secondes au lieu d'une
+# minute, pratique quand on itere.
+#
+# En docker, les dependances vivent dans un volume nomme, jamais dans
+# apps/*/node_modules : les deux modes n'ecrasent donc pas leurs
+# installations respectives, et un node_modules compile sur macOS ne peut
+# pas empoisonner un build Linux (esbuild livre un binaire par plateforme).
 #
 # Le config.json deja deploye est conserve d'un build a l'autre : il porte le
 # jeton de la borne et l'adresse de l'API, des valeurs d'installation qu'on ne
@@ -19,12 +24,13 @@
 # apps/api/static/ est monte en volume par docker compose : une fois la SPA
 # compilee, un simple rechargement du navigateur suffit. Reconstruire l'image
 # de l'API n'est necessaire que si requirements.txt ou le Dockerfile bougent
-# -- c'est ce que fait --docker.
+# -- c'est ce que fait --api-image.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATIC="$ROOT/apps/api/static"
 NODE_IMAGE="${NODE_IMAGE:-node:22-alpine}"
+BUILD_MODE="${BUILD_MODE:-docker}"
 
 say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mattention:\033[0m %s\n' "$*" >&2; }
@@ -32,9 +38,10 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --docker (reconstruit aussi l'image de l'API),"
+  echo "Ou compiler : --docker | --local   (defaut : BUILD_MODE=$BUILD_MODE)"
+  echo "Options : --api-image (reconstruit aussi l'image de l'API),"
   echo "          --reset-config (reprend le config.json des sources), -h"
-  echo "Variables : NODE_IMAGE (defaut $NODE_IMAGE)"
+  echo "Variables : BUILD_MODE (docker|local), NODE_IMAGE (defaut $NODE_IMAGE)"
 }
 
 # Sous sudo, on veut les fichiers produits au nom du compte reel, pas de root :
@@ -47,17 +54,29 @@ build_one() {
   local src="$ROOT/apps/$1" out="$STATIC/$2" volume="aixam-node-$1"
   [ -d "$src" ] || die "$src introuvable"
 
-  say "$3 : compilation dans $NODE_IMAGE"
-  # Le conteneur tourne en root pour pouvoir ecrire dans le volume des
-  # dependances, puis rend tout ce qu'il a depose dans le depot au compte
-  # hote -- dist/, mais aussi tsconfig.tsbuildinfo que tsc ecrit a la racine.
-  docker run --rm \
-    -v "$src:/app" \
-    -v "$volume:/app/node_modules" \
-    -w /app "$NODE_IMAGE" \
-    sh -c "npm ci --no-audit --no-fund && npm run build && \
-           find /app -maxdepth 1 -mindepth 1 ! -name node_modules \
-             -exec chown -R $OWNER_UID:$OWNER_GID {} +"
+  if [ "$BUILD_MODE" = "local" ]; then
+    # Un node_modules PRESENT ne veut pas dire complet : une install
+    # interrompue laisse le dossier la sans les binaires. On teste ce dont
+    # `npm run build` a besoin plutot que l'existence du dossier.
+    if [ ! -x "$src/node_modules/.bin/tsc" ] || [ ! -x "$src/node_modules/.bin/vite" ]; then
+      say "$3 : installation des dependances (npm du poste)"
+      ( cd "$src" && { npm ci --no-audit --no-fund || npm install; } )
+    fi
+    say "$3 : compilation locale"
+    ( cd "$src" && npm run build )
+  else
+    say "$3 : compilation dans $NODE_IMAGE"
+    # Le conteneur tourne en root pour pouvoir ecrire dans le volume des
+    # dependances, puis rend tout ce qu'il a depose dans le depot au compte
+    # hote -- dist/, mais aussi tsconfig.tsbuildinfo que tsc ecrit a la racine.
+    docker run --rm \
+      -v "$src:/app" \
+      -v "$volume:/app/node_modules" \
+      -w /app "$NODE_IMAGE" \
+      sh -c "npm ci --no-audit --no-fund && npm run build && \
+             find /app -maxdepth 1 -mindepth 1 ! -name node_modules \
+               -exec chown -R $OWNER_UID:$OWNER_GID {} +"
+  fi
 
   # On ne remplace que ce dossier : un build --admin ne doit pas effacer la
   # borne deja compilee a cote (ce que fait `make build-front`, qui vide tout).
@@ -99,14 +118,16 @@ build_one() {
   fi
 }
 
-ADMIN=0 FRONT=0 DOCKER=0 RESET_CONFIG=0
+ADMIN=0 FRONT=0 API_IMAGE=0 RESET_CONFIG=0
 [ $# -gt 0 ] || { usage; exit 1; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --admin)  ADMIN=1 ;;
     --front|--kiosk) FRONT=1 ;;
     --all)    ADMIN=1; FRONT=1 ;;
-    --docker) DOCKER=1 ;;
+    --docker) BUILD_MODE=docker ;;
+    --local)  BUILD_MODE=local ;;
+    --api-image) API_IMAGE=1 ;;
     --reset-config) RESET_CONFIG=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir -h)" ;;
@@ -115,11 +136,31 @@ while [ $# -gt 0 ]; do
 done
 [ $ADMIN -eq 1 ] || [ $FRONT -eq 1 ] || die "preciser --admin, --front ou --all"
 
-command -v docker >/dev/null || die "docker introuvable"
-# Sous Linux, un « permission denied » sur la socket veut dire que le compte
-# n'est pas dans le groupe docker -- ce qui se corrige une fois pour toutes,
-# plutot qu'en prefixant chaque commande par sudo.
-docker info >/dev/null 2>&1 || die "le demon docker ne repond pas -- le demarrer, ou vous y donner acces : sudo usermod -aG docker \$USER puis se reconnecter"
+case "$BUILD_MODE" in
+  docker|local) ;;
+  *) die "BUILD_MODE doit valoir docker ou local (recu : $BUILD_MODE)" ;;
+esac
+
+if [ "$BUILD_MODE" = "local" ]; then
+  command -v npm >/dev/null || die "npm introuvable -- compiler en docker : BUILD_MODE=docker, ou --docker"
+fi
+
+# Le mode docker en a besoin pour compiler ; --api-image en a besoin dans les
+# deux cas.
+if [ "$BUILD_MODE" = "docker" ] || [ $API_IMAGE -eq 1 ]; then
+  # Le conseil differe selon ce qui reclame docker : --local ne sert a rien a
+  # qui veut reconstruire l'image de l'API.
+  if [ "$BUILD_MODE" = "docker" ]; then
+    ISSUE="ou compiler avec le npm du poste : --local"
+  else
+    ISSUE="--api-image reconstruit une image, docker est indispensable"
+  fi
+  command -v docker >/dev/null || die "docker introuvable ($ISSUE)"
+  # Sous Linux, un « permission denied » sur la socket veut dire que le compte
+  # n'est pas dans le groupe docker -- ce qui se corrige une fois pour toutes,
+  # plutot qu'en prefixant chaque commande par sudo.
+  docker info >/dev/null 2>&1 || die "le demon docker ne repond pas -- le demarrer, vous y donner acces (sudo usermod -aG docker \$USER puis se reconnecter), $ISSUE"
+fi
 
 if [ $ADMIN -eq 1 ]; then build_one admin admin "back-office"; fi
 if [ $FRONT -eq 1 ]; then build_one kiosk kiosk "borne"; fi

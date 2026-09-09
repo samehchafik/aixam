@@ -19,12 +19,13 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
-  echo "Options : --build (compile la SPA avant), --logs (suit les logs), -h"
+  echo "Options : --build (compile la SPA avant), --local | --docker (ou la"
+  echo "          compiler, voir bin/build.sh), --logs (suit les logs), -h"
   echo "Base : reglee dans .env (COMPOSE_PROFILES / DATABASE_URL), pas ici."
   echo "Voir aussi : bin/stop.sh, bin/restart.sh"
 }
 
-ADMIN=0 FRONT=0 BUILD=0 LOGS=0
+ADMIN=0 FRONT=0 BUILD=0 LOGS=0 BUILD_ARGS=
 [ $# -gt 0 ] || { usage; exit 1; }
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -32,6 +33,8 @@ while [ $# -gt 0 ]; do
     --front|--kiosk) FRONT=1 ;;
     --all)    ADMIN=1; FRONT=1 ;;
     --build)  BUILD=1 ;;
+    # Transmis tel quel a build.sh : ou compiler ne regarde que lui.
+    --local|--docker) BUILD_ARGS="${BUILD_ARGS:-} $1" ;;
     --logs|-f) LOGS=1 ;;
     -h|--help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir -h)" ;;
@@ -65,7 +68,8 @@ if [ $BUILD -eq 1 ]; then
   ARGS=()
   if [ $ADMIN -eq 1 ]; then ARGS+=(--admin); fi
   if [ $FRONT -eq 1 ]; then ARGS+=(--front); fi
-  "$ROOT/bin/build.sh" "${ARGS[@]}"
+  # shellcheck disable=SC2086 -- on veut la separation en mots ici.
+  "$ROOT/bin/build.sh" "${ARGS[@]}" $BUILD_ARGS
 fi
 
 # Une SPA absente ne se voit qu'a l'ecran, en 503 : autant le dire ici.
