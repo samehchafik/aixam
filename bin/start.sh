@@ -61,6 +61,10 @@ if [ ! -f "$ROOT/.env" ]; then
   say "pas de .env : copie depuis .env.example"
   cp "$ROOT/.env.example" "$ROOT/.env"
   chown "$OWNER_UID:$OWNER_GID" "$ROOT/.env" 2>/dev/null || true
+  # .env porte le mot de passe de la base, celui du SMTP et la cle de
+  # signature des jetons. `cp` heriterait du mode de .env.example, lisible par
+  # tous : sur un serveur partage, ce serait les donner.
+  chmod 600 "$ROOT/.env"
   warn "renseigner .env (mots de passe, envoi des emails) avant le salon"
 fi
 

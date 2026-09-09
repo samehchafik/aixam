@@ -15,7 +15,22 @@ Deux domaines, une seule stack :
 3. La stack tourne : `./bin/start.sh --all`, et `curl -f localhost:8080/healthz`
    répond.
 
-## 1. Fermer l'accès direct à l'API
+## 1. Verrouiller le fichier de secrets
+
+`.env` porte le mot de passe de la base, celui du SMTP et `SECRET_KEY`, la clé
+qui signe les jetons d'administration. Créé par `cp` depuis `.env.example`, ou
+par un `sudo vim` sur un fichier absent, il se retrouve en `-rw-r--r--` — donc
+lisible par tout compte de la machine, et parfois appartenant à root.
+
+```bash
+sudo chown "$USER:$USER" .env && chmod 600 .env
+ls -l .env          # doit afficher -rw------- et votre compte
+```
+
+`bin/start.sh` le crée désormais en `600`, mais un fichier déjà en place garde
+le mode qu'il a.
+
+## 2. Fermer l'accès direct à l'API
 
 Sans ça, `http://<ip-du-serveur>:8080` reste joignable en clair, sans TLS et
 sans passer par nginx. Dans `.env` :
@@ -30,7 +45,7 @@ répond plus.
 (Sur le stand c'est l'inverse : la borne joint l'API par le réseau local, donc
 `API_BIND=0.0.0.0`, qui est le défaut.)
 
-## 2. Régler la borne pour le proxy
+## 3. Régler la borne pour le proxy
 
 > Étape la plus facile à oublier, et son symptôme n'est pas parlant : Chrome
 > affiche *« aixam.ifrit.fr souhaite accéder à d'autres applis et services sur
@@ -59,7 +74,7 @@ directement dans `apps/api/static/kiosk/config.json` — il est lu a l'execution
 un rechargement du navigateur suffit — sans qu'une recompilation ne l'ecrase.
 `--reset-config` reprend celui des sources si besoin.
 
-## 3. PostgreSQL : conteneur ou serveur
+## 4. PostgreSQL : conteneur ou serveur
 
 Par defaut la base tourne **en conteneur** (service `db`, volume `pgdata`) :
 c'est le montage du stand, ou l'on ne veut rien installer sur la machine.
@@ -256,7 +271,7 @@ sudo -u postgres psql -d aixam -c '\dt'            # les tables sont la
 La sauvegarde devient celle du serveur, avec vos outils habituels — c'est
 precisement l'interet du montage.
 
-## 4. nginx
+## 5. nginx
 
 ```bash
 sudo apt update && sudo apt install -y nginx
@@ -271,7 +286,7 @@ sudo nginx -t && sudo systemctl reload nginx
 À ce stade les deux domaines répondent **en HTTP**. Vérifier avant d'aller
 plus loin — un domaine qui ne répond pas en 80 fera échouer certbot.
 
-## 5. HTTPS avec Let's Encrypt
+## 6. HTTPS avec Let's Encrypt
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -290,7 +305,7 @@ vérifier sans attendre 60 jours :
 sudo certbot renew --dry-run
 ```
 
-## 6. Vérifier
+## 7. Vérifier
 
 ```bash
 curl -I https://aixam.ifrit.fr                    # la borne, 200
