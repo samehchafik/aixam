@@ -319,6 +319,20 @@ l'un sur `/`, l'autre sur `/#/display`, et vérifier que le grand écran suit.
 Un échec ici se voit dans la console (`WebSocket connection failed`) et vient
 presque toujours du bloc `location /ws/`.
 
+## Mettre à jour le serveur
+
+```bash
+cd ~/aixam && git pull && ./bin/build.sh --all --api-image && ./bin/restart.sh --all
+```
+
+`--api-image` n'est pas optionnel dès que du Python a changé : le `Dockerfile`
+fait `COPY . .`, donc le code vit **dans l'image**, pas dans un volume. Sans
+reconstruction, le conteneur redémarre sur l'ancien code — sans erreur, sans
+avertissement, et le correctif que vous venez de tirer reste sans effet.
+
+Seuls `media/` et `apps/api/static/` sont montés : un changement de front seul
+se contente de `./bin/build.sh --all` puis d'un rechargement du navigateur.
+
 ## Ce que les fichiers font, et pourquoi
 
 Les deux sont des proxys vers `http://127.0.0.1:8080`. Le back-office tient

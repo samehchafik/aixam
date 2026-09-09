@@ -22,9 +22,12 @@
 # sources.
 #
 # apps/api/static/ est monte en volume par docker compose : une fois la SPA
-# compilee, un simple rechargement du navigateur suffit. Reconstruire l'image
-# de l'API n'est necessaire que si requirements.txt ou le Dockerfile bougent
-# -- c'est ce que fait --api-image.
+# compilee, un simple rechargement du navigateur suffit.
+#
+# Le code Python, lui, est COPIE dans l'image (`COPY . .` du Dockerfile) et
+# n'est pas monte. Toute modification cote API -- pas seulement
+# requirements.txt ou le Dockerfile -- demande donc --api-image, sinon le
+# conteneur continue de tourner sur l'ancien code sans rien signaler.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,7 +42,7 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
   echo "Ou compiler : --docker | --local   (defaut : BUILD_MODE=$BUILD_MODE)"
-  echo "Options : --api-image (reconstruit aussi l'image de l'API),"
+  echo "Options : --api-image (obligatoire apres toute modification Python),"
   echo "          --reset-config (reprend le config.json des sources), -h"
   echo "Variables : BUILD_MODE (docker|local), NODE_IMAGE (defaut $NODE_IMAGE)"
 }

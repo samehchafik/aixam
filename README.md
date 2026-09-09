@@ -58,9 +58,10 @@ respectives, et un `node_modules` compilé sur macOS ne peut pas empoisonner un
 build Linux (esbuild livre un binaire par plateforme). `NODE_IMAGE=` change
 l'image.
 
-`--api-image` reconstruit en plus l'image docker de l'API — utile seulement
-quand `requirements.txt` ou le `Dockerfile` bougent, jamais pour un changement
-de front.
+`--api-image` reconstruit en plus l'image docker de l'API. **Obligatoire après
+toute modification Python** : le `Dockerfile` fait `COPY . .`, le code n'est
+pas monté en volume, et sans reconstruction le conteneur repart sur l'ancien
+code sans rien signaler. Inutile pour un changement de front.
 
 `apps/api/static/` est monté en volume : après un `bin/build.sh`, un
 rechargement du navigateur suffit, sans redémarrer quoi que ce soit. Une seule
