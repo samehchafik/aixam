@@ -30,14 +30,32 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       <form onSubmit={submit}>
         <p className="brand">AIXAM</p>
         <h1>Back-office EASY</h1>
-        <label>
+        {/*
+          Sans `name`, `id` et surtout `autoComplete`, les gestionnaires de mots
+          de passe ne reconnaissent pas les deux champs et ne proposent ni
+          l'enregistrement ni le remplissage : ils retombent sinon sur des
+          heuristiques qui echouent souvent dans une application d'une seule
+          page, ou le formulaire disparait sans que le navigateur navigue.
+        */}
+        <label htmlFor="email">
           <span>Email</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </label>
-        <label>
+        <label htmlFor="password">
           <span>Mot de passe</span>
           <input
+            id="password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
