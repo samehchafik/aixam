@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button, Group, Paper, PasswordInput, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { api } from '../lib/api'
 
 type SyncCfg = {
@@ -10,12 +11,13 @@ type SyncCfg = {
   last_push_at: string | null
 }
 
-const dateFr = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString('fr-FR') : 'jamais'
+const dateFr = (iso: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : 'jamais')
 
-/** Remontee vers la base maitre. Sens unique : ce back-office pousse, il ne
- *  recoit pas. Sur la base maitre elle-meme, le panneau se contente d'afficher
- *  ce qu'elle detient -- il n'y a rien a y synchroniser. */
+/**
+ * Remontee vers la base maitre. Sens unique : ce back-office pousse, il ne
+ * recoit pas. Sur la base maitre elle-meme, le panneau se contente d'afficher
+ * ce qu'elle detient -- il n'y a rien a y synchroniser.
+ */
 export function SyncPanel() {
   const [cfg, setCfg] = useState<SyncCfg | null>(null)
   const [token, setToken] = useState('')
@@ -28,36 +30,39 @@ export function SyncPanel() {
     load()
   }, [])
 
-  if (!cfg) return <p className="muted">Chargement...</p>
+  if (!cfg) return <Text c="dimmed">Chargement...</Text>
 
-  // Cette instance EST la base maitre : elle recoit, elle n'envoie pas.
   if (cfg.server_enabled) {
     return (
-      <>
-        <h2>Base maitre</h2>
-        <p className="muted hint">
-          Ce back-office est la base maitre : les remontees arrivent des back-offices
-          des stands, qui poussent vers lui. Il n'y a rien a synchroniser d'ici.
-        </p>
-        <table>
-          <thead><tr><th /><th>Recus</th></tr></thead>
-          <tbody>
-            <tr><td>Visiteurs</td><td>{cfg.local.visitors}</td></tr>
-            <tr><td>Creations</td><td>{cfg.local.designs}</td></tr>
-            <tr><td>Evenements</td><td>{cfg.local.events}</td></tr>
-          </tbody>
-        </table>
-      </>
+      <div>
+        <Title order={2} fz="lg" mb="sm">Base maitre</Title>
+        <Stack gap="sm" maw={560}>
+          <Text c="dimmed" fz="sm">
+            Ce back-office est la base maitre : les remontees arrivent des back-offices des
+            stands, qui poussent vers lui. Il n'y a rien a synchroniser d'ici.
+          </Text>
+          <Paper withBorder radius="md">
+            <Table>
+              <Table.Thead>
+                <Table.Tr><Table.Th /><Table.Th>Recus</Table.Th></Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                <Table.Tr><Table.Td>Visiteurs</Table.Td><Table.Td>{cfg.local.visitors}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Creations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Evenements</Table.Td><Table.Td>{cfg.local.events}</Table.Td></Table.Tr>
+              </Table.Tbody>
+            </Table>
+          </Paper>
+        </Stack>
+      </div>
     )
   }
 
   const save = async () => {
-    setCfg(
-      await api<SyncCfg>('/api/admin/sync', {
-        method: 'PUT',
-        body: JSON.stringify({ url: cfg.url, ...(token ? { token } : {}) }),
-      }),
-    )
+    setCfg(await api<SyncCfg>('/api/admin/sync', {
+      method: 'PUT',
+      body: JSON.stringify({ url: cfg.url, ...(token ? { token } : {}) }),
+    }))
     setToken('')
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -66,32 +71,26 @@ export function SyncPanel() {
   const test = async () => {
     setMessage('Test en cours...')
     const r = await api<{ ok: boolean; error?: string; remote?: Record<string, number | string> }>(
-      '/api/admin/sync/test',
-      { method: 'POST' },
+      '/api/admin/sync/test', { method: 'POST' },
     )
-    setMessage(
-      r.ok
-        ? `Liaison etablie — enregistre sous « ${r.remote!.client} ». Le serveur detient ${r.remote!.visitors} visiteur(s) et ${r.remote!.designs} creation(s).`
-        : `Echec : ${r.error}`,
-    )
+    setMessage(r.ok
+      ? `Liaison etablie — enregistre sous « ${r.remote!.client} ». Le serveur detient ${r.remote!.visitors} visiteur(s) et ${r.remote!.designs} creation(s).`
+      : `Echec : ${r.error}`)
   }
 
-  const push = async (full: boolean) => {
-    if (full && !confirm(
+  const push = async (tout: boolean) => {
+    if (tout && !confirm(
       "Tout renvoyer reexpedie l'integralite des donnees. Sans danger (rien n'est duplique), " +
       "mais un visiteur efface cote serveur y reapparaitra. Continuer ?")) return
     setBusy(true)
-    setMessage(full ? 'Renvoi complet en cours...' : 'Synchronisation en cours...')
+    setMessage(tout ? 'Renvoi complet en cours...' : 'Synchronisation en cours...')
     try {
       const r = await api<{ ok: boolean; error?: string; totaux?: Record<string, number> }>(
-        `/api/admin/sync/push${full ? '?full=true' : ''}`,
-        { method: 'POST' },
+        `/api/admin/sync/push${tout ? '?full=true' : ''}`, { method: 'POST' },
       )
-      setMessage(
-        r.ok
-          ? `Termine : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} creation(s), ${r.totaux!.events} evenement(s) envoyes a la base maitre.`
-          : `Echec : ${r.error}`,
-      )
+      setMessage(r.ok
+        ? `Termine : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} creation(s), ${r.totaux!.events} evenement(s) envoyes a la base maitre.`
+        : `Echec : ${r.error}`)
       load()
     } finally {
       setBusy(false)
@@ -99,69 +98,71 @@ export function SyncPanel() {
   }
 
   return (
-    <>
-      <h2>Synchronisation vers la base maitre</h2>
-      <form
-        className="settings"
-        onSubmit={(e) => {
+    <div>
+      <Title order={2} fz="lg" mb="sm">Synchronisation vers la base maitre</Title>
+      <Paper
+        component="form"
+        withBorder
+        radius="md"
+        p="lg"
+        maw={560}
+        onSubmit={(e: React.FormEvent) => {
           e.preventDefault()
           save()
         }}
       >
-      <p className="muted hint">
-        Ce back-office produit, la base maitre consolide. L'envoi ne part que dans ce
-        sens, et il ne part que quand vous le demandez — rien n'est automatique.
-        Synchroniser deux fois ne cree pas de doublon : chaque ligne garde son
-        identifiant.
-      </p>
+        <Stack gap="md">
+          <Text c="dimmed" fz="sm">
+            Ce back-office produit, la base maitre consolide. L'envoi ne part que dans ce sens,
+            et il ne part que quand vous le demandez — rien n'est automatique. Synchroniser deux
+            fois ne cree pas de doublon : chaque ligne garde son identifiant.
+          </Text>
 
-      <label>
-        <span>Adresse de la base maitre</span>
-        <input
-          type="text"
-          placeholder="https://aixam-admin.ifrit.fr"
-          value={cfg.url}
-          onChange={(e) => setCfg({ ...cfg, url: e.target.value })}
-        />
-      </label>
+          <TextInput
+            label="Adresse de la base maitre"
+            placeholder="https://aixam-admin.ifrit.fr"
+            value={cfg.url}
+            onChange={(e) => setCfg({ ...cfg, url: e.currentTarget.value })}
+          />
+          <PasswordInput
+            label="Jeton"
+            description="Le meme que pour le relais d'emails : genere dans « Clients de relais » du back-office serveur."
+            placeholder={cfg.token_set ? 'Jeton en place — laisser vide pour le garder' : 'axr_...'}
+            autoComplete="off"
+            value={token}
+            onChange={(e) => setToken(e.currentTarget.value)}
+          />
 
-      <label>
-        <span>Jeton</span>
-        <input
-          type="password"
-          autoComplete="off"
-          placeholder={cfg.token_set ? 'Jeton en place — laisser vide pour le garder' : 'axr_...'}
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-        <p className="muted hint">
-          Le meme que pour le relais d'emails : genere dans « Clients de relais » du
-          back-office serveur.
-        </p>
-      </label>
+          <Group>
+            <Button type="submit" color={saved ? 'teal' : undefined}>
+              {saved ? 'Enregistre' : 'Enregistrer'}
+            </Button>
+            <Button type="button" variant="subtle" onClick={test}>Tester la liaison</Button>
+          </Group>
 
-      <div className="toolbar">
-        <button type="submit">{saved ? 'Enregistre' : 'Enregistrer'}</button>
-        {/* type=button : sans lui, un bouton dans un formulaire soumet. */}
-        <button type="button" className="link" onClick={test}>Tester la liaison</button>
-      </div>
+          <Table withTableBorder>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th />
+                <Table.Th>En local</Table.Th>
+                <Table.Th>Synchronise jusqu'au</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              <Table.Tr><Table.Td>Visiteurs</Table.Td><Table.Td>{cfg.local.visitors}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.visitors)}</Table.Td></Table.Tr>
+              <Table.Tr><Table.Td>Creations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.designs)}</Table.Td></Table.Tr>
+              <Table.Tr><Table.Td>Evenements</Table.Td><Table.Td>{cfg.local.events}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.events)}</Table.Td></Table.Tr>
+            </Table.Tbody>
+          </Table>
 
-      <table>
-        <thead><tr><th /><th>En local</th><th>Synchronise jusqu'au</th></tr></thead>
-        <tbody>
-          <tr><td>Visiteurs</td><td>{cfg.local.visitors}</td><td className="muted">{dateFr(cfg.cursors.visitors)}</td></tr>
-          <tr><td>Creations</td><td>{cfg.local.designs}</td><td className="muted">{dateFr(cfg.cursors.designs)}</td></tr>
-          <tr><td>Evenements</td><td>{cfg.local.events}</td><td className="muted">{dateFr(cfg.cursors.events)}</td></tr>
-        </tbody>
-      </table>
-
-      <div className="toolbar">
-        <button type="button" disabled={busy} onClick={() => push(false)}>Synchroniser maintenant</button>
-        <button type="button" className="link" disabled={busy} onClick={() => push(true)}>Tout renvoyer</button>
-      </div>
-      <p className="muted hint">Derniere synchronisation : {dateFr(cfg.last_push_at)}</p>
-      {message && <p className="muted hint">{message}</p>}
-      </form>
-    </>
+          <Group>
+            <Button type="button" loading={busy} onClick={() => push(false)}>Synchroniser maintenant</Button>
+            <Button type="button" variant="subtle" disabled={busy} onClick={() => push(true)}>Tout renvoyer</Button>
+          </Group>
+          <Text c="dimmed" fz="sm">Derniere synchronisation : {dateFr(cfg.last_push_at)}</Text>
+          {message && <Text c="dimmed" fz="sm">{message}</Text>}
+        </Stack>
+      </Paper>
+    </div>
   )
 }

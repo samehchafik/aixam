@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core'
 import { api, auth } from '../lib/api'
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
@@ -26,46 +27,41 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div className="login">
-      <form onSubmit={submit}>
-        <p className="brand">AIXAM</p>
-        <h1>Back-office EASY</h1>
-        {/*
-          Sans `name`, `id` et surtout `autoComplete`, les gestionnaires de mots
-          de passe ne reconnaissent pas les deux champs et ne proposent ni
-          l'enregistrement ni le remplissage : ils retombent sinon sur des
-          heuristiques qui echouent souvent dans une application d'une seule
-          page, ou le formulaire disparait sans que le navigateur navigue.
-        */}
-        <label htmlFor="email">
-          <span>Email</span>
-          <input
+    <Center mih="100vh" p="md">
+      <Paper component="form" onSubmit={submit} withBorder p="xl" radius="lg" w={380} shadow="sm">
+        <Stack gap="md">
+          <div>
+            <Text fw={700} fz="sm" c="dimmed" style={{ letterSpacing: '0.16em' }}>AIXAM</Text>
+            <Title order={2} mt={4}>Back-office EASY</Title>
+          </div>
+
+          {/* name, id et autoComplete : sans eux les gestionnaires de mots de
+              passe ne reconnaissent pas le couple et ne proposent rien. */}
+          <TextInput
             id="email"
             name="email"
+            label="Email"
             type="email"
             autoComplete="username"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.currentTarget.value)}
             required
           />
-        </label>
-        <label htmlFor="password">
-          <span>Mot de passe</span>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
+            label="Mot de passe"
             autoComplete="current-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.currentTarget.value)}
             required
           />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={busy}>
-          {busy ? 'Connexion...' : 'Se connecter'}
-        </button>
-      </form>
-    </div>
+
+          {error && <Alert color="red" variant="light">{error}</Alert>}
+
+          <Button type="submit" loading={busy} fullWidth mt="xs">Se connecter</Button>
+        </Stack>
+      </Paper>
+    </Center>
   )
 }

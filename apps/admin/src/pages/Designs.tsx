@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
+import {
+  Anchor, Badge, Button, Card, Group, Modal, Pagination, Select, SimpleGrid, Stack, Tabs, Text,
+  TextInput, Title, UnstyledButton,
+} from '@mantine/core'
 import { api } from '../lib/api'
+
+type Verdict = 'pending' | 'approved' | 'rejected'
 
 type Row = {
   id: string
@@ -8,18 +14,11 @@ type Row = {
   render_url: string | null
   visitor_name: string | null
   visitor_email: string | null
-  moderation: 'pending' | 'approved' | 'rejected'
+  moderation: Verdict
   moderated_at: string | null
 }
 
 type Compteurs = { pending: number; approved: number; rejected: number }
-
-// Le second onglet est preselectionne sur « validees » : c'est ce qu'on vient
-// verifier neuf fois sur dix, le rejet etant l'exception qu'on releit rarement.
-const VERDICTS = [
-  { value: 'approved', label: 'Validees' },
-  { value: 'rejected', label: 'Rejetees' },
-]
 
 const TRIS = [
   { value: 'date_desc', label: 'Plus recentes' },
@@ -28,6 +27,17 @@ const TRIS = [
   { value: 'name_desc', label: 'Nom (Z-A)' },
 ]
 
+// Preselectionne sur « validees » : c'est ce qu'on vient verifier neuf fois
+// sur dix, le rejet etant l'exception qu'on relit rarement.
+const VERDICTS = [
+  { value: 'approved', label: 'Validees' },
+  { value: 'rejected', label: 'Rejetees' },
+]
+
+// Une planche fait six fois plus large que haute : a quatre colonnes elle
+// devient une lamelle de 47 px, et l'animateur ne peut plus juger ce qu'il
+// valide. Moins de colonnes, donc, et moins de vignettes par page.
+const PAR_PAGE = 12
 const date = (iso: string) => new Date(iso).toLocaleString('fr-FR')
 
 export function Designs() {
@@ -35,11 +45,12 @@ export function Designs() {
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date_desc')
-  const [agrandie, setAgrandie] = useState<number | null>(null)
   const [onglet, setOnglet] = useState<'attente' | 'traitees'>('attente')
   const [verdict, setVerdict] = useState('approved')
+  const [page, setPage] = useState(1)
   const [compteurs, setCompteurs] = useState<Compteurs>({ pending: 0, approved: 0, rejected: 0 })
   const [rafraichir, setRafraichir] = useState(0)
+  const [agrandie, setAgrandie] = useState<number | null>(null)
 
   const moderation = onglet === 'attente' ? 'pending' : verdict
 
@@ -47,9 +58,21 @@ export function Designs() {
     api<Compteurs>('/api/admin/designs/counts').then(setCompteurs)
   }, [rafraichir])
 
+  // Changer de filtre ramene en page 1 : rester en page 3 d'un resultat qui
+  // n'en compte plus qu'une afficherait une grille vide sans raison.
+  useEffect(() => {
+    setPage(1)
+  }, [search, sort, moderation])
+
   useEffect(() => {
     const id = setTimeout(() => {
-      const q = new URLSearchParams({ limit: '60', search, sort, moderation })
+      const q = new URLSearchParams({
+        limit: String(PAR_PAGE),
+        offset: String((page - 1) * PAR_PAGE),
+        search,
+        sort,
+        moderation,
+      })
       api<{ total: number; items: Row[] }>(`/api/admin/designs?${q}`).then((res) => {
         setRows(res.items)
         setTotal(res.total)
@@ -59,10 +82,10 @@ export function Designs() {
       })
     }, 250)
     return () => clearTimeout(id)
-  }, [search, sort, moderation, rafraichir])
+  }, [search, sort, moderation, page, rafraichir])
 
   /** Verdict de l'animateur. La creation quitte alors l'onglet ou elle etait. */
-  const decider = async (id: string, decision: Row['moderation']) => {
+  const decider = async (id: string, decision: Verdict) => {
     await api(`/api/admin/designs/${id}/moderation`, {
       method: 'POST',
       body: JSON.stringify({ decision }),
@@ -73,184 +96,165 @@ export function Designs() {
   // On ne navigue qu'entre les creations reellement rendues : une vignette en
   // echec n'a pas d'image a agrandir.
   const rendues = rows.filter((row) => row.render_url)
-
   const deplacer = (pas: number) =>
     setAgrandie((i) => Math.min(rendues.length - 1, Math.max(0, (i ?? 0) + pas)))
-
-  useEffect(() => {
-    if (agrandie === null) return
-    const touche = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setAgrandie(null)
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        // Sans ca, la fleche fait AUSSI defiler la grille restee dessous : on
-        // referme l'agrandissement a un tout autre endroit de la liste.
-        e.preventDefault()
-        deplacer(e.key === 'ArrowLeft' ? -1 : 1)
-      }
-    }
-    window.addEventListener('keydown', touche)
-    return () => window.removeEventListener('keydown', touche)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agrandie, rendues.length])
-
-  // Effet separe : sur `agrandie`, il se rejouerait a chaque fleche et
-  // finirait par « restaurer » le blocage qu'il vient lui-meme de poser.
-  const ouvert = agrandie !== null
-  useEffect(() => {
-    if (!ouvert) return
-    const precedent = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = precedent
-    }
-  }, [ouvert])
-
   const ouverte = agrandie === null ? null : rendues[agrandie]
+  const pages = Math.max(1, Math.ceil(total / PAR_PAGE))
 
   return (
-    <>
-      <h1>Creations <span className="muted">({total})</span></h1>
+    <Stack gap="md">
+      <Title order={1} fz={28}>
+        Creations <Text span c="dimmed" fz={28} fw={400}>({total})</Text>
+      </Title>
 
-      <nav className="onglets">
-        <button
-          type="button"
-          className={onglet === 'attente' ? 'actif' : ''}
-          onClick={() => setOnglet('attente')}
-        >
-          A moderer <span className="pastille">{compteurs.pending}</span>
-        </button>
-        <button
-          type="button"
-          className={onglet === 'traitees' ? 'actif' : ''}
-          onClick={() => setOnglet('traitees')}
-        >
-          Traitees <span className="pastille">{compteurs.approved + compteurs.rejected}</span>
-        </button>
-      </nav>
+      <Tabs value={onglet} onChange={(v) => setOnglet((v as typeof onglet) ?? 'attente')}>
+        <Tabs.List>
+          <Tabs.Tab
+            value="attente"
+            rightSection={<Badge size="sm" circle variant={compteurs.pending ? 'filled' : 'light'}>{compteurs.pending}</Badge>}
+          >
+            A moderer
+          </Tabs.Tab>
+          <Tabs.Tab
+            value="traitees"
+            rightSection={<Badge size="sm" circle variant="light">{compteurs.approved + compteurs.rejected}</Badge>}
+          >
+            Traitees
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
-      <div className="toolbar">
-        <input
+      <Group>
+        <TextInput
           placeholder="Filtrer par nom, prenom ou email"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          w={280}
+          aria-label="Filtrer les creations"
         />
-        <select
-          aria-label="Trier les creations"
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-        >
-          {TRIS.map((tri) => (
-            <option key={tri.value} value={tri.value}>{tri.label}</option>
-          ))}
-        </select>
+        <Select data={TRIS} value={sort} onChange={(v) => setSort(v ?? 'date_desc')} w={180} aria-label="Trier" />
         {onglet === 'traitees' && (
-          <select
-            aria-label="Filtrer par verdict"
+          <Select
+            data={VERDICTS}
             value={verdict}
-            onChange={(e) => setVerdict(e.target.value)}
-          >
-            {VERDICTS.map((v) => (
-              <option key={v.value} value={v.value}>{v.label}</option>
-            ))}
-          </select>
+            onChange={(v) => setVerdict(v ?? 'approved')}
+            w={160}
+            aria-label="Filtrer par verdict"
+          />
         )}
-      </div>
+      </Group>
 
       {rows.length === 0 && (
-        <p className="muted">
+        <Text c="dimmed">
           {onglet === 'attente' && !search
             ? 'Rien a moderer : tout a ete traite.'
             : 'Aucune creation ne correspond.'}
-        </p>
+        </Text>
       )}
 
-      <div className="grid">
+      <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md">
         {rows.map((row) => (
-          <figure key={row.id} className={row.status === 'rendered' ? '' : 'failed'}>
+          <Card key={row.id} padding={0}>
             {row.render_url ? (
-              <button
-                type="button"
-                className="vignette"
-                title="Agrandir"
+              <UnstyledButton
                 onClick={() => setAgrandie(rendues.findIndex((r) => r.id === row.id))}
+                title="Agrandir"
               >
-                <img src={row.render_url} alt="" loading="lazy" />
-              </button>
+                <img src={row.render_url} alt="" loading="lazy" className="vignette-planche" />
+              </UnstyledButton>
             ) : (
-              <div className="placeholder">{row.status}</div>
+              <Text c="dimmed" fz="sm" ta="center" py="lg">{row.status}</Text>
             )}
-            <figcaption>
-              {/* Sans nom : le visiteur a ete supprime (RGPD) ou la creation
-                  a ete faite en mode demo, sans inscription. */}
-              <strong>{row.visitor_name ?? 'Anonyme'}</strong>
-              {row.visitor_email && <span className="email">{row.visitor_email}</span>}
-              <span>{date(row.created_at)}</span>
-            </figcaption>
 
-            {onglet === 'attente' ? (
-              <div className="verdict">
-                <button type="button" className="valider" onClick={() => decider(row.id, 'approved')}>
-                  Valider
-                </button>
-                <button type="button" className="rejeter" onClick={() => decider(row.id, 'rejected')}>
-                  Rejeter
-                </button>
-              </div>
-            ) : (
-              <div className="verdict">
-                {/* Reversible : un clic de travers se rattrape sans passer par
-                    la base, et la creation revient dans l'onglet d'en face. */}
-                <span className={row.moderation === 'approved' ? 'ok' : 'ko'}>
-                  {row.moderation === 'approved' ? 'Validee' : 'Rejetee'}
-                </span>
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() =>
-                    decider(row.id, row.moderation === 'approved' ? 'rejected' : 'approved')
-                  }
-                >
-                  {row.moderation === 'approved' ? 'Rejeter' : 'Valider'}
-                </button>
-              </div>
-            )}
-          </figure>
+            <Stack gap={2} px="md" pt="sm">
+              {/* Sans nom : le visiteur a ete supprime (RGPD) ou la creation a
+                  ete faite en mode demo, sans inscription. */}
+              <Text fw={600} fz="sm">{row.visitor_name ?? 'Anonyme'}</Text>
+              {row.visitor_email && <Text c="dimmed" fz="xs" truncate>{row.visitor_email}</Text>}
+              <Text c="dimmed" fz="xs">{date(row.created_at)}</Text>
+            </Stack>
+
+            <Group gap="xs" p="md" pt="sm" wrap="nowrap">
+              {onglet === 'attente' ? (
+                <>
+                  <Button color="teal" size="xs" flex={1} onClick={() => decider(row.id, 'approved')}>
+                    Valider
+                  </Button>
+                  <Button color="red" size="xs" flex={1} onClick={() => decider(row.id, 'rejected')}>
+                    Rejeter
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Badge color={row.moderation === 'approved' ? 'teal' : 'red'} variant="light">
+                    {row.moderation === 'approved' ? 'Validee' : 'Rejetee'}
+                  </Badge>
+                  {/* Reversible : un clic de travers se rattrape sans passer
+                      par la base. */}
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    ml="auto"
+                    color={row.moderation === 'approved' ? 'red' : 'teal'}
+                    onClick={() => decider(row.id, row.moderation === 'approved' ? 'rejected' : 'approved')}
+                  >
+                    {row.moderation === 'approved' ? 'Rejeter' : 'Valider'}
+                  </Button>
+                </>
+              )}
+            </Group>
+          </Card>
         ))}
-      </div>
+      </SimpleGrid>
 
-      {ouverte && (
-        <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setAgrandie(null)}>
-          <button type="button" className="fermer" aria-label="Fermer" onClick={() => setAgrandie(null)}>
-            &times;
-          </button>
-          <figure onClick={(e) => e.stopPropagation()}>
-            <img src={ouverte.render_url!} alt="" />
-            <figcaption>
-              <strong>{ouverte.visitor_name ?? 'Anonyme'}</strong>
-              {ouverte.visitor_email && <span>{ouverte.visitor_email}</span>}
-              <span>{date(ouverte.created_at)}</span>
-              <a href={ouverte.render_url!} target="_blank" rel="noreferrer">Ouvrir le JPEG</a>
-            </figcaption>
-          </figure>
-          <nav onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              disabled={agrandie === 0}
-              onClick={() => deplacer(-1)}
-            >
-              Precedente
-            </button>
-            <span className="muted">{(agrandie ?? 0) + 1} / {rendues.length}</span>
-            <button
-              type="button"
-              disabled={agrandie === rendues.length - 1}
-              onClick={() => deplacer(1)}
-            >
-              Suivante
-            </button>
-          </nav>
-        </div>
+      {pages > 1 && (
+        <Group justify="space-between">
+          <Text c="dimmed" fz="sm">Page {page} sur {pages}</Text>
+          <Pagination total={pages} value={page} onChange={setPage} size="sm" withEdges />
+        </Group>
       )}
-    </>
+
+      {/* Modal plutot qu'une surcouche maison : piege de focus, touche Echap et
+          blocage du defilement viennent avec. Restent les fleches. */}
+      <Modal
+        opened={ouverte !== null}
+        onClose={() => setAgrandie(null)}
+        fullScreen
+        withCloseButton
+        title={ouverte?.visitor_name ?? 'Anonyme'}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault()
+            deplacer(e.key === 'ArrowLeft' ? -1 : 1)
+          }
+        }}
+      >
+        {ouverte && (
+          <Stack gap="md" h="calc(100vh - 120px)">
+            <div className="loupe-image">
+              <img src={ouverte.render_url!} alt="" />
+            </div>
+            <Group justify="space-between" wrap="wrap">
+              <Stack gap={2}>
+                {ouverte.visitor_email && <Text fz="sm" c="dimmed">{ouverte.visitor_email}</Text>}
+                <Text fz="sm" c="dimmed">{date(ouverte.created_at)}</Text>
+                <Anchor href={ouverte.render_url!} target="_blank" rel="noreferrer" fz="sm">
+                  Ouvrir le JPEG
+                </Anchor>
+              </Stack>
+              <Group>
+                <Button variant="default" disabled={agrandie === 0} onClick={() => deplacer(-1)}>
+                  Precedente
+                </Button>
+                <Text c="dimmed" fz="sm">{(agrandie ?? 0) + 1} / {rendues.length}</Text>
+                <Button variant="default" disabled={agrandie === rendues.length - 1} onClick={() => deplacer(1)}>
+                  Suivante
+                </Button>
+              </Group>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+    </Stack>
   )
 }

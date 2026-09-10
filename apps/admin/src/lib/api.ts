@@ -62,3 +62,24 @@ export type Stats = {
   emails_pending: number
   emails_failed: number
 }
+
+
+/**
+ * Telecharge un fichier servi par l'API.
+ *
+ * Un simple <a href> ne peut pas porter l'en-tete Authorization : l'export CSV
+ * repondait donc 401, sans que rien ne l'indique a l'ecran.
+ */
+export async function telecharger(path: string, nom: string): Promise<void> {
+  const res = await fetch(path, {
+    cache: 'no-store',
+    headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {},
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const url = URL.createObjectURL(await res.blob())
+  const lien = document.createElement('a')
+  lien.href = url
+  lien.download = nom
+  lien.click()
+  URL.revokeObjectURL(url)
+}

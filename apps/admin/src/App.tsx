@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Navigate, Route, HashRouter as Router, Routes } from 'react-router-dom'
+import { AppShell, Box, Burger, Group, NavLink as MantineNavLink, Stack, Text, UnstyledButton } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { auth } from './lib/api'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
@@ -18,42 +20,66 @@ const NAV = [
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(Boolean(auth.token))
+  const [ouvert, { toggle, close }] = useDisclosure()
 
   if (!authenticated) return <Login onSuccess={() => setAuthenticated(true)} />
 
   return (
     <Router>
-      <div className="shell">
-        <aside>
-          <p className="brand">AIXAM</p>
-          <nav>
+      <AppShell
+        header={{ height: 56 }}
+        // Le menu se replie sous 768px : l'animateur consulte parfois le
+        // back-office depuis une tablette, entre deux visiteurs.
+        navbar={{ width: 220, breakpoint: 'sm', collapsed: { mobile: !ouvert } }}
+        padding="lg"
+      >
+        <AppShell.Header>
+          <Group h="100%" px="md" justify="space-between">
+            <Group gap="sm">
+              <Burger opened={ouvert} onClick={toggle} hiddenFrom="sm" size="sm" />
+              <Text fw={700} fz="sm" style={{ letterSpacing: '0.16em' }}>AIXAM</Text>
+              <Text c="dimmed" fz="sm" visibleFrom="sm">Back-office EASY</Text>
+            </Group>
+            <UnstyledButton
+              onClick={() => {
+                auth.clear()
+                setAuthenticated(false)
+              }}
+            >
+              <Text c="aixam.6" fz="sm" fw={500}>Deconnexion</Text>
+            </UnstyledButton>
+          </Group>
+        </AppShell.Header>
+
+        <AppShell.Navbar p="sm">
+          <Stack gap={2}>
             {NAV.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end}>
-                {item.label}
-              </NavLink>
+              <MantineNavLink
+                key={item.to}
+                component={NavLink}
+                to={item.to}
+                end={item.end}
+                label={item.label}
+                onClick={close}
+                style={{ borderRadius: 'var(--mantine-radius-md)' }}
+              />
             ))}
-          </nav>
-          <button
-            className="link logout"
-            onClick={() => {
-              auth.clear()
-              setAuthenticated(false)
-            }}
-          >
-            Deconnexion
-          </button>
-        </aside>
-        <main>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/visiteurs" element={<Visitors />} />
-            <Route path="/creations" element={<Designs />} />
-            <Route path="/emails" element={<Emails />} />
-            <Route path="/reglages" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
+          </Stack>
+        </AppShell.Navbar>
+
+        <AppShell.Main>
+          <Box maw={1280}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/visiteurs" element={<Visitors />} />
+              <Route path="/creations" element={<Designs />} />
+              <Route path="/emails" element={<Emails />} />
+              <Route path="/reglages" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Box>
+        </AppShell.Main>
+      </AppShell>
     </Router>
   )
 }

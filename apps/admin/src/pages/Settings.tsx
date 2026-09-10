@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import {
+  Button, Code, Group, NumberInput, Paper, Stack, Switch, Table, Text, Title,
+} from '@mantine/core'
 import { api } from '../lib/api'
 import { MailConfig, type MailCfg } from '../components/MailConfig'
 import { RelayClients } from '../components/RelayClients'
@@ -13,104 +16,95 @@ type Config = {
 export function Settings() {
   const [config, setConfig] = useState<Config | null>(null)
   const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    api<Config>('/api/admin/settings').then(setConfig)
-  }, [])
-
-  const save = async () => {
-    if (!config) return
-    setConfig(await api<Config>('/api/admin/settings', {
-      method: 'PUT',
-      body: JSON.stringify(config),
-    }))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
   const [kiosks, setKiosks] = useState<{ id: string; name: string; token: string }[]>([])
-  useEffect(() => {
-    api<typeof kiosks>('/api/admin/kiosks').then(setKiosks)
-  }, [])
-
   // La section « Clients de relais » n'a de sens que sur le back-office qui a
   // accepte ce role (RELAY_SERVER_ENABLED) ; ailleurs elle serait un ecran mort.
   const [mail, setMail] = useState<MailCfg | null>(null)
 
-  if (!config) return <p className="muted">Chargement...</p>
+  useEffect(() => {
+    api<Config>('/api/admin/settings').then(setConfig)
+    api<typeof kiosks>('/api/admin/kiosks').then(setKiosks)
+  }, [])
+
+  if (!config) return <Text c="dimmed">Chargement...</Text>
+
+  const save = async () => {
+    setConfig(await api<Config>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(config) }))
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
 
   return (
-    <>
-      <h1>Reglages</h1>
+    <Stack gap="xl">
+      <Title order={1} fz={28}>Reglages</Title>
 
-      <form
-        className="settings"
-        onSubmit={(e) => {
+      <Paper
+        component="form"
+        withBorder
+        radius="md"
+        p="lg"
+        maw={560}
+        onSubmit={(e: React.FormEvent) => {
           e.preventDefault()
           save()
         }}
       >
-        <label className="switch">
-          <input
-            type="checkbox"
+        <Stack gap="lg">
+          <Switch
             checked={config.verification_bypass}
-            onChange={(e) => setConfig({ ...config, verification_bypass: e.target.checked })}
+            onChange={(e) => setConfig({ ...config, verification_bypass: e.currentTarget.checked })}
+            label="Mode degrade : ignorer la verification email"
+            description="A activer si le reseau du salon tombe. Les visiteurs passent directement a la creation ; les emails partent quand la connexion revient."
           />
-          <div>
-            <strong>Mode degrade : ignorer la verification email</strong>
-            <p className="muted">
-              A activer si le reseau du salon tombe. Les visiteurs passent directement a la
-              creation ; les emails partent quand la connexion revient.
-            </p>
-          </div>
-        </label>
-
-        <label>
-          <span>Retour a l'accueil apres inactivite (secondes)</span>
-          <input
-            type="number"
+          <NumberInput
+            label="Retour a l'accueil apres inactivite"
+            suffix=" s"
+            min={10}
             value={config.idle_timeout_seconds}
-            onChange={(e) =>
-              setConfig({ ...config, idle_timeout_seconds: Number(e.target.value) })
-            }
+            onChange={(v) => setConfig({ ...config, idle_timeout_seconds: Number(v) || 0 })}
           />
-        </label>
-
-        <label>
-          <span>Vitesse du slideshow d'attente (secondes)</span>
-          <input
-            type="number"
+          <NumberInput
+            label="Vitesse du slideshow d'attente"
+            suffix=" s"
+            min={1}
             value={config.attract_interval_seconds}
-            onChange={(e) =>
-              setConfig({ ...config, attract_interval_seconds: Number(e.target.value) })
-            }
+            onChange={(v) => setConfig({ ...config, attract_interval_seconds: Number(v) || 0 })}
           />
-        </label>
+          <Group>
+            <Button type="submit" color={saved ? 'teal' : undefined}>
+              {saved ? 'Enregistre' : 'Enregistrer'}
+            </Button>
+          </Group>
+        </Stack>
+      </Paper>
 
-        <button type="submit">{saved ? 'Enregistre' : 'Enregistrer'}</button>
-      </form>
-
-      <h2>Envoi des emails</h2>
       <MailConfig onLoaded={setMail} />
 
       <SyncPanel />
 
-      <h2>Bornes</h2>
-      <table>
-        <thead><tr><th>Nom</th><th>Token (a copier dans config.json)</th></tr></thead>
-        <tbody>
-          {kiosks.map((k) => (
-            <tr key={k.id}><td>{k.name}</td><td><code>{k.token}</code></td></tr>
-          ))}
-        </tbody>
-      </table>
+      <div>
+        <Title order={2} fz="lg" mb="sm">Bornes</Title>
+        <Paper withBorder radius="md">
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Nom</Table.Th>
+                <Table.Th>Token (a copier dans config.json)</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {kiosks.map((k) => (
+                <Table.Tr key={k.id}>
+                  <Table.Td fw={500}>{k.name}</Table.Td>
+                  <Table.Td><Code>{k.token}</Code></Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Paper>
+      </div>
 
-      {mail?.relay_server_enabled && (
-        <>
-          <h2>Clients de relais</h2>
-          <RelayClients defaultQuota={mail.relay_default_daily_quota} />
-        </>
-      )}
-    </>
+      {mail?.relay_server_enabled && <RelayClients defaultQuota={mail.relay_default_daily_quota} />}
+    </Stack>
   )
 }

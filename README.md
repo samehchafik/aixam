@@ -10,8 +10,8 @@ création en JPEG par email.
 ```
 apps/api      FastAPI + Postgres — API REST, WebSocket de sync, worker email,
               rendu serveur des créations, et sert les deux SPA
-apps/admin    Back-office React (login, dashboard, visiteurs, créations,
-              file d'envoi, réglages)
+apps/admin    Back-office React + Mantine (login, dashboard, visiteurs,
+              modération des créations, file d'envoi, réglages)
 apps/kiosk    Front borne React (écran tactile + grand écran)
 scripts       Lanceurs Chromium kiosque, générateur de catalogue de démo
 ```
