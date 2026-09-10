@@ -66,6 +66,20 @@ def generate_relay_token() -> tuple[str, str, str]:
     return f"{RELAY_TOKEN_SCHEME}_{prefix}_{secret}", prefix, secret
 
 
+def token_indice(token: str) -> str:
+    """Le debut d'un jeton : assez pour le reconnaitre, jamais pour s'en servir.
+
+    Le prefixe est deja public -- le serveur le garde en clair pour retrouver
+    le client, seul le secret qui suit est sensible. D'une forme inattendue on
+    ne montre que quatre caracteres.
+    """
+    token = token.strip()
+    if not token:
+        return ""
+    parts = split_relay_token(token)
+    return f"{RELAY_TOKEN_SCHEME}_{parts[0]}" if parts else token[:4]
+
+
 def split_relay_token(token: str) -> tuple[str, str] | None:
     """Rend (prefixe, secret), ou None si la forme ne colle pas."""
     parts = token.strip().split("_", 2)

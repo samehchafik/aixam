@@ -39,6 +39,7 @@ from sqlalchemy import func, select
 from app.main import app, bootstrap
 from app.db import SessionLocal
 from app.models import EmailOutbox, RelayClient
+from app.security import token_indice
 from app.services.transports import PermanentSendError
 from app.services.transports import relay as relay_transport
 
@@ -68,6 +69,16 @@ r = client.get("/api/admin/relay-clients", headers=admin)
 check("la liste ne rend jamais le token", "token" not in r.json()[0], str(r.json()[0]))
 
 relay = {"Authorization": f"Bearer {token}"}
+
+print("\n[1 bis] Montrer un jeton sans le livrer")
+check("l'indice s'arrete au prefixe", token_indice(token) == f"axr_{created['token_prefix']}",
+      token_indice(token))
+# Le secret est du base64url et contient des « _ » : c'est la premiere
+# coupure qui compte, pas la derniere.
+check("le secret n'y figure pas", token.split("_", 2)[2] not in token_indice(token))
+check("pas de jeton, pas d'indice", token_indice("") == "")
+check("d'une forme inattendue, quatre caracteres au plus",
+      len(token_indice("vieux-jeton-saisi-a-la-main")) == 4)
 
 print("\n[2] Authentification")
 check("ping accepte", client.get("/api/relay/ping", headers=relay).status_code == 200)

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Button, Group, Paper, PasswordInput, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { Badge, Button, Group, Paper, PasswordInput, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { api } from '../lib/api'
 
 type SyncCfg = {
   url: string
   token_set: boolean
+  token_indice: string
+  token_herite: boolean
   server_enabled: boolean
   local: { visitors: number; designs: number; events: number }
   cursors: Record<string, string | null>
@@ -12,6 +14,19 @@ type SyncCfg = {
 }
 
 const dateFr = (iso: string | null) => (iso ? new Date(iso).toLocaleString('fr-FR') : 'jamais')
+
+// Une liaison configuree n'est pas une liaison qui repond : on distingue ce
+// qu'on sait sans reseau (adresse et jeton en place) de ce que seule la base
+// maitre peut confirmer.
+type Etat = 'absente' | 'inconnue' | 'verification' | 'ok' | 'injoignable'
+
+const ETATS: Record<Etat, { couleur: string; texte: string }> = {
+  absente: { couleur: 'gray', texte: 'Aucune liaison' },
+  inconnue: { couleur: 'blue', texte: 'Configurée' },
+  verification: { couleur: 'blue', texte: 'Vérification...' },
+  ok: { couleur: 'teal', texte: 'Liaison établie' },
+  injoignable: { couleur: 'red', texte: 'Injoignable' },
+}
 
 /**
  * Remontee vers la base maitre. Sens unique : ce back-office pousse, il ne
@@ -24,10 +39,40 @@ export function SyncPanel() {
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [etat, setEtat] = useState<Etat>('inconnue')
+  const [detail, setDetail] = useState<string | null>(null)
 
-  const load = () => api<SyncCfg>('/api/admin/sync').then(setCfg)
+  const load = () => api<SyncCfg>('/api/admin/sync').then((recu) => {
+    setCfg(recu)
+    return recu
+  })
+
+  const verifier = async () => {
+    setEtat('verification')
+    setDetail(null)
+    try {
+      const r = await api<{ ok: boolean; error?: string; remote?: Record<string, number | string> }>(
+        '/api/admin/sync/test', { method: 'POST' },
+      )
+      setEtat(r.ok ? 'ok' : 'injoignable')
+      setDetail(r.ok
+        ? `Enregistré sous « ${r.remote!.client} » — la base maître détient `
+          + `${r.remote!.visitors} visiteur(s) et ${r.remote!.designs} création(s).`
+        : r.error ?? 'raison inconnue')
+    } catch (erreur) {
+      setEtat('injoignable')
+      setDetail(String(erreur))
+    }
+  }
+
+  // A l'ouverture, l'etat courant sans avoir a cliquer : configuree ou non, et
+  // si oui, est-ce que la base maitre repond.
   useEffect(() => {
-    load()
+    load().then((recu) => {
+      if (recu.server_enabled) return
+      if (recu.url && recu.token_set) verifier()
+      else setEtat('absente')
+    })
   }, [])
 
   if (!cfg) return <Text c="dimmed">Chargement...</Text>
@@ -66,16 +111,7 @@ export function SyncPanel() {
     setToken('')
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }
-
-  const test = async () => {
-    setMessage('Test en cours...')
-    const r = await api<{ ok: boolean; error?: string; remote?: Record<string, number | string> }>(
-      '/api/admin/sync/test', { method: 'POST' },
-    )
-    setMessage(r.ok
-      ? `Liaison établie — enregistré sous « ${r.remote!.client} ». Le serveur détient ${r.remote!.visitors} visiteur(s) et ${r.remote!.designs} création(s).`
-      : `Échec : ${r.error}`)
+    verifier()
   }
 
   const push = async (tout: boolean) => {
@@ -112,6 +148,23 @@ export function SyncPanel() {
         }}
       >
         <Stack gap="md">
+          <Paper withBorder radius="md" p="sm">
+            <Group gap="xs" wrap="nowrap" align="baseline">
+              <Badge color={ETATS[etat].couleur} variant="light">{ETATS[etat].texte}</Badge>
+              <Text fz="sm" style={{ wordBreak: 'break-all' }}>
+                {cfg.url || <Text span c="dimmed">adresse non renseignée</Text>}
+              </Text>
+            </Group>
+            <Text fz="xs" c="dimmed" mt={6}>
+              {cfg.token_set
+                ? <>Jeton {cfg.token_indice}...{cfg.token_herite && ' — celui du relais d\u2019e-mails, aucun jeton propre à la synchronisation'}</>
+                : 'Aucun jeton enregistré.'}
+            </Text>
+            {detail && (
+              <Text fz="xs" mt={4} c={etat === 'injoignable' ? 'red' : 'dimmed'}>{detail}</Text>
+            )}
+          </Paper>
+
           <Text c="dimmed" fz="sm">
             Ce back-office produit, la base maître consolide. L'envoi ne part que dans ce sens,
             et il ne part que quand vous le demandez — rien n'est automatique. Synchroniser deux
@@ -137,7 +190,14 @@ export function SyncPanel() {
             <Button type="submit" color={saved ? 'teal' : undefined}>
               {saved ? 'Enregistré' : 'Enregistrer'}
             </Button>
-            <Button type="button" variant="subtle" onClick={test}>Tester la liaison</Button>
+            <Button
+              type="button"
+              variant="subtle"
+              loading={etat === 'verification'}
+              onClick={verifier}
+            >
+              Tester la liaison
+            </Button>
           </Group>
 
           <Table withTableBorder>

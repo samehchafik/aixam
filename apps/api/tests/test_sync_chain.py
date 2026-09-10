@@ -78,6 +78,17 @@ try:
     r = stand.post("/api/admin/sync/test", headers=ladmin)
     check("liaison etablie", r.json().get("ok") is True, r.text[:300])
 
+    # Le panneau doit pouvoir dire « une liaison existe deja » sans reseau, et
+    # le montrer -- sans jamais laisser sortir la partie secrete du jeton.
+    reponse = stand.get("/api/admin/sync", headers=ladmin)
+    etat, corps = reponse.json(), reponse.text
+    check("l'etat annonce un jeton en place", etat["token_set"] is True)
+    prefixe = r.json()["token_prefix"]
+    check("il en montre le debut", etat["token_indice"] == f"axr_{prefixe}",
+          etat["token_indice"])
+    check("le secret ne sort pas de l'API", jeton.split("_", 2)[2] not in corps)
+    check("un jeton propre n'est pas dit herite", etat["token_herite"] is False)
+
     print("\n[2] Trois visiteurs passent sur la borne")
     ids = []
     for i in range(3):

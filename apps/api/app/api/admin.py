@@ -35,7 +35,7 @@ from app.schemas import (
     RelayClientPatch,
     StatsOut,
 )
-from app.security import generate_relay_token, generate_token, hash_secret
+from app.security import generate_relay_token, generate_token, hash_secret, token_indice
 from app.services import mailer
 from app.services.renderer import render_url
 from app.services.settings_store import get_setting, set_setting
@@ -490,9 +490,16 @@ def delete_relay_client(client_id: uuid.UUID, db: Session = Depends(get_db)):
 def read_sync_config(db: Session = Depends(get_db)) -> dict:
     """Ce qu'on a en local, ou on l'envoie, et jusqu'ou on est alle."""
     count = lambda m: db.scalar(select(func.count()).select_from(m)) or 0  # noqa: E731
+    # Le jeton peut n'avoir jamais ete saisi ici : faute de jeton propre a la
+    # synchronisation, on emprunte celui du relais d'e-mails. Le champ parait
+    # alors vide alors qu'une liaison existe -- d'ou le drapeau.
+    jeton = sync_push.remote_token(db)
+    propre = get_setting(db, "sync_token", settings.sync_token)
     return {
         "url": sync_push.remote_url(db),
-        "token_set": bool(sync_push.remote_token(db)),
+        "token_set": bool(jeton),
+        "token_indice": token_indice(jeton),
+        "token_herite": bool(jeton) and not propre,
         "server_enabled": settings.sync_server_enabled,
         "local": {
             "visitors": count(Visitor),
