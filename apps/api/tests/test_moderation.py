@@ -94,6 +94,20 @@ print("\n[6] Refus des valeurs qui n'existent pas")
 check("verdict inconnu -> 422",
       c.post(f"/api/admin/designs/{ids[0]}/moderation", json={"decision": "peut-etre"}, headers=H).status_code == 422)
 check("filtre inconnu -> 422", c.get("/api/admin/designs?moderation=peut-etre", headers=H).status_code == 422)
+check("un verdict inconnu parmi des valides -> 422",
+      c.get("/api/admin/designs?moderation=approved,peut-etre", headers=H).status_code == 422)
+
+print("\n[7] Plusieurs verdicts a la fois, pour des cases a cocher")
+# Etat pose explicitement : les sections precedentes ont bouge les verdicts,
+# et un test qui depend de leur ordre se casse au premier remaniement.
+for design_id, verdict in zip(ids, ("approved", "rejected", "pending")):
+    c.post(f"/api/admin/designs/{design_id}/moderation", json={"decision": verdict}, headers=H)
+check("etat de depart", compteurs() == {"pending": 1, "approved": 1, "rejected": 1}, compteurs())
+check("validees et rejetees ensemble", len(lister(moderation="approved,rejected")) == 2)
+check("l'ordre des valeurs est indifferent", len(lister(moderation="rejected,approved")) == 2)
+check("un seul verdict fonctionne toujours", len(lister(moderation="approved")) == 1)
+check("les espaces sont tolerees", len(lister(moderation="approved, rejected")) == 2)
+check("les trois d'un coup", len(lister(moderation="pending,approved,rejected")) == 3)
 check("creation inconnue -> 404",
       c.post("/api/admin/designs/00000000-0000-0000-0000-000000000000/moderation",
              json={"decision": "approved"}, headers=H).status_code == 404)

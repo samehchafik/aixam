@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
-  Anchor, Badge, Button, Card, Group, Modal, Pagination, Select, SimpleGrid, Stack, Tabs, Text,
+  Anchor, Badge, Button, Card, Checkbox, Group, Modal, Pagination, Select, SimpleGrid, Stack, Tabs,
+  Text,
   TextInput, Title, UnstyledButton,
 } from '@mantine/core'
 import { api } from '../lib/api'
@@ -21,17 +22,18 @@ type Row = {
 type Compteurs = { pending: number; approved: number; rejected: number }
 
 const TRIS = [
-  { value: 'date_desc', label: 'Plus recentes' },
+  { value: 'date_desc', label: 'Plus récentes' },
   { value: 'date_asc', label: 'Plus anciennes' },
   { value: 'name_asc', label: 'Nom (A-Z)' },
   { value: 'name_desc', label: 'Nom (Z-A)' },
 ]
 
-// Preselectionne sur « validees » : c'est ce qu'on vient verifier neuf fois
-// sur dix, le rejet etant l'exception qu'on relit rarement.
+// « Validées » cochée seule au depart : c'est ce qu'on vient verifier neuf
+// fois sur dix, le rejet etant l'exception qu'on relit rarement. Des cases
+// plutot qu'un selecteur, pour pouvoir regarder les deux cote a cote.
 const VERDICTS = [
-  { value: 'approved', label: 'Validees' },
-  { value: 'rejected', label: 'Rejetees' },
+  { value: 'approved', label: 'Validées' },
+  { value: 'rejected', label: 'Rejetées' },
 ]
 
 // Une planche fait six fois plus large que haute : a quatre colonnes elle
@@ -46,13 +48,15 @@ export function Designs() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date_desc')
   const [onglet, setOnglet] = useState<'attente' | 'traitees'>('attente')
-  const [verdict, setVerdict] = useState('approved')
+  const [verdicts, setVerdicts] = useState<string[]>(['approved'])
   const [page, setPage] = useState(1)
   const [compteurs, setCompteurs] = useState<Compteurs>({ pending: 0, approved: 0, rejected: 0 })
   const [rafraichir, setRafraichir] = useState(0)
   const [agrandie, setAgrandie] = useState<number | null>(null)
 
-  const moderation = onglet === 'attente' ? 'pending' : verdict
+  // Aucune case cochee : on n'invente pas un filtre que l'animateur vient de
+  // retirer. La liste se vide, et un message le dit.
+  const moderation = onglet === 'attente' ? 'pending' : verdicts.join(',')
 
   useEffect(() => {
     api<Compteurs>('/api/admin/designs/counts').then(setCompteurs)
@@ -64,7 +68,18 @@ export function Designs() {
     setPage(1)
   }, [search, sort, moderation])
 
+  // Aucune case cochee : la liste se vide. Sans ce cas, `[].join(',')` donne
+  // une chaine vide, que l'API comprend comme « pas de filtre » -- decocher
+  // tout affichait donc TOUT, y compris les creations en attente.
+  const aucunVerdict = onglet === 'traitees' && verdicts.length === 0
+
   useEffect(() => {
+    if (aucunVerdict) {
+      setRows([])
+      setTotal(0)
+      setAgrandie(null)
+      return
+    }
     const id = setTimeout(() => {
       const q = new URLSearchParams({
         limit: String(PAR_PAGE),
@@ -82,7 +97,7 @@ export function Designs() {
       })
     }, 250)
     return () => clearTimeout(id)
-  }, [search, sort, moderation, page, rafraichir])
+  }, [search, sort, moderation, page, rafraichir, aucunVerdict])
 
   /** Verdict de l'animateur. La creation quitte alors l'onglet ou elle etait. */
   const decider = async (id: string, decision: Verdict) => {
@@ -104,7 +119,7 @@ export function Designs() {
   return (
     <Stack gap="md">
       <Title order={1} fz={28}>
-        Creations <Text span c="dimmed" fz={28} fw={400}>({total})</Text>
+        Créations <Text span c="dimmed" fz={28} fw={400}>({total})</Text>
       </Title>
 
       <Tabs value={onglet} onChange={(v) => setOnglet((v as typeof onglet) ?? 'attente')}>
@@ -113,42 +128,44 @@ export function Designs() {
             value="attente"
             rightSection={<Badge size="sm" circle variant={compteurs.pending ? 'filled' : 'light'}>{compteurs.pending}</Badge>}
           >
-            A moderer
+            À modérer
           </Tabs.Tab>
           <Tabs.Tab
             value="traitees"
             rightSection={<Badge size="sm" circle variant="light">{compteurs.approved + compteurs.rejected}</Badge>}
           >
-            Traitees
+            Traitées
           </Tabs.Tab>
         </Tabs.List>
       </Tabs>
 
       <Group>
         <TextInput
-          placeholder="Filtrer par nom, prenom ou email"
+          placeholder="Filtrer par nom, prénom ou e-mail"
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
           w={280}
-          aria-label="Filtrer les creations"
+          aria-label="Filtrer les créations"
         />
         <Select data={TRIS} value={sort} onChange={(v) => setSort(v ?? 'date_desc')} w={180} aria-label="Trier" />
         {onglet === 'traitees' && (
-          <Select
-            data={VERDICTS}
-            value={verdict}
-            onChange={(v) => setVerdict(v ?? 'approved')}
-            w={160}
-            aria-label="Filtrer par verdict"
-          />
+          <Checkbox.Group value={verdicts} onChange={setVerdicts} aria-label="Filtrer par verdict">
+            <Group gap="lg">
+              {VERDICTS.map((v) => (
+                <Checkbox key={v.value} value={v.value} label={v.label} />
+              ))}
+            </Group>
+          </Checkbox.Group>
         )}
       </Group>
 
       {rows.length === 0 && (
         <Text c="dimmed">
-          {onglet === 'attente' && !search
-            ? 'Rien a moderer : tout a ete traite.'
-            : 'Aucune creation ne correspond.'}
+          {aucunVerdict
+            ? 'Cochez « Validées » ou « Rejetées » pour afficher des créations.'
+            : onglet === 'attente' && !search
+              ? 'Rien à modérer : tout a été traité.'
+              : 'Aucune création ne correspond.'}
         </Text>
       )}
 
@@ -187,7 +204,7 @@ export function Designs() {
               ) : (
                 <>
                   <Badge color={row.moderation === 'approved' ? 'teal' : 'red'} variant="light">
-                    {row.moderation === 'approved' ? 'Validee' : 'Rejetee'}
+                    {row.moderation === 'approved' ? 'Validée' : 'Rejetée'}
                   </Badge>
                   {/* Reversible : un clic de travers se rattrape sans passer
                       par la base. */}
@@ -244,7 +261,7 @@ export function Designs() {
               </Stack>
               <Group>
                 <Button variant="default" disabled={agrandie === 0} onClick={() => deplacer(-1)}>
-                  Precedente
+                  Précédente
                 </Button>
                 <Text c="dimmed" fz="sm">{(agrandie ?? 0) + 1} / {rendues.length}</Text>
                 <Button variant="default" disabled={agrandie === rendues.length - 1} onClick={() => deplacer(1)}>

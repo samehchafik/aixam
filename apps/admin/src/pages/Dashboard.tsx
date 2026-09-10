@@ -22,11 +22,11 @@ export function Dashboard() {
 
   const cartes = [
     { label: 'Visiteurs inscrits', value: stats.visitors_total },
-    { label: 'Emails verifies', value: stats.visitors_verified },
-    { label: 'Creations', value: stats.designs_total },
+    { label: 'E-mails vérifiés', value: stats.visitors_verified },
+    { label: 'Créations', value: stats.designs_total },
     { label: 'Rendus JPEG', value: stats.designs_rendered },
-    { label: 'Emails en attente', value: stats.emails_pending },
-    { label: 'Emails en echec', value: stats.emails_failed, alerte: stats.emails_failed > 0 },
+    { label: 'E-mails en attente', value: stats.emails_pending },
+    { label: 'E-mails en échec', value: stats.emails_failed, alerte: stats.emails_failed > 0 },
   ]
 
   const soumises = timeline.filter((row) => row.name === 'design_submitted')
@@ -48,17 +48,17 @@ export function Dashboard() {
       </SimpleGrid>
 
       <div>
-        <Title order={2} fz="lg" mb="sm">Creations par heure (24 h)</Title>
+        <Title order={2} fz="lg" mb="sm">Créations par heure (24 h)</Title>
         <Paper withBorder radius="md" p="md">
           {soumises.length === 0 ? (
-            <Text c="dimmed" fz="sm">Aucune donnee sur la periode.</Text>
+            <Text c="dimmed" fz="sm">Aucune donnée sur la période.</Text>
           ) : (
             <Group align="flex-end" gap={6} h={180} wrap="nowrap">
               {/* maw : avec une seule tranche horaire, une barre en flex:1
                   s'etalerait sur toute la largeur et ne ressemblerait plus a
                   un graphe. */}
               {soumises.map((row) => (
-                <Tooltip key={row.bucket} label={`${row.count} creation(s)`} withArrow>
+                <Tooltip key={row.bucket} label={`${row.count} création(s)`} withArrow>
                   <Stack gap={6} align="center" justify="flex-end" h="100%" maw={56} style={{ flex: 1 }}>
                     <div
                       style={{

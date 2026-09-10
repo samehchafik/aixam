@@ -55,7 +55,7 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
   }
 
   const remove = async (client: Client) => {
-    if (!confirm(`Revoquer definitivement « ${client.name} » ? Son token cessera de fonctionner.`)) return
+    if (!confirm(`Révoquer définitivement « ${client.name} » ? Son jeton cessera de fonctionner.`)) return
     await api(`/api/admin/relay-clients/${client.id}`, { method: 'DELETE' })
     load()
   }
@@ -65,29 +65,29 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
       <Title order={2} fz="lg" mb="sm">Clients de relais</Title>
       <Stack gap="md">
         <Text c="dimmed" fz="sm" maw={720}>
-          Chaque back-office autorise a s'appuyer sur celui-ci — envoi d'emails, remontee des
-          donnees — a son propre token, son quota et son interrupteur. Un token suffit : il ne se
+          Chaque back-office autorisé à s'appuyer sur celui-ci — envoi d'e-mails, remontée des
+          données — a son propre jeton, son quota et son interrupteur. Un jeton suffit : il ne se
           colle que sur des machines de confiance, et se coupe d'ici en un clic.
         </Text>
 
         {fresh && (
-          <Alert color="aixam" variant="light" title={`Token de « ${fresh.name} »`} maw={720}>
+          <Alert color="aixam" variant="light" title={`Jeton de « ${fresh.name} »`} maw={720}>
             <Stack gap="xs">
               <Text fz="sm">
-                Copiez-le maintenant, il ne sera plus jamais affiche (seule son empreinte est
-                conservee).
+                Copiez-le maintenant, il ne sera plus jamais affiché (seule son empreinte est
+                conservée).
               </Text>
               <Code block>{fresh.token}</Code>
               <Group>
                 <CopyButton value={fresh.token}>
                   {({ copied, copy }) => (
                     <Button size="xs" variant="light" color={copied ? 'teal' : 'aixam'} onClick={copy}>
-                      {copied ? 'Copie' : 'Copier'}
+                      {copied ? 'Copié' : 'Copier'}
                     </Button>
                   )}
                 </CopyButton>
                 <Button size="xs" variant="subtle" onClick={() => setFresh(null)}>
-                  J'ai copie le token
+                  J'ai copié le jeton
                 </Button>
               </Group>
             </Stack>
@@ -119,7 +119,7 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
             onChange={(v) => setQuota(Number(v) || 1)}
             w={140}
           />
-          <Button type="submit" disabled={!name.trim()}>Creer un client</Button>
+          <Button type="submit" disabled={!name.trim()}>Créer un client</Button>
         </Group>
 
         {rows.length === 0 ? (
@@ -131,11 +131,11 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Nom</Table.Th>
-                    <Table.Th>Prefixe</Table.Th>
+                    <Table.Th>Préfixe</Table.Th>
                     <Table.Th>Aujourd'hui</Table.Th>
                     <Table.Th>Total</Table.Th>
-                    <Table.Th>Derniere activite</Table.Th>
-                    <Table.Th>Etat</Table.Th>
+                    <Table.Th>Dernière activité</Table.Th>
+                    <Table.Th>État</Table.Th>
                     <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
@@ -158,12 +158,12 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
                           size="sm"
                           checked={row.is_active}
                           onChange={(e) => patch(row, { is_active: e.currentTarget.checked })}
-                          label={row.is_active ? 'actif' : 'coupe'}
+                          label={row.is_active ? 'actif' : 'coupé'}
                         />
                       </Table.Td>
                       <Table.Td>
-                        <Tooltip label="Revoquer" withArrow>
-                          <ActionIcon variant="subtle" color="red" onClick={() => remove(row)} aria-label="Revoquer">
+                        <Tooltip label="Révoquer" withArrow>
+                          <ActionIcon variant="subtle" color="red" onClick={() => remove(row)} aria-label="Révoquer">
                             ×
                           </ActionIcon>
                         </Tooltip>

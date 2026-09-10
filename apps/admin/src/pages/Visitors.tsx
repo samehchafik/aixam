@@ -49,7 +49,7 @@ export function Visitors() {
   }, [search, page])
 
   const supprimer = async (row: Row) => {
-    if (!confirm(`Supprimer definitivement ${row.first_name} ${row.last_name} (demande RGPD) ?\n\nSes creations sont conservees, mais anonymisees.`)) return
+    if (!confirm(`Supprimer définitivement ${row.first_name} ${row.last_name} (demande RGPD) ?\n\nSes créations sont conservées, mais anonymisées.`)) return
     await api(`/api/admin/visitors/${row.id}`, { method: 'DELETE' })
     load()
   }
@@ -66,7 +66,7 @@ export function Visitors() {
 
       <Group>
         <TextInput
-          placeholder="Rechercher nom ou email"
+          placeholder="Rechercher un nom ou un e-mail"
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
           w={280}
@@ -90,9 +90,9 @@ export function Visitors() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Nom</Table.Th>
-                <Table.Th>Email</Table.Th>
+                <Table.Th>E-mail</Table.Th>
                 <Table.Th>CP</Table.Th>
-                <Table.Th>Verifie</Table.Th>
+                <Table.Th>Vérifié</Table.Th>
                 <Table.Th>Opt-in</Table.Th>
                 <Table.Th>Date</Table.Th>
                 <Table.Th />

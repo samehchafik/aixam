@@ -36,7 +36,7 @@ export function Settings() {
 
   return (
     <Stack gap="xl">
-      <Title order={1} fz={28}>Reglages</Title>
+      <Title order={1} fz={28}>Réglages</Title>
 
       <Paper
         component="form"
@@ -53,18 +53,18 @@ export function Settings() {
           <Switch
             checked={config.verification_bypass}
             onChange={(e) => setConfig({ ...config, verification_bypass: e.currentTarget.checked })}
-            label="Mode degrade : ignorer la verification email"
-            description="A activer si le reseau du salon tombe. Les visiteurs passent directement a la creation ; les emails partent quand la connexion revient."
+            label="Mode dégradé : ignorer la vérification e-mail"
+            description="À activer si le réseau du salon tombe. Les visiteurs passent directement à la création ; les e-mails partent quand la connexion revient."
           />
           <NumberInput
-            label="Retour a l'accueil apres inactivite"
+            label="Retour à l'accueil après inactivité"
             suffix=" s"
             min={10}
             value={config.idle_timeout_seconds}
             onChange={(v) => setConfig({ ...config, idle_timeout_seconds: Number(v) || 0 })}
           />
           <NumberInput
-            label="Vitesse du slideshow d'attente"
+            label="Vitesse du diaporama d'attente"
             suffix=" s"
             min={1}
             value={config.attract_interval_seconds}
@@ -72,7 +72,7 @@ export function Settings() {
           />
           <Group>
             <Button type="submit" color={saved ? 'teal' : undefined}>
-              {saved ? 'Enregistre' : 'Enregistrer'}
+              {saved ? 'Enregistré' : 'Enregistrer'}
             </Button>
           </Group>
         </Stack>
@@ -89,7 +89,7 @@ export function Settings() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Nom</Table.Th>
-                <Table.Th>Token (a copier dans config.json)</Table.Th>
+                <Table.Th>Jeton (à copier dans config.json)</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

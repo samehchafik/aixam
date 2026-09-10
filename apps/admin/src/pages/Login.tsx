@@ -40,7 +40,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           <TextInput
             id="email"
             name="email"
-            label="Email"
+            label="E-mail"
             type="email"
             autoComplete="username"
             value={email}

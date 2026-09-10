@@ -53,9 +53,9 @@ export function Emails() {
             }
           }}
         >
-          Relancer les echecs{echecs > 0 ? ` (${echecs})` : ''}
+          Relancer les échecs{echecs > 0 ? ` (${echecs})` : ''}
         </Button>
-        <Text c="dimmed" fz="sm">Actualise toutes les 10 secondes.</Text>
+        <Text c="dimmed" fz="sm">Actualisé toutes les 10 secondes.</Text>
       </Group>
 
       <Paper withBorder radius="md">
@@ -88,7 +88,7 @@ export function Emails() {
           </Table>
         </Table.ScrollContainer>
         {rows.length === 0 && (
-          <Text c="dimmed" fz="sm" p="md">Aucun email en file.</Text>
+          <Text c="dimmed" fz="sm" p="md">Aucun e-mail en file.</Text>
         )}
       </Paper>
     </Stack>

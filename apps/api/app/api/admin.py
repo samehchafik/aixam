@@ -171,7 +171,7 @@ def designs(
     offset: int = 0,
     search: str = "",
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|name_asc|name_desc)$"),
-    moderation: str = Query("", pattern="^(|pending|approved|rejected)$"),
+    moderation: str = Query("", description="verdicts separes par des virgules"),
     db: Session = Depends(get_db),
 ) -> dict:
     # Jointure externe : une creation peut n'avoir plus de visiteur -- une
@@ -193,8 +193,16 @@ def designs(
         stmt, compte = stmt.where(filtre), compte.where(filtre)
 
     if moderation:
-        verdict = Design.moderation == moderation
-        stmt, compte = stmt.where(verdict), compte.where(verdict)
+        # Plusieurs verdicts a la fois : l'ecran propose des cases a cocher,
+        # et l'on veut pouvoir regarder validees et rejetees cote a cote.
+        verdicts = [v.strip() for v in moderation.split(",") if v.strip()]
+        inconnus = sorted(set(verdicts) - {m.value for m in Moderation})
+        if inconnus:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, f"verdict inconnu : {', '.join(inconnus)}"
+            )
+        filtre_verdict = Design.moderation.in_(verdicts)
+        stmt, compte = stmt.where(filtre_verdict), compte.where(filtre_verdict)
 
     # Le total suit le filtre : sinon l'entete annoncerait 800 creations pour
     # trois lignes affichees.

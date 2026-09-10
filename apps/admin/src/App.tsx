@@ -13,9 +13,9 @@ import { Settings } from './pages/Settings'
 const NAV = [
   { to: '/', label: 'Tableau de bord', end: true },
   { to: '/visiteurs', label: 'Visiteurs' },
-  { to: '/creations', label: 'Creations' },
+  { to: '/creations', label: 'Créations' },
   { to: '/emails', label: 'Emails' },
-  { to: '/reglages', label: 'Reglages' },
+  { to: '/reglages', label: 'Réglages' },
 ]
 
 export default function App() {
@@ -46,7 +46,7 @@ export default function App() {
                 setAuthenticated(false)
               }}
             >
-              <Text c="aixam.6" fz="sm" fw={500}>Deconnexion</Text>
+              <Text c="aixam.6" fz="sm" fw={500}>Déconnexion</Text>
             </UnstyledButton>
           </Group>
         </AppShell.Header>

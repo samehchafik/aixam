@@ -35,21 +35,21 @@ export function SyncPanel() {
   if (cfg.server_enabled) {
     return (
       <div>
-        <Title order={2} fz="lg" mb="sm">Base maitre</Title>
+        <Title order={2} fz="lg" mb="sm">Base maître</Title>
         <Stack gap="sm" maw={560}>
           <Text c="dimmed" fz="sm">
-            Ce back-office est la base maitre : les remontees arrivent des back-offices des
-            stands, qui poussent vers lui. Il n'y a rien a synchroniser d'ici.
+            Ce back-office est la base maître : les remontées arrivent des back-offices des
+            stands, qui poussent vers lui. Il n'y a rien à synchroniser d'ici.
           </Text>
           <Paper withBorder radius="md">
             <Table>
               <Table.Thead>
-                <Table.Tr><Table.Th /><Table.Th>Recus</Table.Th></Table.Tr>
+                <Table.Tr><Table.Th /><Table.Th>Reçus</Table.Th></Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 <Table.Tr><Table.Td>Visiteurs</Table.Td><Table.Td>{cfg.local.visitors}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Creations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Evenements</Table.Td><Table.Td>{cfg.local.events}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Créations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Événements</Table.Td><Table.Td>{cfg.local.events}</Table.Td></Table.Tr>
               </Table.Tbody>
             </Table>
           </Paper>
@@ -74,14 +74,14 @@ export function SyncPanel() {
       '/api/admin/sync/test', { method: 'POST' },
     )
     setMessage(r.ok
-      ? `Liaison etablie — enregistre sous « ${r.remote!.client} ». Le serveur detient ${r.remote!.visitors} visiteur(s) et ${r.remote!.designs} creation(s).`
-      : `Echec : ${r.error}`)
+      ? `Liaison établie — enregistré sous « ${r.remote!.client} ». Le serveur détient ${r.remote!.visitors} visiteur(s) et ${r.remote!.designs} création(s).`
+      : `Échec : ${r.error}`)
   }
 
   const push = async (tout: boolean) => {
     if (tout && !confirm(
-      "Tout renvoyer reexpedie l'integralite des donnees. Sans danger (rien n'est duplique), " +
-      "mais un visiteur efface cote serveur y reapparaitra. Continuer ?")) return
+      "Tout renvoyer réexpédie l'intégralité des données. Sans danger (rien n'est dupliqué), " +
+      "mais un visiteur effacé côté serveur y réapparaîtra. Continuer ?")) return
     setBusy(true)
     setMessage(tout ? 'Renvoi complet en cours...' : 'Synchronisation en cours...')
     try {
@@ -89,8 +89,8 @@ export function SyncPanel() {
         `/api/admin/sync/push${tout ? '?full=true' : ''}`, { method: 'POST' },
       )
       setMessage(r.ok
-        ? `Termine : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} creation(s), ${r.totaux!.events} evenement(s) envoyes a la base maitre.`
-        : `Echec : ${r.error}`)
+        ? `Terminé : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} création(s), ${r.totaux!.events} événement(s) envoyés à la base maître.`
+        : `Échec : ${r.error}`)
       load()
     } finally {
       setBusy(false)
@@ -99,7 +99,7 @@ export function SyncPanel() {
 
   return (
     <div>
-      <Title order={2} fz="lg" mb="sm">Synchronisation vers la base maitre</Title>
+      <Title order={2} fz="lg" mb="sm">Synchronisation vers la base maître</Title>
       <Paper
         component="form"
         withBorder
@@ -113,20 +113,20 @@ export function SyncPanel() {
       >
         <Stack gap="md">
           <Text c="dimmed" fz="sm">
-            Ce back-office produit, la base maitre consolide. L'envoi ne part que dans ce sens,
+            Ce back-office produit, la base maître consolide. L'envoi ne part que dans ce sens,
             et il ne part que quand vous le demandez — rien n'est automatique. Synchroniser deux
-            fois ne cree pas de doublon : chaque ligne garde son identifiant.
+            fois ne crée pas de doublon : chaque ligne garde son identifiant.
           </Text>
 
           <TextInput
-            label="Adresse de la base maitre"
+            label="Adresse de la base maître"
             placeholder="https://aixam-admin.ifrit.fr"
             value={cfg.url}
             onChange={(e) => setCfg({ ...cfg, url: e.currentTarget.value })}
           />
           <PasswordInput
             label="Jeton"
-            description="Le meme que pour le relais d'emails : genere dans « Clients de relais » du back-office serveur."
+            description="Le même que pour le relais d'e-mails : généré dans « Clients de relais » du back-office serveur."
             placeholder={cfg.token_set ? 'Jeton en place — laisser vide pour le garder' : 'axr_...'}
             autoComplete="off"
             value={token}
@@ -135,7 +135,7 @@ export function SyncPanel() {
 
           <Group>
             <Button type="submit" color={saved ? 'teal' : undefined}>
-              {saved ? 'Enregistre' : 'Enregistrer'}
+              {saved ? 'Enregistré' : 'Enregistrer'}
             </Button>
             <Button type="button" variant="subtle" onClick={test}>Tester la liaison</Button>
           </Group>
@@ -145,13 +145,13 @@ export function SyncPanel() {
               <Table.Tr>
                 <Table.Th />
                 <Table.Th>En local</Table.Th>
-                <Table.Th>Synchronise jusqu'au</Table.Th>
+                <Table.Th>Synchronisé jusqu'au</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               <Table.Tr><Table.Td>Visiteurs</Table.Td><Table.Td>{cfg.local.visitors}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.visitors)}</Table.Td></Table.Tr>
-              <Table.Tr><Table.Td>Creations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.designs)}</Table.Td></Table.Tr>
-              <Table.Tr><Table.Td>Evenements</Table.Td><Table.Td>{cfg.local.events}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.events)}</Table.Td></Table.Tr>
+              <Table.Tr><Table.Td>Créations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.designs)}</Table.Td></Table.Tr>
+              <Table.Tr><Table.Td>Événements</Table.Td><Table.Td>{cfg.local.events}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.events)}</Table.Td></Table.Tr>
             </Table.Tbody>
           </Table>
 
@@ -159,7 +159,7 @@ export function SyncPanel() {
             <Button type="button" loading={busy} onClick={() => push(false)}>Synchroniser maintenant</Button>
             <Button type="button" variant="subtle" disabled={busy} onClick={() => push(true)}>Tout renvoyer</Button>
           </Group>
-          <Text c="dimmed" fz="sm">Derniere synchronisation : {dateFr(cfg.last_push_at)}</Text>
+          <Text c="dimmed" fz="sm">Dernière synchronisation : {dateFr(cfg.last_push_at)}</Text>
           {message && <Text c="dimmed" fz="sm">{message}</Text>}
         </Stack>
       </Paper>

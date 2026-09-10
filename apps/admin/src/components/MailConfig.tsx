@@ -24,15 +24,15 @@ export type MailCfg = {
 }
 
 const TRANSPORTS = [
-  { value: 'smtp', label: 'SMTP — boite OVH ou relais Brevo' },
+  { value: 'smtp', label: 'SMTP — boîte OVH ou relais Brevo' },
   { value: 'brevo', label: 'Brevo — API HTTP' },
   { value: 'relay', label: 'Relais — via un autre back-office AIXAM' },
 ]
 
 const EXPLIQUE: Record<MailCfg['transport'], string> = {
-  smtp: "La boite du serveur OVH, ou le relais SMTP de Brevo. Demande que le port SMTP sorte du reseau.",
-  brevo: "L'API HTTP de Brevo. Tout passe en 443 : a choisir si le reseau du salon filtre le port 587.",
-  relay: "On n'expedie pas d'ici. Les emails sont confies a un autre back-office AIXAM, qui a la configuration d'envoi et la reputation aupres des messageries.",
+  smtp: "La boîte du serveur OVH, ou le relais SMTP de Brevo. Demande que le port SMTP sorte du réseau.",
+  brevo: "L'API HTTP de Brevo. Tout passe en 443 : à choisir si le réseau du salon filtre le port 587.",
+  relay: "On n'expédie pas d'ici. Les e-mails sont confiés à un autre back-office AIXAM, qui a la configuration d'envoi et la réputation auprès des messageries.",
 }
 
 /** Par ou sortent les emails de CE back-office. */
@@ -83,18 +83,18 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
       '/api/admin/mail/test-relay', { method: 'POST' },
     )
     setProbe(res.ok
-      ? `Liaison etablie — enregistre sous « ${res.remote!.client} », expedie depuis ${res.remote!.mail_from}, ${res.remote!.remaining_today} envoi(s) restant(s) aujourd'hui.`
-      : `Echec : ${res.error}`)
+      ? `Liaison établie — enregistré sous « ${res.remote!.client} », expédié depuis ${res.remote!.mail_from}, ${res.remote!.remaining_today} envoi(s) restant(s) aujourd'hui.`
+      : `Échec : ${res.error}`)
   }
 
   const sendTest = async () => {
     setTestMsg(null)
     try {
       await api('/api/admin/mail/test-send', { method: 'POST', body: JSON.stringify({ to: testTo }) })
-      setTestMsg(`Email de test mis en file pour ${testTo}. Suivez-le dans « Emails ».`)
+      setTestMsg(`E-mail de test mis en file pour ${testTo}. Suivez-le dans « E-mails ».`)
       setTestTo('')
     } catch (e) {
-      setTestMsg(`Echec : ${(e as Error).message}`)
+      setTestMsg(`Échec : ${(e as Error).message}`)
     }
   }
 
@@ -105,7 +105,7 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
 
   return (
     <div>
-      <Title order={2} fz="lg" mb="sm">Envoi des emails</Title>
+      <Title order={2} fz="lg" mb="sm">Envoi des e-mails</Title>
       <Stack gap="md" maw={560}>
         <Paper
           component="form"
@@ -119,7 +119,7 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
         >
           <Stack gap="md">
             <Select
-              label="Par ou sortent les emails"
+              label="Par où sortent les e-mails"
               description={EXPLIQUE[cfg.transport]}
               data={TRANSPORTS}
               value={cfg.transport}
@@ -129,25 +129,25 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
             {cfg.transport === 'smtp' && (
               <Text c="dimmed" fz="sm">
                 {cfg.smtp_configured
-                  ? `Serveur : ${cfg.smtp_host}:${cfg.smtp_port} — expediteur ${cfg.mail_from}`
-                  : 'SMTP_HOST n’est pas renseigne dans le .env : aucun email ne partira.'}
+                  ? `Serveur : ${cfg.smtp_host}:${cfg.smtp_port} — expéditeur ${cfg.mail_from}`
+                  : 'SMTP_HOST n’est pas renseigné dans le .env : aucun e-mail ne partira.'}
               </Text>
             )}
 
             {cfg.transport === 'smtp' && cfg.smtp_configured && !cfg.domains_aligned && (
-              <Alert color="orange" variant="light" title="Expediteur non aligne">
-                L’expediteur est en <b>@{cfg.from_domain}</b> mais la boite authentifiee en{' '}
+              <Alert color="orange" variant="light" title="Expéditeur non aligné">
+                L’expéditeur est en <b>@{cfg.from_domain}</b> mais la boîte authentifiée en{' '}
                 <b>@{cfg.smtp_domain}</b>. SPF et DKIM signeront pour le second : si{' '}
-                {cfg.from_domain} publie un DMARC en <b>p=reject</b>, l’email sera{' '}
-                <b>rejete</b>, pas classe en spam.
+                {cfg.from_domain} publie un DMARC en <b>p=reject</b>, l’e-mail sera{' '}
+                <b>rejeté</b>, pas classé en indésirable.
               </Alert>
             )}
 
             {cfg.transport === 'brevo' && (
               <Text c="dimmed" fz="sm">
                 {cfg.brevo_configured
-                  ? `Cle API en place — expediteur ${cfg.mail_from}`
-                  : 'BREVO_API_KEY n’est pas renseignee dans le .env : aucun email ne partira.'}
+                  ? `Clé API en place — expéditeur ${cfg.mail_from}`
+                  : 'BREVO_API_KEY n’est pas renseignée dans le .env : aucun e-mail ne partira.'}
               </Text>
             )}
 
@@ -155,15 +155,15 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
               <>
                 <TextInput
                   label="Adresse du back-office distant"
-                  description="En https : le token voyagerait en clair sur le reseau du salon autrement."
+                  description="En https : le jeton voyagerait en clair sur le réseau du salon autrement."
                   placeholder="https://bo.aixam.fr"
                   value={cfg.relay_url}
                   onChange={(e) => setCfg({ ...cfg, relay_url: e.currentTarget.value })}
                 />
                 <PasswordInput
-                  label="Token de relais"
-                  description="Genere dans « Clients de relais » du back-office distant. Il n'y est affiche qu'une fois."
-                  placeholder={cfg.relay_token_set ? 'Token en place — laisser vide pour le garder' : 'axr_...'}
+                  label="Jeton de relais"
+                  description="Généré dans « Clients de relais » du back-office distant. Il n'y est affiché qu'une fois."
+                  placeholder={cfg.relay_token_set ? 'Jeton en place — laisser vide pour le garder' : 'axr_...'}
                   autoComplete="off"
                   value={token}
                   onChange={(e) => setToken(e.currentTarget.value)}
@@ -173,14 +173,14 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
 
             {incomplet && (
               <Alert color="orange" variant="light">
-                Configuration incomplete : les emails s'empileront dans la file sans partir.
+                Configuration incomplète : les e-mails s'empileront dans la file sans partir.
               </Alert>
             )}
             {error && <Alert color="red" variant="light">{error}</Alert>}
 
             <Group>
               <Button type="submit" color={saved ? 'teal' : undefined}>
-                {saved ? 'Enregistre' : 'Enregistrer'}
+                {saved ? 'Enregistré' : 'Enregistrer'}
               </Button>
               {cfg.transport === 'relay' && (
                 // type=button : dans un formulaire, le defaut est submit.
@@ -203,8 +203,8 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
         >
           <Stack gap="sm">
             <TextInput
-              label="Envoyer un email de test"
-              description="Passe par la file et le worker : c'est la chaine complete qui est validee, pas seulement la configuration."
+              label="Envoyer un e-mail de test"
+              description="Passe par la file et le worker : c'est la chaîne complète qui est validée, pas seulement la configuration."
               type="email"
               autoComplete="email"
               placeholder="vous@exemple.fr"
@@ -213,8 +213,8 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
             />
             {!cfg.mail_reply_to && cfg.transport === 'smtp' && cfg.smtp_configured && (
               <Text c="dimmed" fz="xs">
-                Aucune adresse de reponse (MAIL_REPLY_TO) : un expediteur qui n’accepte pas de
-                reponse pese un peu dans le classement en spam.
+                Aucune adresse de réponse (MAIL_REPLY_TO) : un expéditeur qui n’accepte pas de
+                réponse pèse un peu dans le classement en indésirable.
               </Text>
             )}
             <Group>
