@@ -42,7 +42,7 @@ from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
 from app.services import materiel, sync_push
-from app.services.lanceur import construire_lanceur
+from app.services.lanceur import construire_lanceur, nom_fichier
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(current_admin)])
 
@@ -554,5 +554,5 @@ def materiel_releve(rescan: bool = False) -> dict:
 
 @router.post("/materiel/lanceur")
 def materiel_lanceur(payload: LanceurIn) -> dict:
-    """Engendre le script PowerShell qui ouvre un Chromium par ecran."""
-    return {"nom": "launch-kiosk-genere.ps1", "script": construire_lanceur(payload)}
+    """Engendre le script qui ouvre un navigateur plein ecran par moniteur."""
+    return {"nom": nom_fichier(payload.systeme), "script": construire_lanceur(payload)}

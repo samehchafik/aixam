@@ -10,6 +10,7 @@ Windows -- elle est signalee comme telle plutot que simulee.
 
 import os
 import platform
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -23,7 +24,7 @@ on_path()
 
 from app.schemas import EcranLanceurIn, LanceurIn
 from app.services import materiel
-from app.services.lanceur import construire_lanceur
+from app.services.lanceur import construire_lanceur, nom_fichier
 
 print("\n[1] Analyse de xrandr, sans Linux sous la main")
 SORTIE = """Monitors: 3
@@ -62,8 +63,37 @@ chemin.unlink()
 check("fichier absent : on releve a nouveau plutot que d'echouer",
       materiel.lire()["systeme"] == platform.system())
 
-print("\n[4] Le script de lancement")
-script = construire_lanceur(LanceurIn(hote="http://localhost:8080", ecrans=[
+print("\n[4] Le script de lancement, selon le systeme")
+ECRANS = [
+    EcranLanceurIn(peripherique=r"\\.\DISPLAY1", libelle="Tactile", x=0, y=0,
+                   largeur=1920, hauteur=1080, chemin="/kiosk/", profil="tactile"),
+    EcranLanceurIn(peripherique=r"\\.\DISPLAY2", libelle="Grand ecran", x=1920, y=0,
+                   largeur=3840, hauteur=2160, chemin="/kiosk/#/display", profil="grand-ecran"),
+]
+
+for systeme, extension, marqueur in (
+    ("Windows", ".ps1", "Start-Process"),
+    ("Darwin", ".sh", "/Applications/Google Chrome.app"),
+    ("Linux", ".sh", "google-chrome chromium"),
+):
+    produit = construire_lanceur(LanceurIn(hote="http://x", systeme=systeme, ecrans=ECRANS))
+    check(f"{systeme} : le bon nom de fichier", nom_fichier(systeme).endswith(extension), nom_fichier(systeme))
+    check(f"{systeme} : la bonne facon de trouver le navigateur", marqueur in produit)
+    check(f"{systeme} : une fenetre par ecran", produit.count("--window-position") == 2)
+    check(f"{systeme} : les coordonnees reelles",
+          "--window-position=0,0" in produit and "--window-position=1920,0" in produit)
+    check(f"{systeme} : un profil par fenetre",
+          "tactile" in produit and "grand-ecran" in produit)
+
+# Un shell mal forme ne se verrait qu'au lancement, sur le stand.
+for systeme in ("Darwin", "Linux"):
+    chemin = Path(tempfile.mkdtemp()) / "essai.sh"
+    chemin.write_text(construire_lanceur(LanceurIn(hote="http://x", systeme=systeme, ecrans=ECRANS)))
+    rendu = subprocess.run(["bash", "-n", str(chemin)], capture_output=True, text=True)
+    check(f"{systeme} : le shell engendre est syntaxiquement valide",
+          rendu.returncode == 0, rendu.stderr[:120])
+
+script = construire_lanceur(LanceurIn(hote="http://localhost:8080", systeme="Windows", ecrans=[
     EcranLanceurIn(peripherique=r"\\.\DISPLAY1", libelle="Tactile", x=0, y=0,
                    largeur=1920, hauteur=1080, chemin="/kiosk/", profil="tactile"),
     EcranLanceurIn(peripherique=r"\\.\DISPLAY2", libelle="Grand ecran", x=1920, y=0,

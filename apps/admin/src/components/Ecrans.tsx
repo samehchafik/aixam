@@ -23,11 +23,23 @@ type Releve = {
 
 // Ce qu'on peut afficher aujourd'hui. Le mur des créations validées viendra
 // s'ajouter ici le jour où l'écran existera.
+// Le script suit le systeme de la machine relevee : un .ps1 telecharge sur un
+// Mac ne servirait a rien.
+const SCRIPTS: Record<string, string> = {
+  Windows: 'PowerShell (.ps1)',
+  Darwin: 'shell (.sh)',
+  Linux: 'shell (.sh)',
+}
+
 const ROLES = [
   { value: '', label: 'Ne rien lancer' },
   { value: '/kiosk/|tactile', label: 'Écran tactile (formulaire et éditeur)' },
   { value: '/kiosk/#/display|grand-ecran', label: 'Grand écran (miroir de la composition)' },
 ]
+
+/** Comment on lance le script produit, selon le systeme. */
+const commande = (nom: string) =>
+  nom.endsWith('.ps1') ? `powershell -ExecutionPolicy Bypass -File ${nom}` : `bash ${nom}`
 
 /** Les moniteurs de CETTE machine, et le script qui les ouvre en kiosque. */
 export function Ecrans() {
@@ -69,6 +81,9 @@ export function Ecrans() {
         method: 'POST',
         body: JSON.stringify({
           hote,
+          // Le systeme vient du releve, donc de la machine qui pilote les
+          // ecrans : c'est lui qui decide de la forme du script.
+          systeme: releve.systeme,
           ecrans: choisis.map((e) => {
             const [chemin, profil] = roles[e.peripherique].split('|')
             return {
@@ -86,7 +101,7 @@ export function Ecrans() {
       lien.download = res.nom
       lien.click()
       URL.revokeObjectURL(url)
-      setMessage(`${res.nom} téléchargé. À placer sur le PC du stand et à lancer avec PowerShell.`)
+      setMessage(`${res.nom} téléchargé. À placer sur cette machine, puis : ${commande(res.nom)}`)
     } catch (e) {
       setMessage(`Échec : ${(e as Error).message}`)
     } finally {
@@ -159,7 +174,7 @@ export function Ecrans() {
         <Group>
           <Button variant="default" onClick={() => charger(true)}>Relever à nouveau</Button>
           <Button loading={busy} disabled={choisis.length === 0} onClick={engendrer}>
-            Générer le script de lancement
+            Générer le script {SCRIPTS[releve.systeme] ?? 'de lancement'}
           </Button>
         </Group>
         {choisis.length === 0 && !releve.indisponible && (

@@ -254,4 +254,7 @@ class EcranLanceurIn(BaseModel):
 
 class LanceurIn(BaseModel):
     hote: str = Field(default="http://localhost:8080", max_length=200)
+    # Le systeme decide de la forme du script : PowerShell ou shell. Il vient
+    # du releve, donc de la machine qui pilote reellement les ecrans.
+    systeme: Literal["Windows", "Darwin", "Linux"] = "Windows"
     ecrans: list[EcranLanceurIn] = []
