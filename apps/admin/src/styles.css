@@ -126,3 +126,20 @@ tr.row-muted td { opacity: 0.55; }
 .lightbox nav button[disabled] { opacity: 0.4; cursor: default; }
 .lightbox .fermer { position: absolute; top: 12px; right: 20px; background: none;
                     color: #fff; font-size: 32px; line-height: 1; padding: 0 8px; }
+
+/* Moderation des creations : deux onglets, un verdict par vignette. */
+.onglets { display: flex; gap: 8px; margin: 0 0 16px; }
+.onglets button { background: none; color: var(--muted); border: 1px solid var(--line);
+                  border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+.onglets button.actif { background: var(--surface); color: var(--text); border-color: var(--text); font-weight: 600; }
+.pastille { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px;
+            background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; }
+.onglets button.actif .pastille { background: var(--accent); color: #fff; }
+
+.verdict { display: flex; align-items: center; gap: 8px; padding: 0 12px 12px; }
+.verdict button { flex: 1; padding: 7px 10px; font-size: 13px; }
+.verdict .valider { background: #15803d; }
+.verdict .rejeter { background: #b91c1c; }
+.verdict .link { flex: 0 0 auto; }
+.verdict .ok { flex: 1; font-size: 13px; font-weight: 600; color: #15803d; }
+.verdict .ko { flex: 1; font-size: 13px; font-weight: 600; color: #b91c1c; }

@@ -20,12 +20,14 @@ from app.models import (
     EmailOutbox,
     Event,
     Kiosk,
+    Moderation,
     OutboxStatus,
     RelayClient,
     Visitor,
 )
 from app.schemas import (
     MailConfigIn,
+    ModerationIn,
     SyncConfigIn,
     MailTestIn,
     RelayClientIn,
@@ -169,6 +171,7 @@ def designs(
     offset: int = 0,
     search: str = "",
     sort: str = Query("date_desc", pattern="^(date_desc|date_asc|name_asc|name_desc)$"),
+    moderation: str = Query("", pattern="^(|pending|approved|rejected)$"),
     db: Session = Depends(get_db),
 ) -> dict:
     # Jointure externe : une creation peut n'avoir plus de visiteur -- une
@@ -189,6 +192,10 @@ def designs(
         )
         stmt, compte = stmt.where(filtre), compte.where(filtre)
 
+    if moderation:
+        verdict = Design.moderation == moderation
+        stmt, compte = stmt.where(verdict), compte.where(verdict)
+
     # Le total suit le filtre : sinon l'entete annoncerait 800 creations pour
     # trois lignes affichees.
     total = db.scalar(compte) or 0
@@ -204,11 +211,40 @@ def designs(
                 "visitor_name": f"{v.first_name} {v.last_name}".strip() if v else None,
                 "visitor_email": v.email if v else None,
                 "render_url": render_url(d.render_path),
+                "moderation": d.moderation,
+                "moderated_at": d.moderated_at.isoformat() if d.moderated_at else None,
             }
             for d, v in rows
         ],
     }
 
+
+
+@router.get("/designs/counts")
+def designs_counts(db: Session = Depends(get_db)) -> dict:
+    """Combien de creations dans chaque etat, pour les compteurs des onglets."""
+    lignes = db.execute(
+        select(Design.moderation, func.count()).group_by(Design.moderation)
+    ).all()
+    compte = {m.value: 0 for m in Moderation}
+    compte.update({etat: n for etat, n in lignes})
+    return compte
+
+
+@router.post("/designs/{design_id}/moderation")
+def moderer(design_id: uuid.UUID, payload: ModerationIn, db: Session = Depends(get_db)) -> dict:
+    """Verdict de l'animateur. Reversible : un clic de travers se rattrape."""
+    design = db.get(Design, design_id)
+    if not design:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Creation inconnue")
+    design.moderation = payload.decision.value
+    design.moderated_at = None if payload.decision is Moderation.pending else datetime.now(UTC)
+    db.commit()
+    return {
+        "id": str(design.id),
+        "moderation": design.moderation,
+        "moderated_at": design.moderated_at.isoformat() if design.moderated_at else None,
+    }
 
 
 @router.get("/emails")

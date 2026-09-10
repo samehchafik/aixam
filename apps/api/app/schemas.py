@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.models import Moderation
+
 
 # --- Admin ---
 class LoginIn(BaseModel):
@@ -226,3 +228,9 @@ class SyncConfigIn(BaseModel):
 
     url: str | None = None
     token: str | None = None
+
+
+class ModerationIn(BaseModel):
+    """Verdict de l'animateur. `pending` sert a remettre en attente."""
+
+    decision: Moderation

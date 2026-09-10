@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.api import admin, auth, kiosk, relay, sync, ws
 from app.config import settings
@@ -20,9 +20,24 @@ STATIC = Path(settings.static_dir)
 MEDIA = Path(settings.media_dir)
 
 
+# Colonnes ajoutees apres coup. `create_all` ne sait que creer des tables : il
+# ignore une colonne manquante sur une table existante, et l'API tomberait au
+# premier SELECT. Un outil de migration a lancer a la main se serait oublie
+# entre le `git pull` et le redemarrage -- ces ALTER sont additifs, idempotents
+# et instantanes, donc ils tiennent leur place ici.
+COLONNES_AJOUTEES = (
+    "ALTER TABLE designs ADD COLUMN IF NOT EXISTS moderation VARCHAR(12) NOT NULL DEFAULT 'pending'",
+    "ALTER TABLE designs ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMPTZ",
+    "CREATE INDEX IF NOT EXISTS ix_designs_moderation ON designs (moderation)",
+)
+
+
 def bootstrap() -> None:
     """Cree les tables, le compte admin et une premiere borne au premier demarrage."""
     Base.metadata.create_all(engine)
+    with engine.begin() as connexion:
+        for ordre in COLONNES_AJOUTEES:
+            connexion.execute(text(ordre))
     with SessionLocal() as db:
         if not db.scalar(select(AdminUser).limit(1)):
             db.add(

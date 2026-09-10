@@ -105,6 +105,18 @@ class DesignStatus(str, enum.Enum):
     failed = "failed"
 
 
+class Moderation(str, enum.Enum):
+    """Verdict de l'animateur sur une creation.
+
+    Stocke en texte, pas en type ENUM PostgreSQL : ajouter une valeur plus
+    tard ne demandera alors aucune migration.
+    """
+
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class Design(Base):
     """Creation d'un visiteur.
 
@@ -131,6 +143,13 @@ class Design(Base):
     )
     render_path: Mapped[str | None] = mapped_column(String(512))
     shared_hint: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Ce qui decide de l'affichage sur le grand ecran du stand. Par defaut en
+    # attente : rien ne s'affiche sans qu'un animateur l'ait regarde.
+    moderation: Mapped[str] = mapped_column(
+        String(12), default=Moderation.pending.value, server_default="pending", index=True
+    )
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

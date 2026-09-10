@@ -8,7 +8,18 @@ type Row = {
   render_url: string | null
   visitor_name: string | null
   visitor_email: string | null
+  moderation: 'pending' | 'approved' | 'rejected'
+  moderated_at: string | null
 }
+
+type Compteurs = { pending: number; approved: number; rejected: number }
+
+// Le second onglet est preselectionne sur « validees » : c'est ce qu'on vient
+// verifier neuf fois sur dix, le rejet etant l'exception qu'on releit rarement.
+const VERDICTS = [
+  { value: 'approved', label: 'Validees' },
+  { value: 'rejected', label: 'Rejetees' },
+]
 
 const TRIS = [
   { value: 'date_desc', label: 'Plus recentes' },
@@ -25,10 +36,20 @@ export function Designs() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date_desc')
   const [agrandie, setAgrandie] = useState<number | null>(null)
+  const [onglet, setOnglet] = useState<'attente' | 'traitees'>('attente')
+  const [verdict, setVerdict] = useState('approved')
+  const [compteurs, setCompteurs] = useState<Compteurs>({ pending: 0, approved: 0, rejected: 0 })
+  const [rafraichir, setRafraichir] = useState(0)
+
+  const moderation = onglet === 'attente' ? 'pending' : verdict
+
+  useEffect(() => {
+    api<Compteurs>('/api/admin/designs/counts').then(setCompteurs)
+  }, [rafraichir])
 
   useEffect(() => {
     const id = setTimeout(() => {
-      const q = new URLSearchParams({ limit: '60', search, sort })
+      const q = new URLSearchParams({ limit: '60', search, sort, moderation })
       api<{ total: number; items: Row[] }>(`/api/admin/designs?${q}`).then((res) => {
         setRows(res.items)
         setTotal(res.total)
@@ -38,7 +59,16 @@ export function Designs() {
       })
     }, 250)
     return () => clearTimeout(id)
-  }, [search, sort])
+  }, [search, sort, moderation, rafraichir])
+
+  /** Verdict de l'animateur. La creation quitte alors l'onglet ou elle etait. */
+  const decider = async (id: string, decision: Row['moderation']) => {
+    await api(`/api/admin/designs/${id}/moderation`, {
+      method: 'POST',
+      body: JSON.stringify({ decision }),
+    })
+    setRafraichir((n) => n + 1)
+  }
 
   // On ne navigue qu'entre les creations reellement rendues : une vignette en
   // echec n'a pas d'image a agrandir.
@@ -81,6 +111,23 @@ export function Designs() {
     <>
       <h1>Creations <span className="muted">({total})</span></h1>
 
+      <nav className="onglets">
+        <button
+          type="button"
+          className={onglet === 'attente' ? 'actif' : ''}
+          onClick={() => setOnglet('attente')}
+        >
+          A moderer <span className="pastille">{compteurs.pending}</span>
+        </button>
+        <button
+          type="button"
+          className={onglet === 'traitees' ? 'actif' : ''}
+          onClick={() => setOnglet('traitees')}
+        >
+          Traitees <span className="pastille">{compteurs.approved + compteurs.rejected}</span>
+        </button>
+      </nav>
+
       <div className="toolbar">
         <input
           placeholder="Filtrer par nom, prenom ou email"
@@ -96,9 +143,26 @@ export function Designs() {
             <option key={tri.value} value={tri.value}>{tri.label}</option>
           ))}
         </select>
+        {onglet === 'traitees' && (
+          <select
+            aria-label="Filtrer par verdict"
+            value={verdict}
+            onChange={(e) => setVerdict(e.target.value)}
+          >
+            {VERDICTS.map((v) => (
+              <option key={v.value} value={v.value}>{v.label}</option>
+            ))}
+          </select>
+        )}
       </div>
 
-      {rows.length === 0 && <p className="muted">Aucune creation ne correspond.</p>}
+      {rows.length === 0 && (
+        <p className="muted">
+          {onglet === 'attente' && !search
+            ? 'Rien a moderer : tout a ete traite.'
+            : 'Aucune creation ne correspond.'}
+        </p>
+      )}
 
       <div className="grid">
         {rows.map((row) => (
@@ -122,6 +186,34 @@ export function Designs() {
               {row.visitor_email && <span className="email">{row.visitor_email}</span>}
               <span>{date(row.created_at)}</span>
             </figcaption>
+
+            {onglet === 'attente' ? (
+              <div className="verdict">
+                <button type="button" className="valider" onClick={() => decider(row.id, 'approved')}>
+                  Valider
+                </button>
+                <button type="button" className="rejeter" onClick={() => decider(row.id, 'rejected')}>
+                  Rejeter
+                </button>
+              </div>
+            ) : (
+              <div className="verdict">
+                {/* Reversible : un clic de travers se rattrape sans passer par
+                    la base, et la creation revient dans l'onglet d'en face. */}
+                <span className={row.moderation === 'approved' ? 'ok' : 'ko'}>
+                  {row.moderation === 'approved' ? 'Validee' : 'Rejetee'}
+                </span>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() =>
+                    decider(row.id, row.moderation === 'approved' ? 'rejected' : 'approved')
+                  }
+                >
+                  {row.moderation === 'approved' ? 'Rejeter' : 'Valider'}
+                </button>
+              </div>
+            )}
           </figure>
         ))}
       </div>
