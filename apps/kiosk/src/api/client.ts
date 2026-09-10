@@ -11,6 +11,12 @@ export type Layer = {
   y: number
   /** Largeur en fraction de la largeur de la planche. Absent = fond en mode "cover". */
   scale?: number
+  /**
+   * Abscisse ou l'objet est apparu, pour que « Reinitialise cet objet » l'y
+   * ramene. Cote borne uniquement : le serveur ne declare pas ce champ, il le
+   * laisse donc tomber a l'enregistrement.
+   */
+  spawnX?: number
   rotation: number
   opacity: number
   z: number

@@ -46,7 +46,10 @@ export function TouchScreen() {
 
   return (
     <div className="touch-root">
-      <Ribbon />
+      {/* Sur l'editeur, le bandeau est rendu ENTRE les deux canvas de la
+          planche (au-dessus du fond, sous les objets) : c'est SkinCanvas qui
+          le place. Ailleurs, il n'a rien a traverser. */}
+      {step !== 'editor' && <Ribbon />}
       <BrandMark />
       <LangSwitch />
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Anchor, Box, Button, ColorPicker, Modal, Paper, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import { IconRefresh, IconTrash } from '@tabler/icons-react'
 import { AssetSwiper } from '../../components/AssetSwiper'
+import { Ribbon } from '../../components/chrome/Ribbon'
 import { SkinCanvas } from '../../components/SkinCanvas'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
@@ -10,7 +11,15 @@ import type { CatalogItem } from '../../api/client'
 
 /** Largeur de la planche dans la scene 1920x1080, et marge de debordement visible. */
 const SKIN_WIDTH = 1710
-const BLEED = 60
+// Zone de debordement de la maquette : etroite sur les cotes, plus haute en
+// bas pour accueillir le texte d'aide (mesure sur le design : 15 / 65 / 90 px
+// pour 2000 de large).
+const BLEED = { x: 14, top: 62, bottom: 86 }
+// Le canvas couvre toute la scene 16/9 (les panneaux passent devant en DOM) :
+// un objet peut sortir de la zone de debordement sans etre coupe. La planche
+// est posee la ou la maquette la met.
+const STAGE = { width: 1920, height: 1080 }
+const ORIGIN = { x: (STAGE.width - SKIN_WIDTH) / 2, y: 92 + BLEED.top }
 
 /** Cellule du swiper des fonds : la vignette « choisis ta couleur » ou un fond du catalogue. */
 type BackgroundTile = { id: string; kind: 'color' } | { id: string; kind: 'asset'; item: CatalogItem }
@@ -84,13 +93,16 @@ export function EditorStep() {
   return (
     <div className="editor-screen">
       {/* --- La planche ------------------------------------------------- */}
-      <div className="skin-area" style={{ width: SKIN_WIDTH + BLEED * 2, height: skinHeight + BLEED * 2 }}>
+      <div className="skin-area">
         <SkinCanvas
           catalog={catalog}
           layers={layers}
           mediaBase={api.mediaBase}
           skinWidth={SKIN_WIDTH}
           bleed={BLEED}
+          stage={STAGE}
+          origin={ORIGIN}
+          middle={<Ribbon />}
           interactive
           selectedIndex={selectedIndex}
           onSelect={select}
@@ -104,8 +116,8 @@ export function EditorStep() {
             style={{
               width: notchWidth - 24,
               height: notchHeight - 14,
-              left: BLEED + SKIN_WIDTH / 2 - (notchWidth - 24) / 2,
-              top: BLEED + skinHeight - notchHeight + 10,
+              left: ORIGIN.x + SKIN_WIDTH / 2 - (notchWidth - 24) / 2,
+              top: ORIGIN.y + skinHeight - notchHeight + 10,
             }}
           >
             <UnstyledButton className="notch-action" onClick={() => removeLayer(selectedIndex)}>
@@ -131,6 +143,7 @@ export function EditorStep() {
               items={backgroundTiles}
               rows={3}
               columns={4}
+              cellHeight={86}
               selectedId={backgroundTileId}
               resetKey={locale}
               onSelect={(tile) => {
@@ -165,6 +178,8 @@ export function EditorStep() {
               items={catalog.objects}
               rows={3}
               columns={4}
+              cellHeight={100}
+              gap={0}
               selectedId={objectTileId}
               resetKey={locale}
               onSelect={(item) => {

@@ -36,10 +36,29 @@ type State = {
 const newSessionId = () =>
   `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 
-// Un objet arrive a droite de l'encoche (au centre il serait cache par le
-// panneau contextuel), comme sur la maquette.
-const objectDefaults = (): Pick<Layer, 'x' | 'y' | 'scale' | 'rotation' | 'opacity'> => ({
-  x: 0.74,
+/**
+ * Bande centrale reservee : le panneau « Supprime / Reinitialise » s'y pose,
+ * un objet qui y naitrait serait cache dessous.
+ */
+const NOTCH_FROM = 0.38
+const NOTCH_TO = 0.62
+/** Un objet ne nait pas a cheval sur un bord de la planche. */
+const EDGE = 0.1
+
+/**
+ * Abscisse de naissance, tiree au sort dans les deux couloirs que l'encoche
+ * laisse libres : deux objets ajoutes a la suite ne se posent plus au meme
+ * endroit. La hauteur, elle, reste au milieu de la planche.
+ */
+function spawnX(): number {
+  const gauche = NOTCH_FROM - EDGE
+  const droite = 1 - EDGE - NOTCH_TO
+  const t = Math.random() * (gauche + droite)
+  return t < gauche ? EDGE + t : NOTCH_TO + (t - gauche)
+}
+
+const objectDefaults = (x: number): Pick<Layer, 'x' | 'y' | 'scale' | 'rotation' | 'opacity'> => ({
+  x,
   y: 0.5,
   scale: OBJECT_DEFAULT_SCALE,
   rotation: 0,
@@ -83,10 +102,16 @@ export const useSession = create<State>((set) => ({
     })),
 
   addObject: (assetId) =>
-    set((s) => ({
-      layers: [...s.layers, { type: 'object', assetId, ...objectDefaults(), z: s.layers.length + 1 }],
-      selectedIndex: s.layers.length,
-    })),
+    set((s) => {
+      const x = spawnX()
+      return {
+        layers: [
+          ...s.layers,
+          { type: 'object', assetId, spawnX: x, ...objectDefaults(x), z: s.layers.length + 1 },
+        ],
+        selectedIndex: s.layers.length,
+      }
+    }),
 
   updateLayer: (index, patch) =>
     set((s) => ({
@@ -104,7 +129,9 @@ export const useSession = create<State>((set) => ({
           const { scale: _cover, ...rest } = layer
           return { ...rest, x: 0.5, y: 0.5, rotation: 0 }
         }
-        return { ...layer, ...objectDefaults() }
+        // Retour a l'endroit ou l'objet est apparu, pas a un nouveau tirage :
+        // « reinitialiser » ne doit pas le faire sauter de cote.
+        return { ...layer, ...objectDefaults(layer.spawnX ?? layer.x) }
       }),
     })),
 

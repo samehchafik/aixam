@@ -19,15 +19,17 @@ body { color: var(--ink); user-select: none; }
 /* Le decor porte sur toute la fenetre, pas sur la scene 16/9 : sur un ecran
    qui n'est pas exactement en 16/9, la marge de mise a l'echelle se fond dans
    le degrade au lieu de faire deux bandes bleu fonce sur les cotes. */
+/* overflow: clip et non hidden : hidden laisse un scrollIntoView (focus d'un
+   champ, clavier tactile) faire defiler la scene, qui reste alors decalee. */
 .stage-viewport {
-  position: fixed; inset: 0;
+  position: fixed; inset: 0; overflow: clip;
   background:
     radial-gradient(60% 70% at 92% 92%, rgba(244, 185, 160, 0.95) 0%, rgba(244, 185, 160, 0.55) 30%, transparent 70%),
     radial-gradient(45% 55% at 70% 100%, rgba(155, 110, 190, 0.6) 0%, transparent 70%),
     linear-gradient(115deg, #1a2a70 0%, #2b2d78 40%, #4b3f8e 70%, #8a6aa8 100%);
 }
 .stage {
-  position: absolute; left: 50%; top: 50%; overflow: hidden;
+  position: absolute; left: 50%; top: 50%; overflow: clip;
   transform-origin: center;
   background: transparent;
 }
@@ -37,7 +39,7 @@ body { color: var(--ink); user-select: none; }
 /* --- Habillage commun ------------------------------------------------ */
 .touch-root { position: relative; width: 100%; height: 100%; }
 
-.ribbon { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+.ribbon { position: absolute; top: 0; left: 0; z-index: 3; pointer-events: none; overflow: visible; }
 .ribbon text { font-family: Poppins, sans-serif; letter-spacing: 0.02em; }
 
 .brand-mark {
@@ -65,11 +67,20 @@ body { color: var(--ink); user-select: none; }
 /* --- Editeur ----------------------------------------------------------- */
 .editor-screen { position: absolute; inset: 0; }
 
-.skin-area { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); }
+/* Plein ecran, au-dessus du bandeau (z 3), sous les panneaux (z 6) : un
+   objet passe devant le bandeau et disparait sous les paniers. */
+.skin-area { position: absolute; inset: 0; z-index: 4; }
 .skin-area canvas { display: block; }
 
+/* Les deux canvas de la planche et, entre eux, le bandeau du haut. */
+.skin-stack { position: relative; }
+.skin-stack > * { position: absolute; top: 0; left: 0; }
+.skin-back { z-index: 1; }
+.skin-stack .ribbon { z-index: 2; }
+.skin-front { z-index: 3; }
+
 .notch-panel {
-  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  position: absolute; z-index: 4; display: flex; flex-direction: column; justify-content: center; gap: 6px;
   padding: 8px 18px; background: var(--sky-deep) !important; color: #fff;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
 }
@@ -79,13 +90,15 @@ body { color: var(--ink); user-select: none; }
 }
 .notch-action:active { opacity: 0.7; }
 
+/* pointer-events: none -- le texte barre toute la largeur au-dessus du canvas,
+   il ne doit pas intercepter un objet qu'on traine a cette hauteur. */
 .skin-hint {
-  position: absolute; top: 366px; left: 0; right: 0; text-align: center;
+  position: absolute; top: 372px; z-index: 5; left: 0; right: 0; text-align: center; pointer-events: none;
   font-size: 20px; color: var(--muted);
 }
 
 .panels {
-  position: absolute; top: 486px; left: 50%; transform: translateX(-50%);
+  position: absolute; top: 486px; z-index: 6; left: 50%; transform: translateX(-50%);
   display: flex; gap: 44px;
 }
 .panel { width: 655px; }
@@ -101,15 +114,21 @@ body { color: var(--ink); user-select: none; }
   --swiper-scrollbar-bottom: 0px; --swiper-scrollbar-sides-offset: 2%; }
 .asset-swiper .swiper-slide { height: calc(100% - 24px); }
 .asset-page { display: grid; width: 100%; height: 100%; }
-.asset-cell { min-width: 0; min-height: 0; padding: 0; border: none; background: none; cursor: pointer; }
+/* display:block : un <button> en inline-block ne transmet pas sa hauteur a ses
+   enfants, l'image retombait alors a sa taille intrinseque et debordait. */
+.asset-cell {
+  display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden;
+  padding: 0; border: none; background: none; cursor: pointer;
+}
 
 .tile {
-  width: 100%; height: 100%; border-radius: 6px; overflow: hidden;
+  display: block; width: 100%; height: 100%; border-radius: 6px; overflow: hidden;
   border: 3px solid transparent; background: rgba(0, 0, 0, 0.18); transition: border-color 120ms;
 }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tile.selected { border-color: var(--sky); }
-.tile-object { background: transparent; display: grid; place-items: center; padding: 4px; }
+/* Objets : jointifs et pleine case -- la case elle-meme est la marge. */
+.tile-object { background: transparent; padding: 0; border-radius: 0; }
 .tile-object img { object-fit: contain; }
 
 .tile-color {
@@ -129,7 +148,7 @@ body { color: var(--ink); user-select: none; }
 .color-modal { background: #1f2b5c !important; color: #fff; }
 
 .editor-actions {
-  position: absolute; top: 926px; left: 0; right: 0;
+  position: absolute; top: 926px; z-index: 6; left: 0; right: 0;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
 .cta {

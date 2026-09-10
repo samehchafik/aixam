@@ -17,6 +17,7 @@ Le tout est ensuite decoupe par le masque de la planche de bord.
 
 from __future__ import annotations
 
+import math
 import uuid
 from pathlib import Path
 
@@ -56,27 +57,38 @@ def cadrer_fond(layer: dict, sprite_ratio: float, width: int, height: int) -> di
     qu'un fond legerement decale.
 
     On force donc deux choses : une echelle au moins egale a la couverture, et
-    un centre assez rentre pour que les quatre bords restent dedans.
+    un centre assez rentre pour que la planche reste entierement dans l'image.
+
+    Avec une rotation, la planche vue depuis le repere de l'image est un
+    rectangle penche : on couvre son rectangle englobant (W|cos|+H|sin| par
+    W|sin|+H|cos|) et on borne le decalage du centre dans ce meme repere.
+    Un peu plus large que le strict necessaire, toujours suffisant. Meme
+    calcul que `coverBackground` cote borne.
 
     `sprite_ratio` = largeur / hauteur de l'image source.
-    Limite connue : une rotation du fond n'est pas prise en compte ici.
     """
-    couverture = max(1.0, sprite_ratio * height / width)
+    rad = math.radians(float(layer.get("rotation", 0) or 0))
+    c, s_ = abs(math.cos(rad)), abs(math.sin(rad))
+    wp = width * c + height * s_
+    hp = width * s_ + height * c
+
+    couverture = max(wp / width, hp / (width / sprite_ratio))
     echelle = max(couverture, float(layer.get("scale") or 0.0))
+    w = echelle * width
+    h = w / sprite_ratio
 
-    # Taille du sprite, en fractions de la planche.
-    fw = echelle
-    fh = (echelle * width / sprite_ratio) / height
+    # Decalage du centre, tourne dans le repere de l'image, borne, puis ramene.
+    dx = (float(layer.get("x", 0.5)) - 0.5) * width
+    dy = (float(layer.get("y", 0.5)) - 0.5) * height
+    cos, sin = math.cos(rad), math.sin(rad)
+    lx = dx * cos + dy * sin
+    ly = -dx * sin + dy * cos
+    bx = max(-(w - wp) / 2, min((w - wp) / 2, lx))
+    by = max(-(h - hp) / 2, min((h - hp) / 2, ly))
+    rx = bx * cos - by * sin
+    ry = bx * sin + by * cos
 
-    def borner(valeur: float, fraction: float) -> float:
-        return min(max(valeur, 1 - fraction / 2), fraction / 2)
-
-    return {
-        **layer,
-        "scale": echelle,
-        "x": borner(float(layer.get("x", 0.5)), fw),
-        "y": borner(float(layer.get("y", 0.5)), fh),
-    }
+    return {**layer, "scale": echelle, "x": 0.5 + rx / width, "y": 0.5 + ry / height}
 
 
 def _paste_sprite(canvas: Image.Image, sprite: Image.Image, layer: dict, width: int, height: int) -> None:

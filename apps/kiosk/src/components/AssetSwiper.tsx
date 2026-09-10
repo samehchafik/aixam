@@ -11,6 +11,11 @@ type Props<T extends { id: string }> = {
   /** Colonnes par page. */
   columns: number
   gap?: number
+  /**
+   * Hauteur fixe d'une cellule, en px. Sans elle, une image plus grande que sa
+   * case (un objet en 600x600) la fait deborder sur la ligne suivante.
+   */
+  cellHeight?: number
   selectedId?: string | null
   onSelect: (item: T) => void
   renderItem: (item: T, selected: boolean) => ReactNode
@@ -31,6 +36,7 @@ export function AssetSwiper<T extends { id: string }>({
   rows,
   columns,
   gap = 12,
+  cellHeight,
   selectedId,
   onSelect,
   renderItem,
@@ -59,7 +65,7 @@ export function AssetSwiper<T extends { id: string }>({
             className="asset-page"
             style={{
               gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-              gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${rows}, ${cellHeight ? `${cellHeight}px` : 'minmax(0, 1fr)'})`,
               gap,
             }}
           >
