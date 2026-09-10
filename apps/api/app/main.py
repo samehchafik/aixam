@@ -59,7 +59,7 @@ async def lifespan(_: FastAPI):
     # ailleurs -- sur le serveur Linux il ecrit simplement « indisponible ».
     try:
         materiel.ecrire()
-    except OSError as exc:
+    except Exception as exc:  # noqa: BLE001 -- accessoire : jamais au prix du demarrage
         print(f"releve des ecrans non ecrit : {exc}")
     yield
 

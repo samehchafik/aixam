@@ -238,11 +238,31 @@ def relever() -> dict:
             "ecrans": [asdict(e) for e in ecrans], "indisponible": None}
 
 
+# La racine se reconnait a ce qu'elle contient, non a sa distance : compter les
+# repertoires en remontant (« parents[4] ») marchait depuis le depot et tombait
+# dans le conteneur, ou le code est copie a plat sous /app.
+MARQUEURS = ("docker-compose.yml", ".git")
+
+
+def racine_projet(depuis: Path, existe=Path.exists) -> Path | None:
+    """Le premier parent portant un marqueur de racine, ou rien."""
+    for parent in depuis.parents:
+        if any(existe(parent / marqueur) for marqueur in MARQUEURS):
+            return parent
+    return None
+
+
 def chemin_fichier() -> Path:
-    """Ou vit `materiels.json` : a la racine du projet, a cote du lanceur."""
+    """Ou vit `materiels.json` : a la racine du projet, a cote du lanceur.
+
+    Hors du depot -- dans l'image, par exemple -- faute de racine on se rabat
+    sur le repertoire de travail : le fichier n'y sert a rien, mais l'ecrire
+    ne doit surtout pas empecher l'API de demarrer.
+    """
     if settings.materiel_file:
         return Path(settings.materiel_file)
-    return Path(__file__).resolve().parents[4] / "materiels.json"
+    racine = racine_projet(Path(__file__).resolve())
+    return (racine or Path.cwd()) / "materiels.json"
 
 
 def ecrire(releve: dict | None = None) -> Path:

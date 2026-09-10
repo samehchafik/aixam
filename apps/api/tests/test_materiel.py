@@ -63,6 +63,18 @@ chemin.unlink()
 check("fichier absent : on releve a nouveau plutot que d'echouer",
       materiel.lire()["systeme"] == platform.system())
 
+print("\n[3 bis] Ou se pose materiels.json")
+# Le conteneur copie le code a plat sous /app : compter quatre parents y
+# levait IndexError, et l'API ne demarrait plus du tout.
+check("dans le depot, la racine du projet",
+      materiel.racine_projet(Path(materiel.__file__).resolve())
+      == Path(__file__).resolve().parents[3])
+check("code copie a plat, sans marqueur : aucune racine, pas d'erreur",
+      materiel.racine_projet(Path("/app/app/services/materiel.py"),
+                             existe=lambda _: False) is None)
+check("et alors le fichier se pose dans le repertoire de travail",
+      materiel.chemin_fichier().is_absolute())
+
 print("\n[4] Le script de lancement, selon le systeme")
 ECRANS = [
     EcranLanceurIn(peripherique=r"\\.\DISPLAY1", libelle="Tactile", x=0, y=0,
