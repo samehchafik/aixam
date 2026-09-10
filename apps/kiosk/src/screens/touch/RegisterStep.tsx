@@ -108,7 +108,18 @@ export function RegisterStep() {
 
   return (
     <div className="form-screen">
-      <Stack gap="lg" className="form-card">
+      {/* Un vrai formulaire : sur un ecran tactile, la touche de validation du
+          clavier virtuel envoie alors la saisie. Sans cela elle est inerte, et
+          le visiteur doit viser le bouton -- clavier ouvert par-dessus. */}
+      <Stack
+        component="form"
+        gap="lg"
+        className="form-card"
+        onSubmit={(e: React.FormEvent) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
         <div>
           <Title order={1} className="form-title">{t('register.title')}</Title>
           <Text c="dimmed" size="lg">{t('register.lead')}</Text>
@@ -145,7 +156,7 @@ export function RegisterStep() {
 
         {error && <Text c="red.4">{error}</Text>}
 
-        <Button className="cta" size="xl" radius="xl" disabled={!complete || busy} onClick={submit}>
+        <Button type="submit" className="cta" size="xl" radius="xl" disabled={!complete || busy}>
           {busy ? t('register.sending') : t('register.submit')}
         </Button>
 

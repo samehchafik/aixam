@@ -43,7 +43,13 @@ export function Settings() {
     <>
       <h1>Reglages</h1>
 
-      <div className="settings">
+      <form
+        className="settings"
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+      >
         <label className="switch">
           <input
             type="checkbox"
@@ -81,8 +87,8 @@ export function Settings() {
           />
         </label>
 
-        <button onClick={save}>{saved ? 'Enregistre' : 'Enregistrer'}</button>
-      </div>
+        <button type="submit">{saved ? 'Enregistre' : 'Enregistrer'}</button>
+      </form>
 
       <h2>Envoi des emails</h2>
       <MailConfig onLoaded={setMail} />

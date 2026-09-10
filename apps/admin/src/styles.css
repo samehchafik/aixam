@@ -143,3 +143,8 @@ tr.row-muted td { opacity: 0.55; }
 .verdict .link { flex: 0 0 auto; }
 .verdict .ok { flex: 1; font-size: 13px; font-weight: 600; color: #15803d; }
 .verdict .ko { flex: 1; font-size: 13px; font-weight: 600; color: #b91c1c; }
+
+/* Libelle reserve aux lecteurs d'ecran : un champ sans libelle visible en a
+   besoin d'un tout de meme, et `placeholder` n'en tient pas lieu. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+           overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

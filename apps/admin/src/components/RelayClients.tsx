@@ -86,24 +86,38 @@ export function RelayClients({ defaultQuota }: { defaultQuota: number }) {
 
       {error && <p className="error">{error}</p>}
 
-      <div className="toolbar">
+      {/* Un vrai formulaire : la touche Entree cree le client, comme partout
+          ailleurs sur le web. Un champ isole ne reagit qu'au clic. */}
+      <form
+        className="toolbar"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (name.trim()) create()
+        }}
+      >
+        <label className="sr-only" htmlFor="client-nom">Nom du back-office</label>
         <input
+          id="client-nom"
+          name="client-nom"
           type="text"
           placeholder="Nom du back-office (ex. Borne Mondial 2026)"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        <label className="sr-only" htmlFor="client-quota">Envois maximum par jour</label>
         <input
+          id="client-quota"
+          name="client-quota"
           type="number"
           min={1}
           value={quota}
           onChange={(e) => setQuota(Number(e.target.value))}
           title="Envois maximum par jour"
         />
-        <button disabled={!name.trim()} onClick={create}>
+        <button type="submit" disabled={!name.trim()}>
           Creer un client
         </button>
-      </div>
+      </form>
 
       {rows.length === 0 ? (
         <p className="muted">Aucun client. Personne ne peut s'appuyer sur ce back-office.</p>

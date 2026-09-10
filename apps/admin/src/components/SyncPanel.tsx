@@ -101,7 +101,13 @@ export function SyncPanel() {
   return (
     <>
       <h2>Synchronisation vers la base maitre</h2>
-      <div className="settings">
+      <form
+        className="settings"
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+      >
       <p className="muted hint">
         Ce back-office produit, la base maitre consolide. L'envoi ne part que dans ce
         sens, et il ne part que quand vous le demandez — rien n'est automatique.
@@ -135,8 +141,9 @@ export function SyncPanel() {
       </label>
 
       <div className="toolbar">
-        <button onClick={save}>{saved ? 'Enregistre' : 'Enregistrer'}</button>
-        <button className="link" onClick={test}>Tester la liaison</button>
+        <button type="submit">{saved ? 'Enregistre' : 'Enregistrer'}</button>
+        {/* type=button : sans lui, un bouton dans un formulaire soumet. */}
+        <button type="button" className="link" onClick={test}>Tester la liaison</button>
       </div>
 
       <table>
@@ -149,12 +156,12 @@ export function SyncPanel() {
       </table>
 
       <div className="toolbar">
-        <button disabled={busy} onClick={() => push(false)}>Synchroniser maintenant</button>
-        <button className="link" disabled={busy} onClick={() => push(true)}>Tout renvoyer</button>
+        <button type="button" disabled={busy} onClick={() => push(false)}>Synchroniser maintenant</button>
+        <button type="button" className="link" disabled={busy} onClick={() => push(true)}>Tout renvoyer</button>
       </div>
       <p className="muted hint">Derniere synchronisation : {dateFr(cfg.last_push_at)}</p>
       {message && <p className="muted hint">{message}</p>}
-      </div>
+      </form>
     </>
   )
 }

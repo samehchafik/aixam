@@ -104,6 +104,12 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
 
   return (
     <div className="settings">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+      >
       <label>
         <span>Par ou sortent les emails</span>
         <select
@@ -191,25 +197,36 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
       {error && <p className="error">{error}</p>}
 
       <div className="toolbar">
-        <button onClick={save}>{saved ? 'Enregistre' : 'Enregistrer'}</button>
+        <button type="submit">{saved ? 'Enregistre' : 'Enregistrer'}</button>
         {cfg.transport === 'relay' && (
-          <button className="link" onClick={testRelay}>
+          <button type="button" className="link" onClick={testRelay}>
             Tester la liaison
           </button>
         )}
       </div>
+      </form>
       {probe && <p className="muted hint">{probe}</p>}
 
-      <label>
-        <span>Envoyer un email de test</span>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (testTo) sendTest()
+        }}
+      >
+        <label htmlFor="email-test">
+          <span>Envoyer un email de test</span>
+        </label>
         <div className="toolbar">
           <input
+            id="email-test"
+            name="email-test"
             type="email"
+            autoComplete="email"
             placeholder="vous@exemple.fr"
             value={testTo}
             onChange={(e) => setTestTo(e.target.value)}
           />
-          <button className="link" disabled={!testTo} onClick={sendTest}>
+          <button type="submit" className="link" disabled={!testTo}>
             Envoyer
           </button>
         </div>
@@ -217,7 +234,7 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
           Passe par la file et le worker : c'est la chaine complete qui est validee, pas
           seulement la configuration.
         </p>
-      </label>
+      </form>
       {testMsg && <p className="muted hint">{testMsg}</p>}
     </div>
   )
