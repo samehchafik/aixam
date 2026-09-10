@@ -35,10 +35,18 @@ $chrome = @(
 if (-not $chrome) {{ throw "Chrome introuvable" }}
 
 $commun = @(
-  "--kiosk", "--no-first-run", "--disable-translate",
+  "--kiosk", "--no-first-run", "--no-default-browser-check", "--disable-translate",
   "--overscroll-history-navigation=0", "--disable-pinch",
   "--noerrdialogs", "--disable-session-crashed-bubble",
-  "--autoplay-policy=no-user-gesture-required"
+  "--autoplay-policy=no-user-gesture-required",
+  # Un stand n'a rien a synchroniser ni a mettre a jour pendant l'animation.
+  # Sans cela Chrome tente de s'enregistrer aupres des serveurs de notification
+  # de Google et remplit le journal d'erreurs sans consequence.
+  "--disable-background-networking", "--disable-sync", "--disable-component-update",
+  # La fenetre du grand ecran n'a jamais le focus : sans ces trois-la, Chrome
+  # ralentit ses minuteries et le defilement des images se met a saccader.
+  "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows",
+  "--disable-renderer-backgrounding"
 )
 """,
     "fenetre": """
@@ -63,6 +71,8 @@ set -euo pipefail
 
 HOTE="${{HOTE:-{hote}}}"
 PROFILS="${{PROFILS:-$HOME/.aixam-kiosk}}"
+JOURNAUX="${{JOURNAUX:-$PROFILS/journaux}}"
+mkdir -p "$JOURNAUX"
 
 for candidat in {candidats}; do
   if [ -x "$candidat" ] || command -v "$candidat" >/dev/null 2>&1; then
@@ -72,10 +82,20 @@ for candidat in {candidats}; do
 done
 : "${{NAVIGATEUR:?Chrome ou Chromium introuvable}}"
 
-COMMUN=(--kiosk --no-first-run --disable-translate
+COMMUN=(--kiosk --no-first-run --no-default-browser-check --disable-translate
         --overscroll-history-navigation=0 --disable-pinch
         --noerrdialogs --disable-session-crashed-bubble
-        --autoplay-policy=no-user-gesture-required)
+        --autoplay-policy=no-user-gesture-required
+        # Un stand n'a rien a synchroniser ni a mettre a jour pendant
+        # l'animation. Sans cela Chrome tente de s'enregistrer aupres des
+        # serveurs de notification de Google et remplit le journal d'erreurs
+        # sans consequence.
+        --disable-background-networking --disable-sync --disable-component-update
+        # La fenetre du grand ecran n'a jamais le focus : sans ces trois-la,
+        # Chrome ralentit ses minuteries et le defilement se met a saccader.
+        --disable-background-timer-throttling --disable-backgrounding-occluded-windows
+        --disable-renderer-backgrounding
+        {supplement})
 """
 
 _SHELL_FENETRE = """
@@ -83,10 +103,11 @@ _SHELL_FENETRE = """
 "$NAVIGATEUR" "${{COMMUN[@]}}" \\
   --user-data-dir="$PROFILS/{profil}" \\
   --window-position={x},{y} \\
-  --app="$HOTE{chemin}" &
+  --app="$HOTE{chemin}" >>"$JOURNAUX/{profil}.log" 2>&1 &
 """
 
 _SHELL_PIED = """
+echo "Fenetres ouvertes. Journaux : $JOURNAUX"
 # Les fenetres tournent en arriere-plan : on attend, sinon fermer ce terminal
 # les emporterait avec lui.
 wait
@@ -99,6 +120,7 @@ _MACOS = {
     "pied": _SHELL_PIED,
     "candidats": '"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" '
                  '"/Applications/Chromium.app/Contents/MacOS/Chromium"',
+    "supplement": "--use-mock-keychain",
 }
 
 _LINUX = {
@@ -107,6 +129,7 @@ _LINUX = {
     "fenetre": _SHELL_FENETRE,
     "pied": _SHELL_PIED,
     "candidats": "google-chrome chromium chromium-browser",
+    "supplement": "--password-store=basic",
 }
 
 MODELES = {"Windows": _WINDOWS, "Darwin": _MACOS, "Linux": _LINUX}
@@ -126,6 +149,7 @@ def construire_lanceur(payload) -> str:
         hote=payload.hote,
         fichier=fichier,
         candidats=modele.get("candidats", ""),
+        supplement=modele.get("supplement", ""),
     )]
     for i, ecran in enumerate(payload.ecrans, start=1):
         morceaux.append(modele["fenetre"].format(

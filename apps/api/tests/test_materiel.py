@@ -84,6 +84,22 @@ for systeme, extension, marqueur in (
           "--window-position=0,0" in produit and "--window-position=1920,0" in produit)
     check(f"{systeme} : un profil par fenetre",
           "tactile" in produit and "grand-ecran" in produit)
+    # Sans cela Chrome s'enregistre aupres de GCM et noie le journal du stand
+    # sous des erreurs sans consequence.
+    check(f"{systeme} : pas de trafic de fond", "--disable-background-networking" in produit)
+
+# Les commentaires glisses dans le tableau de drapeaux ne doivent pas finir
+# passes a Chrome comme des arguments.
+for systeme in ("Darwin", "Linux"):
+    produit = construire_lanceur(LanceurIn(hote="http://x", systeme=systeme, ecrans=ECRANS))
+    debut = produit.index("COMMUN=(")
+    bloc = produit[debut:produit.index(")\n", debut) + 1]
+    rendu = subprocess.run(["bash", "-c", bloc + '\nprintf "%s\\n" "${COMMUN[@]}"'],
+                           capture_output=True, text=True)
+    drapeaux = rendu.stdout.split()
+    check(f"{systeme} : le tableau ne contient que des drapeaux",
+          drapeaux and all(d.startswith("--") for d in drapeaux),
+          [d for d in drapeaux if not d.startswith("--")])
 
 # Un shell mal forme ne se verrait qu'au lancement, sur le stand.
 for systeme in ("Darwin", "Linux"):
@@ -113,5 +129,7 @@ check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:808
 print("\n[5] Ce qui n'est pas eprouve ici")
 if platform.system() != "Windows":
     print("      L'enumeration Windows (user32) demande Windows : non couverte sur ce poste.")
+print("      Le PowerShell engendre n'est pas execute ici : sa syntaxe n'est"
+      " verifiee qu'au premier lancement sur le poste du stand.")
 
 sys.exit(report())
