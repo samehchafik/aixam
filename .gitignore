@@ -19,6 +19,9 @@ tsconfig.tsbuildinfo
 # Pid et journaux des processus lances par bin/start.sh --local.
 .run/
 
+# Releve des ecrans : propre a la machine qui l'a produit.
+materiels.json
+
 # Le gitignore global de ce poste (~/.gitignore_global) exclut « README.md »
 # et « .gitignore » par des motifs nus, heritage d'un autre projet. Sans ces
 # deux exceptions, la doc de deploy/ et ce fichier meme n'entrent jamais dans

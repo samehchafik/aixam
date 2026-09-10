@@ -35,6 +35,7 @@ test-borne: ## Teste le parcours visiteur (inscription, doublons, verification, 
 	cd apps/api && ../../.venv/bin/python tests/test_render_background.py
 	cd apps/api && ../../.venv/bin/python tests/test_routes_spa.py
 	cd apps/api && ../../.venv/bin/python tests/test_moderation.py
+	cd apps/api && ../../.venv/bin/python tests/test_materiel.py
 
 test-bo: ## Teste la galerie des creations du back-office (filtre, tri)
 	cd apps/api && ../../.venv/bin/python tests/test_designs_listing.py

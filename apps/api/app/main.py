@@ -15,6 +15,7 @@ from app.db import Base, SessionLocal, engine
 from app.deps import require_kiosk_basic_auth
 from app.models import AdminUser, Kiosk
 from app.security import hash_secret
+from app.services import materiel
 
 STATIC = Path(settings.static_dir)
 MEDIA = Path(settings.media_dir)
@@ -54,6 +55,12 @@ def bootstrap() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     bootstrap()
+    # Le releve des ecrans, pour le back-office local du stand. Sans effet
+    # ailleurs -- sur le serveur Linux il ecrit simplement « indisponible ».
+    try:
+        materiel.ecrire()
+    except OSError as exc:
+        print(f"releve des ecrans non ecrit : {exc}")
     yield
 
 

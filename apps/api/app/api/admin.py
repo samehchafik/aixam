@@ -26,6 +26,7 @@ from app.models import (
     Visitor,
 )
 from app.schemas import (
+    LanceurIn,
     MailConfigIn,
     ModerationIn,
     SyncConfigIn,
@@ -40,7 +41,8 @@ from app.services.renderer import render_url
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
-from app.services import sync_push
+from app.services import materiel, sync_push
+from app.services.lanceur import construire_lanceur
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(current_admin)])
 
@@ -530,3 +532,27 @@ def run_sync_push(full: bool = False, db: Session = Depends(get_db)) -> dict:
         return {"ok": True, "totaux": sync_push.push(db, tout=full)}
     except SendError as exc:
         return {"ok": False, "error": str(exc)}
+
+
+# --- Ecrans de la machine ---
+
+
+@router.get("/materiel")
+def materiel_releve(rescan: bool = False) -> dict:
+    """Les ecrans relies a CETTE machine.
+
+    C'est l'API qui les releve, pas le navigateur : elle tourne sur le PC du
+    stand, alors qu'un navigateur verrait les ecrans de la machine qui
+    l'affiche -- celle de l'animateur, et personne ne s'en apercevrait.
+    """
+    if rescan:
+        releve = materiel.relever()
+        materiel.ecrire(releve)
+        return releve
+    return materiel.lire()
+
+
+@router.post("/materiel/lanceur")
+def materiel_lanceur(payload: LanceurIn) -> dict:
+    """Engendre le script PowerShell qui ouvre un Chromium par ecran."""
+    return {"nom": "launch-kiosk-genere.ps1", "script": construire_lanceur(payload)}

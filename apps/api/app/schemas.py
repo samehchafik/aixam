@@ -234,3 +234,24 @@ class ModerationIn(BaseModel):
     """Verdict de l'animateur. `pending` sert a remettre en attente."""
 
     decision: Moderation
+
+
+# --- Lancement des ecrans kiosque ---
+class EcranLanceurIn(BaseModel):
+    """Un ecran et ce qu'on veut y afficher."""
+
+    peripherique: str = Field(max_length=64)
+    libelle: str = Field(default="", max_length=120)
+    x: int
+    y: int
+    largeur: int
+    hauteur: int
+    # Chemin relatif a l'hote : /kiosk/, /kiosk/#/display, /kiosk/#/mur...
+    chemin: str = Field(max_length=200)
+    # Un profil Chromium par fenetre, sans quoi le plein ecran se perd.
+    profil: str = Field(pattern=r"^[a-z0-9-]{1,32}$")
+
+
+class LanceurIn(BaseModel):
+    hote: str = Field(default="http://localhost:8080", max_length=200)
+    ecrans: list[EcranLanceurIn] = []

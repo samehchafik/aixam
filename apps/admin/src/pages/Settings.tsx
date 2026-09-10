@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { MailConfig, type MailCfg } from '../components/MailConfig'
 import { RelayClients } from '../components/RelayClients'
 import { SyncPanel } from '../components/SyncPanel'
+import { Ecrans } from '../components/Ecrans'
 
 type Config = {
   verification_bypass: boolean
@@ -81,6 +82,8 @@ export function Settings() {
       <MailConfig onLoaded={setMail} />
 
       <SyncPanel />
+
+      <Ecrans />
 
       <div>
         <Title order={2} fz="lg" mb="sm">Bornes</Title>

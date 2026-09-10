@@ -90,6 +90,9 @@ class Settings(BaseSettings):
     cors_origins: str = ""
 
     media_dir: str = "media"
+    # Ou l'API depose le releve des ecrans. Vide : a la racine du projet, a
+    # cote du lanceur qui s'en sert.
+    materiel_file: str = ""
     static_dir: str = "static"
 
     # Duree de vie du code de verification et garde-fous anti-abus.
