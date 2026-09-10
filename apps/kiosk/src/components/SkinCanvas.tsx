@@ -25,7 +25,20 @@ function useImage(src: string | null) {
 
 export type Bleed = { x: number; top: number; bottom: number }
 
-const SKY = '#4FC3F7'
+/**
+ * Couleur de la selection. Volontairement differente du bleu du bandeau, du
+ * bouton et du panneau : ce qui marque « tu as saisi cet element » ne doit pas
+ * se confondre avec le decor. Le magenta tranche a la fois sur le fond
+ * violet de la scene et sur les skins chauds.
+ */
+const SELECT = '#FF3FA4'
+
+/**
+ * Ombre portee sombre sous le cadre : un trait de couleur unique finit
+ * toujours par se perdre sur l'un des fonds du catalogue -- le neon, le rose a
+ * pois, le damier. Le halo le detache quel que soit ce qu'il y a dessous.
+ */
+const FRAME_SHADOW = { shadowColor: 'rgba(0, 0, 0, 0.55)', shadowBlur: 6, shadowOpacity: 1 }
 
 type Props = {
   catalog: Catalog
@@ -464,18 +477,19 @@ export function SkinCanvas({
           {/* Cadre de selection (objet, fond), pilote par syncFrame. */}
           {interactive && (
             <Group ref={frameGroup} listening={false} visible={false}>
-              <Rect ref={frameRect} stroke={SKY} strokeWidth={2} dash={[12, 9]} listening={false} />
+              <Rect ref={frameRect} stroke={SELECT} strokeWidth={2} dash={[12, 9]} listening={false} {...FRAME_SHADOW} />
               {[0, 1, 2, 3].map((i) => (
                 <Line
                   key={i}
                   ref={(el) => {
                     frameLines.current[i] = el
                   }}
-                  stroke={SKY}
+                  stroke={SELECT}
                   strokeWidth={8}
                   lineCap="round"
                   lineJoin="round"
                   listening={false}
+                  {...FRAME_SHADOW}
                 />
               ))}
             </Group>
@@ -496,7 +510,7 @@ export function SkinCanvas({
               anchorCornerRadius={14}
               anchorStroke="rgba(255, 255, 255, 0.55)"
               anchorStrokeWidth={1.5}
-              anchorFill="rgba(79, 195, 247, 0.45)"
+              anchorFill="rgba(255, 63, 164, 0.5)"
               // Pour le fond, la poignee de rotation au-dessus du cadre serait
               // hors scene : on la rentre dans la zone de debordement.
               rotateAnchorOffset={selectedLayer?.type === 'background' ? -40 : 30}

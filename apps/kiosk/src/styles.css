@@ -3,6 +3,8 @@
   --navy: #1d2b6b;
   --navy-deep: #141a4a;
   --sky: #4fc3f7;
+  /* Ce qui est selectionne, jamais le decor : voir SELECT dans SkinCanvas. */
+  --select: #ff3fa4;
   --sky-deep: #3db4f2;
   --peach: #f4b9a0;
   --ink: #ffffff;
@@ -126,7 +128,7 @@ body { color: var(--ink); user-select: none; }
   border: 3px solid transparent; background: rgba(0, 0, 0, 0.18); transition: border-color 120ms;
 }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.tile.selected { border-color: var(--sky); }
+.tile.selected { border-color: var(--select); }
 /* Objets : jointifs et pleine case -- la case elle-meme est la marge. */
 .tile-object { background: transparent; padding: 0; border-radius: 0; }
 .tile-object img { object-fit: contain; }
