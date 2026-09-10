@@ -16,6 +16,9 @@ tsconfig.tsbuildinfo
 # Temoin de la derniere construction de l'image API : local a la machine.
 .api-image-built
 
+# Pid et journaux des processus lances par bin/start.sh --local.
+.run/
+
 # Le gitignore global de ce poste (~/.gitignore_global) exclut « README.md »
 # et « .gitignore » par des motifs nus, heritage d'un autre projet. Sans ces
 # deux exceptions, la doc de deploy/ et ce fichier meme n'entrent jamais dans
