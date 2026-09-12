@@ -1,0 +1,45 @@
+/*
+ * Polices de la charte EASY, telles que livrees par le studio
+ * (BorneEasy_PourSam/Fonts). Elles sont embarquees dans le bundle : la borne
+ * n'appelle aucun service exterieur, et le rendu ne depend pas du reseau du
+ * salon.
+ *
+ * Seuls les cinq fichiers reellement employes dans le fichier Illustrator
+ * sont embarques -- Poppins Light, Regular, Italic, SemiBold et Anton.
+ */
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 300;
+  font-display: block;
+  src: url('./fonts/Poppins-Light.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./fonts/Poppins-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url('./fonts/Poppins-Italic.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url('./fonts/Poppins-SemiBold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./fonts/Anton-Regular.ttf') format('truetype');
+}

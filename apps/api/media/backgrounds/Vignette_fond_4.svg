@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="Calque 1" xmlns="http://www.w3.org/2000/svg" width="334" height="187" viewBox="0 0 334 187">
+  <defs>
+    <style>
+      .b {
+        fill: #246500;
+      }
+
+      .c {
+        letter-spacing: -.07em;
+      }
+
+      .d {
+        fill: #00770b;
+        font-family: BasenjiVariable-Regular, 'Basenji Variable';
+        font-size: 190.11px;
+        font-variation-settings: 'wght' 400, 'ital' 0;
+      }
+    </style>
+  </defs>
+  <rect class="b" x="0" y="0" width="334" height="187"/>
+  <text class="d" transform="translate(48.03 157.14)"><tspan class="c" x="0" y="0">F</tspan><tspan x="112.54" y="0">4</tspan></text>
+</svg>
