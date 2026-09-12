@@ -18,9 +18,12 @@ type Props<T extends { id: string }> = {
   cellHeight: number
   gap?: number
   /**
-   * Decalage du ruban au repos. Il laisse une marge a gauche, se resorbe des
-   * qu'on fait glisser, et n'a pas d'equivalent a droite : le contenu part en
-   * coupe au bord, ce qui dit qu'il continue.
+   * Marge aux deux bouts du ruban.
+   *
+   * A gauche, elle decale le ruban au repos et se resorbe des le premier
+   * glissement. A droite, elle n'apparait qu'en bout de course : tant qu'il
+   * reste des elements, le contenu part en coupe au bord, ce qui dit qu'il
+   * continue. C'est une marge de fin, pas une marge permanente.
    */
   offset?: number
   selectedId?: string | null
@@ -69,7 +72,7 @@ export function AssetSwiper<T extends { id: string }>({
       slidesPerView="auto"
       spaceBetween={gap}
       slidesOffsetBefore={offset}
-      slidesOffsetAfter={0}
+      slidesOffsetAfter={offset}
       freeMode={{ enabled: true, momentum: true, momentumRatio: 0.6 }}
       scrollbar={{ draggable: true }}
       touchStartPreventDefault={false}
