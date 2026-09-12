@@ -48,7 +48,15 @@ services:
       # borne joint l'API par le reseau local.
       - "${API_BIND:-0.0.0.0}:${API_PORT:-8080}:8000"
     volumes:
-      - media:/app/media
+      # Le catalogue suit le depot. Il etait dans un volume nomme, que docker ne
+      # remplit qu'a sa creation : le conteneur gardait donc les elements du tout
+      # premier build, et aucun `git pull` ne le mettait a jour.
+      - ./apps/api/media/backgrounds:/app/media/backgrounds:ro
+      - ./apps/api/media/objects:/app/media/objects:ro
+      - ./apps/api/media/base:/app/media/base:ro
+      # Les rendus, eux, sont produits a l'execution : ils restent dans un
+      # volume, pour survivre au remplacement du conteneur.
+      - renders:/app/media/renders
       - ./apps/api/static:/app/static:ro
 
   # Worker d'envoi des emails (file outbox). Separe de l'API pour qu'une panne
@@ -68,11 +76,19 @@ services:
         required: false
     command: ["python", "-m", "app.workers.outbox"]
     volumes:
-      - media:/app/media
+      # Le catalogue suit le depot. Il etait dans un volume nomme, que docker ne
+      # remplit qu'a sa creation : le conteneur gardait donc les elements du tout
+      # premier build, et aucun `git pull` ne le mettait a jour.
+      - ./apps/api/media/backgrounds:/app/media/backgrounds:ro
+      - ./apps/api/media/objects:/app/media/objects:ro
+      - ./apps/api/media/base:/app/media/base:ro
+      # Les rendus, eux, sont produits a l'execution : ils restent dans un
+      # volume, pour survivre au remplacement du conteneur.
+      - renders:/app/media/renders
 
 volumes:
   pgdata:
-  media:
+  renders:
 
 # Sous-reseau fige. Sans lui, docker choisit une plage libre a la creation du
 # reseau et la passerelle change d'une machine a l'autre, voire d'un `compose

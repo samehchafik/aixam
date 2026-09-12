@@ -20,13 +20,29 @@ export type SkinShape = {
 
 type Ctx = Pick<CanvasRenderingContext2D, 'beginPath' | 'moveTo' | 'lineTo' | 'closePath'>
 
-/** Trace le contour de la planche dans un rectangle (0,0,w,h). */
+/**
+ * Trace le contour de la planche dans un rectangle (0,0,w,h).
+ *
+ * Sans points -- un catalogue reste en arriere, par exemple -- on retombe sur
+ * un simple rectangle. La planche perd sa silhouette, mais elle s'affiche :
+ * sur un stand, mieux vaut une planche approximative qu'une planche absente.
+ */
 export function traceSkin(ctx: Ctx, shape: SkinShape, w: number, h: number): void {
+  ctx.beginPath()
+  const points = shape?.points
+  if (!points?.length) {
+    ctx.moveTo(0, 0)
+    ctx.lineTo(w, 0)
+    ctx.lineTo(w, h)
+    ctx.lineTo(0, h)
+    ctx.closePath()
+    return
+  }
+
   const sx = w / shape.width
   const sy = h / shape.height
-  ctx.beginPath()
-  for (let i = 0; i < shape.points.length; i++) {
-    const [x, y] = shape.points[i]
+  for (let i = 0; i < points.length; i++) {
+    const [x, y] = points[i]
     if (i === 0) ctx.moveTo(x * sx, y * sy)
     else ctx.lineTo(x * sx, y * sy)
   }
