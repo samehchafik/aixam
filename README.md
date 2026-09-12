@@ -31,7 +31,7 @@ Changer de coquille (Tauri → Electron → navigateur) ne touche que ce dossier
 
 ```bash
 make setup          # copie .env, npm install
-make seed           # catalogue de démo (formes générées) — à remplacer par les assets AIXAM
+make assets         # importe les éléments de skin livrés par le studio (SVG)
 make up             # build des fronts + docker compose up
 ```
 
@@ -232,25 +232,35 @@ réglage.
 Tout ce que le studio et le client peuvent changer vit **hors du code** :
 
 ```
-apps/api/media/backgrounds/index.json   fonds : ordre d'affichage + libellé fr/en/es (survol)
-apps/api/media/objects/index.json       objets à poser : idem
-apps/api/media/base/shape.json          géométrie de la planche (masque, encoche)
+apps/api/media/backgrounds/index.json   fonds : ordre, vignette 16:9, libellé fr/en/es
+apps/api/media/objects/index.json       objets à poser : ordre, dimensions, libellé
+apps/api/media/base/shape.json          silhouette de la planche, en points
 apps/kiosk/public/locales/{fr,en,es}.json  tous les textes de la borne
 ```
+
+Tout est en **SVG**, du gabarit aux objets. La borne les affiche tels quels ;
+le rendu serveur les rastérise à la volée, à la taille où ils sont réellement
+posés — le JPEG reçu par mail garde donc la netteté du vectoriel quelle que
+soit la taille choisie par le visiteur.
 
 Format d'un `index.json` :
 
 ```json
 { "items": [
-  { "id": "sunburst", "file": "sunburst.jpg",
-    "label": { "fr": "Soleil rétro", "en": "Retro sunburst", "es": "Sol retro" } }
+  { "id": "fond-1", "file": "fond_1.svg", "thumb": "Vignette_fond_1.svg",
+    "width": 3460, "height": 690,
+    "label": { "fr": "Fond 1", "en": "Background 1", "es": "Fondo 1" } }
 ] }
 ```
 
+`make assets` régénère ces index depuis le dossier livré par le studio
+(`elements_creation_skins`) : il copie les SVG, relève leurs dimensions et
+extrait la silhouette du gabarit. Les libellés sont générés en « Fond 1 » et se
+corrigent ensuite directement dans `index.json`.
+
 L'ordre du tableau est l'ordre des vignettes. Un fichier absent est ignoré
-(jamais d'écran cassé sur le stand). Formats : PNG avec transparence pour les
-objets, JPG/PNG/WebP pour les fonds. Le catalogue est relu à chaque démarrage
-de la borne, sans redéploiement. `make seed` génère un jeu de démonstration.
+(jamais d'écran cassé sur le stand). Format attendu : SVG. Le PNG et le JPEG restent acceptés. Le catalogue est relu à chaque démarrage
+de la borne, sans redéploiement.
 
 Une langue de plus = un fichier `locales/xx.json` + son code dans
 `LOCALES` (`apps/kiosk/src/i18n/index.tsx`).

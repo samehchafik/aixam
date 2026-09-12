@@ -26,19 +26,37 @@ function useImage(src: string | null) {
 export type Bleed = { x: number; top: number; bottom: number }
 
 /**
- * Couleur de la selection. Volontairement differente du bleu du bandeau, du
- * bouton et du panneau : ce qui marque « tu as saisi cet element » ne doit pas
- * se confondre avec le decor. Le magenta tranche a la fois sur le fond
- * violet de la scene et sur les skins chauds.
+ * Couleur de la selection : le bleu interface de la charte. C'est celui que la
+ * planche de notes du studio designe, et les fonds sont dessines pour qu'il y
+ * reste lisible.
  */
-const SELECT = '#FF3FA4'
+const SELECT = '#28B7F3'
 
 /**
- * Ombre portee sombre sous le cadre : un trait de couleur unique finit
- * toujours par se perdre sur l'un des fonds du catalogue -- le neon, le rose a
- * pois, le damier. Le halo le detache quel que soit ce qu'il y a dessous.
+ * Ombre portee du cadre, telle que la planche de notes la decrit : bleu nuit
+ * de la charte, sans decalage, legere. Le studio ecrit « atenuation de 1px,
+ * voir plus si besoin » -- 1px ne suffisait pas sur les fonds les plus
+ * contrastes, on est monte a 3.
  */
-const FRAME_SHADOW = { shadowColor: 'rgba(0, 0, 0, 0.55)', shadowBlur: 6, shadowOpacity: 1 }
+const FRAME_SHADOW = {
+  shadowColor: '#1F2847',
+  shadowBlur: 4,
+  shadowOffset: { x: 0, y: 0 },
+  shadowOpacity: 1,
+}
+
+/** Pointille plutot que tirets, comme demande dans les notes du studio. */
+const FRAME_DASH = [3, 9]
+
+/**
+ * Inclinaison maximale d'un fond, en degres.
+ *
+ * Un fond est dessine pour la planche : au-dela de quelques degres il faut
+ * l'agrandir enormement pour continuer a la couvrir, et son motif part de
+ * travers. On borne donc le geste plutot que de laisser le visiteur arriver a
+ * un resultat qu'il n'aurait pas voulu. Les objets, eux, tournent librement.
+ */
+const MAX_ROTATION_FOND = 7
 
 type Props = {
   catalog: Catalog
@@ -122,7 +140,9 @@ export function SkinCanvas({
     h: skinHeight + marge.top + marge.bottom,
   }
   const hasBleed = marge.x > 0 || marge.top > 0 || marge.bottom > 0
+
   const selectedLayer = selectedIndex === null ? null : (layers[selectedIndex] ?? null)
+  const fondSelectionne = selectedLayer?.type === 'background'
 
   const bgIndex = layers.findIndex((l) => l.type === 'background')
   const bgLayer = bgIndex < 0 ? null : layers[bgIndex]
@@ -135,6 +155,11 @@ export function SkinCanvas({
 
   const transformer = useRef<Konva.Transformer>(null)
   const nodes = useRef(new Map<number, Konva.Node>())
+  // Chaque calque est dessine deux fois : attenue hors de la planche, a pleine
+  // opacite dedans. Un geste ne deplace que le second -- le premier ne serait
+  // remis en place qu'au relachement, et le fond paraitrait coupe en deux le
+  // temps du mouvement. On fait donc suivre la copie a la main.
+  const ghostNodes = useRef(new Map<number, Konva.Node>())
   const selectedRef = useRef<number | null>(selectedIndex)
   selectedRef.current = selectedIndex
   const layersRef = useRef(layers)
@@ -174,20 +199,19 @@ export function SkinCanvas({
     const node = selectedNode()
     let box: { cx: number; cy: number; w: number; h: number; rot: number } | null = null
 
-    if (kind === 'object' && node) {
+    if ((kind === 'object' || kind === 'image-bg') && node) {
+      // Le cadre epouse l'element lui-meme, fond compris : il doit suivre le
+      // geste. Un cadre fixe pendant qu'on pousse le fond dessous se lit comme
+      // un defaut. Un fond n'a pas de marge autour : on veut voir ou il est.
+      const pad = kind === 'object' ? FRAME_PAD : 0
       const child = node instanceof Konva.Group ? node.getChildren()[0] : node
       box = {
         cx: origin.x + node.x(),
         cy: origin.y + node.y(),
-        w: (child?.width() ?? 0) * node.scaleX() + FRAME_PAD * 2,
-        h: (child?.height() ?? 0) * node.scaleY() + FRAME_PAD * 2,
+        w: (child?.width() ?? 0) * node.scaleX() + pad * 2,
+        h: (child?.height() ?? 0) * node.scaleY() + pad * 2,
         rot: node.rotation(),
       }
-    } else if (kind === 'image-bg' && proxy.current) {
-      // Le cadre suit le mandataire : il reste la zone de debordement, et ne
-      // bouge que pendant un zoom ou une rotation aux poignees.
-      const px = proxy.current
-      box = { cx: px.x(), cy: px.y(), w: px.width() * px.scaleX(), h: px.height() * px.scaleY(), rot: px.rotation() }
     } else if (kind === 'hex-bg') {
       box = {
         cx: ghost.x + ghost.w / 2,
@@ -211,8 +235,38 @@ export function SkinCanvas({
         const [cx, cy, dx, dy] = corners[i]
         line?.points([cx, cy + dy * arm, cx, cy, cx + dx * arm, cy])
       })
+
+      // Les poignees du fond vivent sur un mandataire : on le pose sur le
+      // cadre, sauf pendant qu'il est lui-meme en train d'etre transforme.
+      if (kind === 'image-bg' && proxy.current && !proxyStart.current) {
+        proxy.current.setAttrs({
+          x: box.cx, y: box.cy, width: box.w, height: box.h,
+          offsetX: box.w / 2, offsetY: box.h / 2,
+          rotation: box.rot, scaleX: 1, scaleY: 1,
+        })
+      }
     }
     g.getLayer()?.batchDraw()
+  }
+
+  /** Recopie sur la doublure attenuee la position que le geste vient de donner. */
+  const syncGhost = () => {
+    let layer: Konva.Layer | null = null
+    ghostNodes.current.forEach((doublure, index) => {
+      const vivant = nodes.current.get(index)
+      if (!vivant) return
+      doublure.position(vivant.position())
+      doublure.rotation(vivant.rotation())
+      doublure.scale(vivant.scale() ?? { x: 1, y: 1 })
+      layer = doublure.getLayer()
+    })
+    ;(layer as Konva.Layer | null)?.batchDraw()
+  }
+
+  /** Tout ce qui doit suivre un geste en cours. */
+  const syncLive = () => {
+    syncGhost()
+    syncFrame()
   }
 
   const syncTransformer = () => {
@@ -235,12 +289,17 @@ export function SkinCanvas({
     const child = node.getChildren()[0] as Konva.Image | undefined
     const img = child?.image() as HTMLImageElement | undefined
     if (!child || !img) return
+    // L'inclinaison est bornee d'abord : la couverture se calcule ensuite sur
+    // l'angle reellement retenu.
+    const angle = Math.max(-MAX_ROTATION_FOND, Math.min(MAX_ROTATION_FOND, node.rotation()))
+    if (angle !== node.rotation()) node.rotation(angle)
+
     const eff = child.width() / skinWidth // echelle effective quand scale() vaut 1
     const cov = coverBackground(
       {
         ...layer,
         scale: eff * node.scaleX(),
-        rotation: node.rotation(),
+        rotation: angle,
         x: node.x() / skinWidth,
         y: node.y() / skinHeight,
       },
@@ -271,6 +330,7 @@ export function SkinCanvas({
     node.position({ x: start.node.x + (pos.x - start.hit.x), y: start.node.y + (pos.y - start.hit.y) })
     constrainBackground(node)
     node.getLayer()?.batchDraw()
+    syncLive()
     return start.hit
   }
   const onBgDragEnd = () => {
@@ -299,13 +359,18 @@ export function SkinCanvas({
     node.scale({ x: zoom, y: zoom })
     node.rotation(s0.rot + px.rotation())
     constrainBackground(node)
-    syncFrame()
+    // Le mandataire porte les poignees : on le ramene sur l'angle retenu, sinon
+    // elles continueraient de tourner sous le doigt alors que le fond, lui,
+    // s'est arrete.
+    px.rotation(node.rotation() - s0.rot)
+    syncLive()
   }
   const onProxyTransformEnd = () => {
     const node = selectedNode()
-    proxy.current?.setAttrs({ scaleX: 1, scaleY: 1, rotation: 0, x: ghost.x + ghost.w / 2, y: ghost.y + ghost.h / 2 })
     proxyStart.current = null
     node?.fire('transformend')
+    // syncFrame reposera le mandataire sur le cadre, maintenant qu'il est libre.
+    syncFrame()
   }
 
   useEffect(() => {
@@ -329,8 +394,9 @@ export function SkinCanvas({
     skinHeight,
     getNode: (i) => nodes.current.get(i) ?? null,
     onChange,
-    onLive: syncFrame,
+    onLive: syncLive,
     constrain: constrainBackground,
+    redimensionnable: () => !fondSelectionne,
   })
 
   const renderLayers = (attenue: boolean, only: Layer['type']) =>
@@ -344,11 +410,12 @@ export function SkinCanvas({
           skinWidth={skinWidth}
           skinHeight={skinHeight}
           interactive={interactive && !attenue}
-          onLive={syncFrame}
+          onLive={syncLive}
           register={(node) => {
+            const carte = attenue ? ghostNodes.current : nodes.current
+            if (node) carte.set(index, node)
+            else carte.delete(index)
             if (attenue) return
-            if (node) nodes.current.set(index, node)
-            else nodes.current.delete(index)
             // L'image peut arriver apres la selection : on rattache ici aussi.
             syncTransformer()
             syncFrame()
@@ -477,7 +544,7 @@ export function SkinCanvas({
           {/* Cadre de selection (objet, fond), pilote par syncFrame. */}
           {interactive && (
             <Group ref={frameGroup} listening={false} visible={false}>
-              <Rect ref={frameRect} stroke={SELECT} strokeWidth={2} dash={[12, 9]} listening={false} {...FRAME_SHADOW} />
+              <Rect ref={frameRect} stroke={SELECT} strokeWidth={2} dash={FRAME_DASH} lineCap="round" listening={false} {...FRAME_SHADOW} />
               {[0, 1, 2, 3].map((i) => (
                 <Line
                   key={i}
@@ -500,7 +567,14 @@ export function SkinCanvas({
               ref={transformer}
               rotateEnabled
               keepRatio
-              enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+              // Un fond ne se redimensionne pas : sa taille est celle qui
+              // couvre la planche, et rien d'autre n'a de sens -- plus petit
+              // il decouvrirait un bord, plus grand il perdrait son cadrage.
+              // Il se deplace et s'incline, c'est tout.
+              resizeEnabled={!fondSelectionne}
+              enabledAnchors={
+                fondSelectionne ? [] : ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+              }
               // Le cadre visible est dessine par syncFrame ; les poignees
               // restent la, discretes, aux angles.
               borderEnabled={false}
@@ -510,10 +584,8 @@ export function SkinCanvas({
               anchorCornerRadius={14}
               anchorStroke="rgba(255, 255, 255, 0.55)"
               anchorStrokeWidth={1.5}
-              anchorFill="rgba(255, 63, 164, 0.5)"
-              // Pour le fond, la poignee de rotation au-dessus du cadre serait
-              // hors scene : on la rentre dans la zone de debordement.
-              rotateAnchorOffset={selectedLayer?.type === 'background' ? -40 : 30}
+              anchorFill="rgba(40, 183, 243, 0.5)"
+              rotateAnchorOffset={30}
               boundBoxFunc={(oldBox, newBox) => (newBox.width < 30 ? oldBox : newBox)}
             />
           )}
@@ -643,6 +715,10 @@ function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, reg
       ref={register}
       x={(cadre ? cadre.x : layer.x) * skinWidth}
       y={(cadre ? cadre.y : layer.y) * skinHeight}
+      // Declarees pour que le rendu les remette a 1 apres un geste : l'echelle
+      // vit dans la largeur de l'image, pas dans celle du groupe.
+      scaleX={1}
+      scaleY={1}
       rotation={layer.rotation}
       opacity={layer.opacity}
       // Un fond vit dans le canvas du bas, ou rien n'ecoute : il est deplace
@@ -681,6 +757,8 @@ function useTwoFingerGesture(opts: {
   onLive?: () => void
   /** Borne un fond pendant le geste (couverture de la planche). */
   constrain?: (node: Konva.Node) => void
+  /** Faux pour un fond : le pincement le deplace et l'incline, sans le grossir. */
+  redimensionnable?: () => boolean
 }) {
   const start = useRef<{
     dist: number
@@ -735,7 +813,7 @@ function useTwoFingerGesture(opts: {
     const node = opts.getNode(opts.selectedIndex)
     if (!node) return
     const stageScale = node.getStage()?.getAbsoluteScale().x ?? 1
-    const ratio = t.dist / s.dist
+    const ratio = opts.redimensionnable?.() === false ? 1 : t.dist / s.dist
     node.scale({ x: ratio, y: ratio })
     node.rotation(s.rotation + (t.angle - s.angle))
     node.position({ x: s.x + (t.cx - s.cx) / stageScale, y: s.y + (t.cy - s.cy) / stageScale })
@@ -753,12 +831,15 @@ function useTwoFingerGesture(opts: {
     if (!node) return
     const ratio = node.scaleX()
     node.scale({ x: 1, y: 1 })
-    opts.onChange?.(opts.selectedIndex, {
+    const patch: Partial<Layer> = {
       x: node.x() / opts.skinWidth,
       y: node.y() / opts.skinHeight,
       rotation: node.rotation(),
-      scale: Math.max(0.02, s.scale * ratio),
-    })
+    }
+    // Sur un fond on n'ecrit pas d'echelle : la laisser absente, c'est la
+    // laisser se recalculer sur la couverture de la planche.
+    if (opts.redimensionnable?.() !== false) patch.scale = Math.max(0.02, s.scale * ratio)
+    opts.onChange?.(opts.selectedIndex, patch)
   }
 
   return { onTouchStart, onTouchMove, onTouchEnd }

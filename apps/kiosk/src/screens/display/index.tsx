@@ -80,7 +80,7 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
 
   return (
     <div className="display-root attract">
-      {slides[index] && <img key={slides[index].id} src={api.asset(slides[index])} alt="" />}
+      {slides[index] && <img key={slides[index].id} src={api.thumb(slides[index])} alt="" />}
       <div className="attract-overlay">
         <Title order={1} className="display-title">{t('display.attractTitle')}</Title>
         <Text size="xl">{t('display.attractCta')}</Text>

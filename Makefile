@@ -1,4 +1,4 @@
-.PHONY: help setup build-front up down logs seed test test-borne test-mail test-sync reset
+.PHONY: help setup build-front up down logs assets assets-demo test test-borne test-mail test-sync reset
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -25,8 +25,11 @@ down: ## Arrete la stack
 logs: ## Suit les logs api + worker
 	docker compose logs -f api worker
 
-seed: ## Genere fonds/objets de demo + index.json (a remplacer par les assets AIXAM)
-	.venv/bin/python scripts/generate_assets.py
+assets: ## Importe les elements de skin livres par le studio (SVG)
+	python3 scripts/import_assets.py $(SOURCE)
+
+assets-demo: ## Idem, plus des fonds F6+ et des variantes de teinte, pour montrer
+	python3 scripts/import_assets.py $(SOURCE) --demo
 
 test: test-borne test-bo test-mail test-sync ## Lance tous les tests (demande un PostgreSQL joignable)
 

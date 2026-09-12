@@ -4,8 +4,11 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
+# libcairo2 : cairosvg rasterise les elements de skin, livres en SVG.
+# fonts-dejavu-core : sans aucune police installee, le texte que portent ces
+# SVG disparaitrait du rendu -- l'image de base n'en embarque pas.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libjpeg62-turbo libfreetype6 \
+        libjpeg62-turbo libfreetype6 libcairo2 fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

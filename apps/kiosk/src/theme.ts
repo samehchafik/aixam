@@ -1,9 +1,12 @@
 import { createTheme, type MantineColorsTuple } from '@mantine/core'
 
-/** Bleu ciel des maquettes (bandeau, bouton, panneau contextuel). */
+/**
+ * Bleu interface de la charte EASY (#28b7f3), avec les deux teintes que la
+ * planche de notes donne pour les etats : #3ab4e8 au doigt, #0095c9 au survol.
+ */
 const sky: MantineColorsTuple = [
-  '#e6f7ff', '#c9ecfc', '#9ddcf8', '#6ccbf4', '#4FC3F7',
-  '#3DB4F2', '#2aa2e0', '#1e8ec8', '#177aad', '#0f6592',
+  '#e4f6fe', '#c2ebfc', '#95dcfa', '#5ecbf7', '#28b7f3',
+  '#3ab4e8', '#0095c9', '#007cab', '#00648c', '#004b89',
 ]
 
 export const theme = createTheme({

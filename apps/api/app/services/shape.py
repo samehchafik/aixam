@@ -1,8 +1,11 @@
 """Masque de la planche de bord.
 
-Un rectangle tres allonge aux angles arrondis, avec une encoche centrale en
-bas (l'emplacement des commandes). Meme geometrie que `src/skin/shape.ts`
-cote front : les deux lisent `media/base/shape.json`.
+La silhouette vient du gabarit du studio (`Gabarit_skin.svg`), conservee en
+points dans `media/base/shape.json` : une polyligne fermee de plus de 250
+sommets. La planche n'est pas un rectangle arrondi, ses bords ondulent
+legerement -- on ne la reconstruit donc pas, on la trace.
+
+`src/skin/shape.ts` cote borne lit exactement les memes points.
 """
 
 from __future__ import annotations
@@ -12,16 +15,10 @@ from PIL import Image, ImageDraw
 
 def build_mask(shape: dict, width: int, height: int) -> Image.Image:
     """Masque L (255 = visible) aux dimensions demandees."""
-    sx, sy = width / shape["width"], height / shape["height"]
-    mask = Image.new("L", (width, height), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle((0, 0, width - 1, height - 1), radius=int(shape["cornerRadius"] * sx), fill=255)
+    sx = width / shape["width"]
+    sy = height / shape["height"]
+    points = [(x * sx, y * sy) for x, y in shape["points"]]
 
-    notch = shape["notch"]
-    nw, nh, nr = notch["width"] * sx, notch["height"] * sy, notch["radius"] * sx
-    left = (width - nw) / 2
-    top = height - nh
-    # L'encoche est ouverte vers le bas : on la dessine plus haute que la
-    # planche pour que ses angles inferieurs restent droits.
-    draw.rounded_rectangle((left, top, left + nw, height + nr * 2), radius=int(nr), fill=0)
+    mask = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(mask).polygon(points, fill=255)
     return mask

@@ -1,148 +1,155 @@
 {
   "items": [
     {
-      "id": "sunburst",
-      "file": "sunburst.jpg",
+      "id": "fond-1",
+      "file": "fond_1.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Soleil rétro",
-        "en": "Retro sunburst",
-        "es": "Sol retro"
-      }
+        "fr": "Fond 1",
+        "en": "Background 1",
+        "es": "Fondo 1"
+      },
+      "thumb": "Vignette_fond_1.svg"
     },
     {
-      "id": "artdeco-cream",
-      "file": "artdeco-cream.jpg",
+      "id": "fond-2",
+      "file": "fond_2.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Art déco crème",
-        "en": "Cream art deco",
-        "es": "Art déco crema"
-      }
+        "fr": "Fond 2",
+        "en": "Background 2",
+        "es": "Fondo 2"
+      },
+      "thumb": "Vignette_fond_2.svg"
     },
     {
-      "id": "matrix",
-      "file": "matrix.jpg",
+      "id": "fond-3",
+      "file": "fond_3.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Pluie numérique",
-        "en": "Digital rain",
-        "es": "Lluvia digital"
-      }
+        "fr": "Fond 3",
+        "en": "Background 3",
+        "es": "Fondo 3"
+      },
+      "thumb": "Vignette_fond_3.svg"
     },
     {
-      "id": "graffiti",
-      "file": "graffiti.jpg",
+      "id": "fond-4",
+      "file": "fond_4.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Mur graffiti",
-        "en": "Graffiti wall",
-        "es": "Muro grafiti"
-      }
+        "fr": "Fond 4",
+        "en": "Background 4",
+        "es": "Fondo 4"
+      },
+      "thumb": "Vignette_fond_4.svg"
     },
     {
-      "id": "pastel",
-      "file": "pastel.jpg",
+      "id": "fond-5",
+      "file": "fond_5.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Dégradé pastel",
-        "en": "Pastel gradient",
-        "es": "Degradado pastel"
-      }
+        "fr": "Fond 5",
+        "en": "Background 5",
+        "es": "Fondo 5"
+      },
+      "thumb": "Vignette_fond_5.svg"
     },
     {
-      "id": "circuit",
-      "file": "circuit.jpg",
+      "id": "fond-6",
+      "file": "fond_6.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Circuit imprimé",
-        "en": "Circuit board",
-        "es": "Circuito impreso"
-      }
+        "fr": "Fond 6",
+        "en": "Background 6",
+        "es": "Fondo 6"
+      },
+      "thumb": "Vignette_fond_6.svg",
+      "demo": true
     },
     {
-      "id": "neon-maze",
-      "file": "neon-maze.jpg",
+      "id": "fond-7",
+      "file": "fond_7.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Labyrinthe néon",
-        "en": "Neon maze",
-        "es": "Laberinto neón"
-      }
+        "fr": "Fond 7",
+        "en": "Background 7",
+        "es": "Fondo 7"
+      },
+      "thumb": "Vignette_fond_7.svg",
+      "demo": true
     },
     {
-      "id": "holographic",
-      "file": "holographic.jpg",
+      "id": "fond-8",
+      "file": "fond_8.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Holographique",
-        "en": "Holographic",
-        "es": "Holográfico"
-      }
+        "fr": "Fond 8",
+        "en": "Background 8",
+        "es": "Fondo 8"
+      },
+      "thumb": "Vignette_fond_8.svg",
+      "demo": true
     },
     {
-      "id": "artdeco-green",
-      "file": "artdeco-green.jpg",
+      "id": "fond-9",
+      "file": "fond_9.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Art déco vert",
-        "en": "Green art deco",
-        "es": "Art déco verde"
-      }
+        "fr": "Fond 9",
+        "en": "Background 9",
+        "es": "Fondo 9"
+      },
+      "thumb": "Vignette_fond_9.svg",
+      "demo": true
     },
     {
-      "id": "smileys",
-      "file": "smileys.jpg",
+      "id": "fond-10",
+      "file": "fond_10.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Smileys",
-        "en": "Smileys",
-        "es": "Smileys"
-      }
+        "fr": "Fond 10",
+        "en": "Background 10",
+        "es": "Fondo 10"
+      },
+      "thumb": "Vignette_fond_10.svg",
+      "demo": true
     },
     {
-      "id": "brush",
-      "file": "brush.jpg",
+      "id": "fond-11",
+      "file": "fond_11.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Coups de pinceau",
-        "en": "Brush strokes",
-        "es": "Pinceladas"
-      }
+        "fr": "Fond 11",
+        "en": "Background 11",
+        "es": "Fondo 11"
+      },
+      "thumb": "Vignette_fond_11.svg",
+      "demo": true
     },
     {
-      "id": "checker",
-      "file": "checker.jpg",
+      "id": "fond-12",
+      "file": "fond_12.svg",
+      "width": 3460.0,
+      "height": 690.0,
       "label": {
-        "fr": "Damier",
-        "en": "Checkerboard",
-        "es": "Damero"
-      }
-    },
-    {
-      "id": "stripes",
-      "file": "stripes.jpg",
-      "label": {
-        "fr": "Rayures rétro",
-        "en": "Retro stripes",
-        "es": "Rayas retro"
-      }
-    },
-    {
-      "id": "dots",
-      "file": "dots.jpg",
-      "label": {
-        "fr": "Pois",
-        "en": "Polka dots",
-        "es": "Lunares"
-      }
-    },
-    {
-      "id": "swirl",
-      "file": "swirl.jpg",
-      "label": {
-        "fr": "Tourbillon",
-        "en": "Swirl",
-        "es": "Remolino"
-      }
-    },
-    {
-      "id": "night-city",
-      "file": "night-city.jpg",
-      "label": {
-        "fr": "Ville la nuit",
-        "en": "Night city",
-        "es": "Ciudad nocturna"
-      }
+        "fr": "Fond 12",
+        "en": "Background 12",
+        "es": "Fondo 12"
+      },
+      "thumb": "Vignette_fond_12.svg",
+      "demo": true
     }
   ]
 }

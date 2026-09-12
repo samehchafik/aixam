@@ -1,184 +1,214 @@
 {
   "items": [
     {
-      "id": "sunglasses",
-      "file": "sunglasses.png",
+      "id": "objet-1",
+      "file": "objet_1.svg",
+      "width": 699.46,
+      "height": 209.0,
       "label": {
-        "fr": "Lunettes pixel",
-        "en": "Pixel shades",
-        "es": "Gafas pixel"
+        "fr": "Objet 1",
+        "en": "Object 1",
+        "es": "Objeto 1"
       }
     },
     {
-      "id": "freedom-blue",
-      "file": "freedom-blue.png",
+      "id": "objet-1-2",
+      "file": "objet_1-2.svg",
+      "width": 699.46,
+      "height": 209.0,
       "label": {
-        "fr": "Freedom bleu",
-        "en": "Blue Freedom",
-        "es": "Freedom azul"
+        "fr": "Objet 1 · 2",
+        "en": "Object 1 · 2",
+        "es": "Objeto 1 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-1-3",
+      "file": "objet_1-3.svg",
+      "width": 699.46,
+      "height": 209.0,
+      "label": {
+        "fr": "Objet 1 · 3",
+        "en": "Object 1 · 3",
+        "es": "Objeto 1 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-2",
+      "file": "objet_2.svg",
+      "width": 705.19,
+      "height": 157.48,
+      "label": {
+        "fr": "Objet 2",
+        "en": "Object 2",
+        "es": "Objeto 2"
       }
     },
     {
-      "id": "freedom-purple",
-      "file": "freedom-purple.png",
+      "id": "objet-2-2",
+      "file": "objet_2-2.svg",
+      "width": 705.19,
+      "height": 157.48,
       "label": {
-        "fr": "Freedom violet",
-        "en": "Purple Freedom",
-        "es": "Freedom morado"
+        "fr": "Objet 2 · 2",
+        "en": "Object 2 · 2",
+        "es": "Objeto 2 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-2-3",
+      "file": "objet_2-3.svg",
+      "width": 705.19,
+      "height": 157.48,
+      "label": {
+        "fr": "Objet 2 · 3",
+        "en": "Object 2 · 3",
+        "es": "Objeto 2 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-3",
+      "file": "objet_3.svg",
+      "width": 228.08,
+      "height": 235.26,
+      "label": {
+        "fr": "Objet 3",
+        "en": "Object 3",
+        "es": "Objeto 3"
       }
     },
     {
-      "id": "freedom-green",
-      "file": "freedom-green.png",
+      "id": "objet-3-2",
+      "file": "objet_3-2.svg",
+      "width": 228.08,
+      "height": 235.26,
       "label": {
-        "fr": "Freedom vert",
-        "en": "Green Freedom",
-        "es": "Freedom verde"
+        "fr": "Objet 3 · 2",
+        "en": "Object 3 · 2",
+        "es": "Objeto 3 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-3-3",
+      "file": "objet_3-3.svg",
+      "width": 228.08,
+      "height": 235.26,
+      "label": {
+        "fr": "Objet 3 · 3",
+        "en": "Object 3 · 3",
+        "es": "Objeto 3 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-4",
+      "file": "objet_4.svg",
+      "width": 523.78,
+      "height": 470.95,
+      "label": {
+        "fr": "Objet 4",
+        "en": "Object 4",
+        "es": "Objeto 4"
       }
     },
     {
-      "id": "flower-pink",
-      "file": "flower-pink.png",
+      "id": "objet-4-2",
+      "file": "objet_4-2.svg",
+      "width": 523.78,
+      "height": 470.95,
       "label": {
-        "fr": "Fleur rose",
-        "en": "Pink flower",
-        "es": "Flor rosa"
+        "fr": "Objet 4 · 2",
+        "en": "Object 4 · 2",
+        "es": "Objeto 4 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-4-3",
+      "file": "objet_4-3.svg",
+      "width": 523.78,
+      "height": 470.95,
+      "label": {
+        "fr": "Objet 4 · 3",
+        "en": "Object 4 · 3",
+        "es": "Objeto 4 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-5",
+      "file": "objet_5.svg",
+      "width": 385.81,
+      "height": 400.5,
+      "label": {
+        "fr": "Objet 5",
+        "en": "Object 5",
+        "es": "Objeto 5"
       }
     },
     {
-      "id": "flower-blue",
-      "file": "flower-blue.png",
+      "id": "objet-5-2",
+      "file": "objet_5-2.svg",
+      "width": 385.81,
+      "height": 400.5,
       "label": {
-        "fr": "Fleur bleue",
-        "en": "Blue flower",
-        "es": "Flor azul"
+        "fr": "Objet 5 · 2",
+        "en": "Object 5 · 2",
+        "es": "Objeto 5 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-5-3",
+      "file": "objet_5-3.svg",
+      "width": 385.81,
+      "height": 400.5,
+      "label": {
+        "fr": "Objet 5 · 3",
+        "en": "Object 5 · 3",
+        "es": "Objeto 5 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-6",
+      "file": "objet_6.svg",
+      "width": 1248.78,
+      "height": 265.11,
+      "label": {
+        "fr": "Objet 6",
+        "en": "Object 6",
+        "es": "Objeto 6"
       }
     },
     {
-      "id": "flower-orange",
-      "file": "flower-orange.png",
+      "id": "objet-6-2",
+      "file": "objet_6-2.svg",
+      "width": 1248.78,
+      "height": 265.11,
       "label": {
-        "fr": "Fleur orange",
-        "en": "Orange flower",
-        "es": "Flor naranja"
-      }
+        "fr": "Objet 6 · 2",
+        "en": "Object 6 · 2",
+        "es": "Objeto 6 · 2"
+      },
+      "demo": true
     },
     {
-      "id": "heart-green",
-      "file": "heart-green.png",
+      "id": "objet-6-3",
+      "file": "objet_6-3.svg",
+      "width": 1248.78,
+      "height": 265.11,
       "label": {
-        "fr": "Cœur vert",
-        "en": "Green heart",
-        "es": "Corazón verde"
-      }
-    },
-    {
-      "id": "heart-orange",
-      "file": "heart-orange.png",
-      "label": {
-        "fr": "Cœur orange",
-        "en": "Orange heart",
-        "es": "Corazón naranja"
-      }
-    },
-    {
-      "id": "heart-pink",
-      "file": "heart-pink.png",
-      "label": {
-        "fr": "Cœur rose",
-        "en": "Pink heart",
-        "es": "Corazón rosa"
-      }
-    },
-    {
-      "id": "paisley-blue",
-      "file": "paisley-blue.png",
-      "label": {
-        "fr": "Paisley bleu",
-        "en": "Blue paisley",
-        "es": "Cachemir azul"
-      }
-    },
-    {
-      "id": "paisley-purple",
-      "file": "paisley-purple.png",
-      "label": {
-        "fr": "Paisley violet",
-        "en": "Purple paisley",
-        "es": "Cachemir morado"
-      }
-    },
-    {
-      "id": "branch-white",
-      "file": "branch-white.png",
-      "label": {
-        "fr": "Branche blanche",
-        "en": "White branch",
-        "es": "Rama blanca"
-      }
-    },
-    {
-      "id": "branch-pink",
-      "file": "branch-pink.png",
-      "label": {
-        "fr": "Branche rose",
-        "en": "Pink branch",
-        "es": "Rama rosa"
-      }
-    },
-    {
-      "id": "branch-black",
-      "file": "branch-black.png",
-      "label": {
-        "fr": "Branche noire",
-        "en": "Black branch",
-        "es": "Rama negra"
-      }
-    },
-    {
-      "id": "easy-retro",
-      "file": "easy-retro.png",
-      "label": {
-        "fr": "EASY rétro",
-        "en": "Retro EASY",
-        "es": "EASY retro"
-      }
-    },
-    {
-      "id": "star",
-      "file": "star.png",
-      "label": {
-        "fr": "Étoile",
-        "en": "Star",
-        "es": "Estrella"
-      }
-    },
-    {
-      "id": "peace",
-      "file": "peace.png",
-      "label": {
-        "fr": "Peace",
-        "en": "Peace",
-        "es": "Paz"
-      }
-    },
-    {
-      "id": "bolt",
-      "file": "bolt.png",
-      "label": {
-        "fr": "Éclair",
-        "en": "Bolt",
-        "es": "Rayo"
-      }
-    },
-    {
-      "id": "smiley",
-      "file": "smiley.png",
-      "label": {
-        "fr": "Smiley",
-        "en": "Smiley",
-        "es": "Smiley"
-      }
+        "fr": "Objet 6 · 3",
+        "en": "Object 6 · 3",
+        "es": "Objeto 6 · 3"
+      },
+      "demo": true
     }
   ]
 }

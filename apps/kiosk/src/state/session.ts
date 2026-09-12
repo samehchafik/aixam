@@ -3,7 +3,13 @@ import type { Catalog, Layer } from '../api/client'
 
 export type Step = 'attract' | 'register' | 'verify' | 'editor' | 'done'
 
-export const OBJECT_DEFAULT_SCALE = 0.12
+/**
+ * Hauteur d'un objet a sa pose, en fraction de la hauteur de la planche. Les
+ * objets livres vont du carre (228x235) au tres allonge (1249x265) : leur
+ * donner a tous la meme LARGEUR ferait deborder les carres bien au-dela de la
+ * planche. On fixe donc leur hauteur, et la largeur suit leur format.
+ */
+const OBJECT_HEIGHT = 0.55
 
 type State = {
   step: Step
@@ -36,31 +42,85 @@ type State = {
 const newSessionId = () =>
   `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 
-/**
- * Bande centrale reservee : le panneau « Supprime / Reinitialise » s'y pose,
- * un objet qui y naitrait serait cache dessous.
- */
-const NOTCH_FROM = 0.38
-const NOTCH_TO = 0.62
+/** Marge de part et d'autre de l'encoche, en fraction de la largeur. */
+const NOTCH_MARGIN = 0.015
 /** Un objet ne nait pas a cheval sur un bord de la planche. */
-const EDGE = 0.1
+const EDGE = 0.08
+/** Tirages tentes avant de garder le moins encombre. */
+const ESSAIS = 14
 
 /**
- * Abscisse de naissance, tiree au sort dans les deux couloirs que l'encoche
- * laisse libres : deux objets ajoutes a la suite ne se posent plus au meme
- * endroit. La hauteur, elle, reste au milieu de la planche.
+ * Bande centrale interdite : le panneau « Supprime / Reinitialise » s'y pose et
+ * masquerait l'objet qui vient d'apparaitre. Elle est deduite de l'encoche du
+ * gabarit, pas fixee a la main -- si le studio redessine la planche, elle suit.
  */
-function spawnX(): number {
-  const gauche = NOTCH_FROM - EDGE
-  const droite = 1 - EDGE - NOTCH_TO
-  const t = Math.random() * (gauche + droite)
-  return t < gauche ? EDGE + t : NOTCH_TO + (t - gauche)
+function bandeInterdite(catalog: Catalog | null): [number, number] {
+  const forme = catalog?.shape
+  if (!forme?.notch) return [0.4, 0.6]
+  const debut = forme.notch.x / forme.width - NOTCH_MARGIN
+  const fin = (forme.notch.x + forme.notch.width) / forme.width + NOTCH_MARGIN
+  return [debut, fin]
 }
 
-const objectDefaults = (x: number): Pick<Layer, 'x' | 'y' | 'scale' | 'rotation' | 'opacity'> => ({
+/** Un tirage dans les deux couloirs que l'encoche laisse libres. */
+function tirage([interditDebut, interditFin]: [number, number]): number {
+  const gauche = Math.max(0, interditDebut - EDGE)
+  const droite = Math.max(0, 1 - EDGE - interditFin)
+  const t = Math.random() * (gauche + droite)
+  return t < gauche ? EDGE + t : interditFin + (t - gauche)
+}
+
+/**
+ * Abscisse de naissance d'un objet.
+ *
+ * Un tirage seul ne suffit pas : les objets livres vont jusqu'a un quart de la
+ * planche de large, et deux d'entre eux tires dans le meme couloir se
+ * recouvrent presque entierement -- on croit alors qu'ils apparaissent tous au
+ * meme endroit. On tire donc plusieurs fois et on garde la position la plus
+ * degagee, en tenant compte de la largeur de chacun. Des qu'un tirage ne
+ * chevauche rien, on s'arrete : le hasard garde la main tant qu'il y a de la
+ * place.
+ */
+function spawnX(
+  catalog: Catalog | null,
+  demiLargeur: number,
+  poses: { x: number; demi: number }[],
+): number {
+  const bande = bandeInterdite(catalog)
+  let meilleur = tirage(bande)
+  if (!poses.length) return meilleur
+
+  let meilleurEcart = -Infinity
+  for (let i = 0; i < ESSAIS; i++) {
+    const candidat = i === 0 ? meilleur : tirage(bande)
+    const ecart = Math.min(
+      ...poses.map((p) => Math.abs(candidat - p.x) - (demiLargeur + p.demi)),
+    )
+    if (ecart > meilleurEcart) {
+      meilleurEcart = ecart
+      meilleur = candidat
+    }
+    if (meilleurEcart > 0) break
+  }
+  return meilleur
+}
+
+/** Echelle de pose (fraction de la LARGEUR de planche) pour une hauteur donnee. */
+function objectScale(catalog: Catalog | null, assetId: string | undefined): number {
+  const item = catalog?.objects.find((o) => o.id === assetId)
+  if (!catalog || !item || !item.height) return 0.12
+  const format = item.width / item.height
+  const planche = catalog.shape.height / catalog.shape.width
+  return OBJECT_HEIGHT * planche * format
+}
+
+const objectDefaults = (
+  x: number,
+  scale: number,
+): Pick<Layer, 'x' | 'y' | 'scale' | 'rotation' | 'opacity'> => ({
   x,
   y: 0.5,
-  scale: OBJECT_DEFAULT_SCALE,
+  scale,
   rotation: 0,
   opacity: 1,
 })
@@ -103,11 +163,15 @@ export const useSession = create<State>((set) => ({
 
   addObject: (assetId) =>
     set((s) => {
-      const x = spawnX()
+      const scale = objectScale(s.catalog, assetId)
+      const poses = s.layers
+        .filter((l) => l.type === 'object')
+        .map((l) => ({ x: l.x, demi: (l.scale ?? 0.12) / 2 }))
+      const x = spawnX(s.catalog, scale / 2, poses)
       return {
         layers: [
           ...s.layers,
-          { type: 'object', assetId, spawnX: x, ...objectDefaults(x), z: s.layers.length + 1 },
+          { type: 'object', assetId, spawnX: x, ...objectDefaults(x, scale), z: s.layers.length + 1 },
         ],
         selectedIndex: s.layers.length,
       }
@@ -131,7 +195,7 @@ export const useSession = create<State>((set) => ({
         }
         // Retour a l'endroit ou l'objet est apparu, pas a un nouveau tirage :
         // « reinitialiser » ne doit pas le faire sauter de cote.
-        return { ...layer, ...objectDefaults(layer.spawnX ?? layer.x) }
+        return { ...layer, ...objectDefaults(layer.spawnX ?? layer.x, objectScale(s.catalog, layer.assetId)) }
       }),
     })),
 

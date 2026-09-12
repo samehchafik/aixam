@@ -19,6 +19,11 @@ const BLEED = { x: 14, top: 62, bottom: 86 }
 // un objet peut sortir de la zone de debordement sans etre coupe. La planche
 // est posee la ou la maquette la met.
 const STAGE = { width: 1920, height: 1080 }
+// Une case de panier. Quatre tiennent dans la carte, la cinquieme est coupee au
+// bord droit : c'est ce qui montre que le ruban continue.
+const CELL = { width: 147, height: 93 }
+// Au-dela, un objet tres allonge occuperait le panier a lui seul.
+const OBJECT_MAX_WIDTH = 210
 const ORIGIN = { x: (STAGE.width - SKIN_WIDTH) / 2, y: 92 + BLEED.top }
 
 /** Cellule du swiper des fonds : la vignette « choisis ta couleur » ou un fond du catalogue. */
@@ -87,8 +92,11 @@ export function EditorStep() {
   if (!catalog) return null
 
   const skinHeight = SKIN_WIDTH * (catalog.shape.height / catalog.shape.width)
-  const notchWidth = (catalog.shape.notch.width / catalog.shape.width) * SKIN_WIDTH
-  const notchHeight = (catalog.shape.notch.height / catalog.shape.height) * skinHeight
+  // L'encoche est mesuree sur le gabarit du studio, pas parametree.
+  const notch = catalog.shape.notch
+  const notchWidth = (notch.width / catalog.shape.width) * SKIN_WIDTH
+  const notchHeight = (notch.height / catalog.shape.height) * skinHeight
+  const notchLeft = (notch.x / catalog.shape.width) * SKIN_WIDTH
 
   return (
     <div className="editor-screen">
@@ -116,7 +124,7 @@ export function EditorStep() {
             style={{
               width: notchWidth - 24,
               height: notchHeight - 14,
-              left: ORIGIN.x + SKIN_WIDTH / 2 - (notchWidth - 24) / 2,
+              left: ORIGIN.x + notchLeft + 12,
               top: ORIGIN.y + skinHeight - notchHeight + 10,
             }}
           >
@@ -142,8 +150,9 @@ export function EditorStep() {
             <AssetSwiper
               items={backgroundTiles}
               rows={3}
-              columns={4}
-              cellHeight={86}
+              // 16:9, comme le demandent les notes du studio.
+              cellWidth={CELL.width}
+              cellHeight={Math.round(CELL.width * 9 / 16)}
               selectedId={backgroundTileId}
               resetKey={locale}
               onSelect={(tile) => {
@@ -162,7 +171,7 @@ export function EditorStep() {
                 ) : (
                   <Tooltip label={pick(tile.item.label)} events={{ hover: true, focus: true, touch: true }} withArrow>
                     <div className={`tile ${isSelected ? 'selected' : ''}`}>
-                      <img src={api.asset(tile.item)} alt={pick(tile.item.label)} draggable={false} />
+                      <img src={api.thumb(tile.item)} alt={pick(tile.item.label)} draggable={false} />
                     </div>
                   </Tooltip>
                 )
@@ -177,9 +186,10 @@ export function EditorStep() {
             <AssetSwiper
               items={catalog.objects}
               rows={3}
-              columns={4}
-              cellHeight={100}
-              gap={0}
+              cellWidth={(item) =>
+                Math.min(Math.round((CELL.height * item.width) / item.height), OBJECT_MAX_WIDTH)
+              }
+              cellHeight={CELL.height}
               selectedId={objectTileId}
               resetKey={locale}
               onSelect={(item) => {

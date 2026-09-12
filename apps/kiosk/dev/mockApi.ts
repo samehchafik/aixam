@@ -11,10 +11,17 @@ export function mockApi(): Plugin {
   const media = resolve(__dirname, '../../api/media')
   const readJson = (rel: string, fallback: unknown) =>
     existsSync(join(media, rel)) ? JSON.parse(readFileSync(join(media, rel), 'utf-8')) : fallback
+  // Meme mise en forme que `assets.py` : les chemins sont relatifs a /media, et
+  // un element sans vignette est sa propre vignette.
+  type Brut = { id: string; file: string; thumb?: string; width?: number; height?: number; label: object }
   const index = (folder: string) =>
-    (readJson(`${folder}/index.json`, { items: [] }).items as { id: string; file: string; label: object }[]).map(
-      (it) => ({ ...it, image: `${folder}/${it.file}` }),
-    )
+    (readJson(`${folder}/index.json`, { items: [] }).items as Brut[]).map((it) => ({
+      ...it,
+      image: `${folder}/${it.file}`,
+      thumb: `${folder}/${it.thumb ?? it.file}`,
+      width: it.width ?? 1,
+      height: it.height ?? 1,
+    }))
 
   return {
     name: 'aixam-mock-api',
@@ -35,7 +42,12 @@ export function mockApi(): Plugin {
           return json({
             kiosk: { id: 'mock', name: 'Borne mock' },
             catalog: {
-              shape: readJson('base/shape.json', { width: 3000, height: 300, cornerRadius: 95, notch: { width: 510, height: 170, radius: 34 } }),
+              shape: readJson('base/shape.json', {
+                width: 3218,
+                height: 325,
+                points: [[0, 0], [3218, 0], [3218, 325], [0, 325]],
+                notch: { x: 1330, y: 142, width: 557, height: 180 },
+              }),
               backgrounds: index('backgrounds'),
               objects: index('objects'),
             },
@@ -50,8 +62,16 @@ export function mockApi(): Plugin {
         if (url.startsWith('/media/')) {
           const file = join(media, decodeURIComponent(url.slice('/media/'.length).split('?')[0]))
           if (file.startsWith(media) && existsSync(file)) {
-            const ext = file.split('.').pop()
-            res.setHeader('Content-Type', ext === 'png' ? 'image/png' : ext === 'json' ? 'application/json' : 'image/jpeg')
+            const types: Record<string, string> = {
+              svg: 'image/svg+xml',
+              png: 'image/png',
+              jpg: 'image/jpeg',
+              jpeg: 'image/jpeg',
+              webp: 'image/webp',
+              json: 'application/json',
+            }
+            const ext = (file.split('.').pop() ?? '').toLowerCase()
+            res.setHeader('Content-Type', types[ext] ?? 'application/octet-stream')
             res.end(readFileSync(file))
             return
           }

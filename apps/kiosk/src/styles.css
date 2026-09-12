@@ -1,34 +1,44 @@
 /* Borne AIXAM — scene 16/9 (1920x1080) mise a l'echelle. Aucun scroll, aucun son. */
 :root {
-  --navy: #1d2b6b;
-  --navy-deep: #141a4a;
-  --sky: #4fc3f7;
-  /* Ce qui est selectionne, jamais le decor : voir SELECT dans SkinCanvas. */
-  --select: #ff3fa4;
-  --sky-deep: #3db4f2;
-  --peach: #f4b9a0;
-  --ink: #ffffff;
+  /* Charte EASY, telle que livree dans Interface/Couleurs.txt. */
+  --blanc: #ffffff;
+  --bleu-interface: #28b7f3;
+  --rose: #e6b6b4;
+  --bleu-marine: #283371;
+  --bleu-nuit: #1f2847;
+  --violet-moyen: #896f9c;
+  --violet: #4e3d8b;
+
+  /* Etats des boutons et liens, releves sur la planche de notes du studio. */
+  --bleu-actif: #3ab4e8;
+  --bleu-actif-texte: #004b89;
+  --bleu-survol: #0095c9;
+  --bleu-survol-texte: #97e4ff;
+
+  --ink: var(--blanc);
   --muted: #cfd6f2;
-  --card: rgba(84, 140, 210, 0.42);
-  --card-line: rgba(140, 190, 250, 0.35);
+  /* Les paniers : le bleu interface a 30 %, mesure sur la maquette. */
+  --card: rgba(40, 183, 243, 0.3);
+  --card-line: rgba(140, 190, 250, 0.28);
+  /* Selection : le bleu de la charte, comme la planche de notes le demande. */
+  --select: var(--bleu-interface);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: 100%; margin: 0; overflow: hidden; background: #1a2a70; }
-body { color: var(--ink); user-select: none; }
+html, body, #root { height: 100%; margin: 0; overflow: hidden; background: var(--bleu-nuit); }
+body {
+  color: var(--ink); user-select: none;
+  font-family: Poppins, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
 
 /* --- Scene ----------------------------------------------------------- */
-/* Le decor porte sur toute la fenetre, pas sur la scene 16/9 : sur un ecran
-   qui n'est pas exactement en 16/9, la marge de mise a l'echelle se fond dans
-   le degrade au lieu de faire deux bandes bleu fonce sur les cotes. */
-/* overflow: clip et non hidden : hidden laisse un scrollIntoView (focus d'un
-   champ, clavier tactile) faire defiler la scene, qui reste alors decalee. */
+/* Le decor est l'image livree par le studio (Fond_borne_@2x.png, reduite en
+   1920x1080). Elle porte sur toute la fenetre, pas sur la scene 16/9 : sur un
+   ecran qui n'est pas exactement en 16/9, la marge de mise a l'echelle se fond
+   dans le decor au lieu de faire deux bandes sur les cotes. */
 .stage-viewport {
   position: fixed; inset: 0; overflow: clip;
-  background:
-    radial-gradient(60% 70% at 92% 92%, rgba(244, 185, 160, 0.95) 0%, rgba(244, 185, 160, 0.55) 30%, transparent 70%),
-    radial-gradient(45% 55% at 70% 100%, rgba(155, 110, 190, 0.6) 0%, transparent 70%),
-    linear-gradient(115deg, #1a2a70 0%, #2b2d78 40%, #4b3f8e 70%, #8a6aa8 100%);
+  background: var(--bleu-nuit) url('./assets/fond-borne.jpg') center / cover no-repeat;
 }
 .stage {
   position: absolute; left: 50%; top: 50%; overflow: clip;
@@ -44,14 +54,8 @@ body { color: var(--ink); user-select: none; }
 .ribbon { position: absolute; top: 0; left: 0; z-index: 3; pointer-events: none; overflow: visible; }
 .ribbon text { font-family: Poppins, sans-serif; letter-spacing: 0.02em; }
 
-.brand-mark {
-  position: absolute; left: -6px; bottom: -34px; display: flex; flex-direction: column;
-  font-family: Anton, Impact, sans-serif; font-size: 168px; line-height: 0.86;
-  letter-spacing: -0.01em; pointer-events: none;
-}
-.brand-mark .outline { color: transparent; -webkit-text-stroke: 2px rgba(255, 255, 255, 0.45); }
-.brand-mark .solid { color: #fff; }
-.brand-mark > span:last-child { display: flex; gap: 10px; }
+/* « PIMP TON SKIN » et le logo easy font partie de l'image de fond livree
+   par le studio : rien a dessiner ici. */
 
 .lang-switch { position: absolute; top: 24px; left: 28px; z-index: 5; }
 
@@ -83,20 +87,22 @@ body { color: var(--ink); user-select: none; }
 
 .notch-panel {
   position: absolute; z-index: 4; display: flex; flex-direction: column; justify-content: center; gap: 6px;
-  padding: 8px 18px; background: var(--sky-deep) !important; color: #fff;
+  padding: 8px 18px; background: var(--bleu-interface) !important; color: var(--blanc);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
 }
 .notch-action {
   display: flex; align-items: center; gap: 10px; color: #fff;
   font-family: Poppins, sans-serif; font-style: italic; font-size: 19px; line-height: 1.2;
 }
-.notch-action:active { opacity: 0.7; }
+.notch-action { border-radius: 6px; padding: 2px 6px; margin: 0 -6px; }
+.notch-action:hover { background: var(--bleu-survol); color: var(--bleu-survol-texte); }
+.notch-action:active { background: var(--bleu-actif); color: var(--bleu-actif-texte); }
 
 /* pointer-events: none -- le texte barre toute la largeur au-dessus du canvas,
    il ne doit pas intercepter un objet qu'on traine a cette hauteur. */
 .skin-hint {
   position: absolute; top: 372px; z-index: 5; left: 0; right: 0; text-align: center; pointer-events: none;
-  font-size: 20px; color: var(--muted);
+  font-size: 20px; font-style: italic; color: var(--rose);
 }
 
 .panels {
@@ -104,33 +110,45 @@ body { color: var(--ink); user-select: none; }
   display: flex; gap: 44px;
 }
 .panel { width: 655px; }
-.panel-title { text-align: center; font-size: 26px; margin: 0 0 14px; color: #fff; }
+.panel-title {
+  text-align: center; font-size: 28px; font-weight: 300; margin: 0 0 14px;
+  color: var(--blanc); white-space: nowrap;
+}
+/* Aucune marge horizontale : le ruban part en coupe au bord droit. La marge
+   de gauche est portee par le decalage du ruban, qui se resorbe au glissement. */
 .panel-card {
-  height: 356px; padding: 20px 20px 10px;
+  height: 356px; padding: 20px 0 10px;
   background: var(--card) !important; border: 1px solid var(--card-line);
   backdrop-filter: blur(6px);
 }
 
-.asset-swiper { height: 100%; --swiper-scrollbar-bg-color: rgba(255,255,255,0.14);
-  --swiper-scrollbar-drag-bg-color: var(--sky); --swiper-scrollbar-size: 8px;
-  --swiper-scrollbar-bottom: 0px; --swiper-scrollbar-sides-offset: 2%; }
+.asset-swiper { height: 100%; --swiper-scrollbar-bg-color: rgba(43, 114, 166, 0.85);
+  --swiper-scrollbar-drag-bg-color: var(--bleu-actif); --swiper-scrollbar-size: 10px;
+  --swiper-scrollbar-bottom: 0px; --swiper-scrollbar-sides-offset: 2.5%; }
 .asset-swiper .swiper-slide { height: calc(100% - 24px); }
-.asset-page { display: grid; width: 100%; height: 100%; }
-/* display:block : un <button> en inline-block ne transmet pas sa hauteur a ses
-   enfants, l'image retombait alors a sa taille intrinseque et debordait. */
+.asset-swiper .swiper-wrapper { align-items: flex-start; }
+.asset-col { display: flex; flex-direction: column; height: 100%; }
+/* Un bouton sans habillage : sans cette regle il revient au gris et au relief
+   par defaut du navigateur, et chaque element parait pose sur un rectangle. */
 .asset-cell {
-  display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden;
+  display: block; width: 100%; min-width: 0; min-height: 0;
   padding: 0; border: none; background: none; cursor: pointer;
 }
 
 .tile {
-  display: block; width: 100%; height: 100%; border-radius: 6px; overflow: hidden;
+  display: block; width: 100%; height: 100%; border-radius: 8px; overflow: hidden;
   border: 3px solid transparent; background: rgba(0, 0, 0, 0.18); transition: border-color 120ms;
 }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.tile.selected { border-color: var(--select); }
-/* Objets : jointifs et pleine case -- la case elle-meme est la marge. */
-.tile-object { background: transparent; padding: 0; border-radius: 0; }
+/* L'ombre detache le liseret des vignettes les plus claires. */
+.tile.selected {
+  border-color: var(--select);
+  box-shadow: 0 0 0 1px var(--bleu-nuit), 0 0 6px rgba(31, 40, 71, 0.9);
+}
+/* Un objet n'a ni cadre ni fond : sa case epouse sa largeur, il l'occupe en
+   entier. Seuls les plus allonges sont ramenes a une largeur raisonnable, et
+   paraissent alors moins hauts que la ligne. */
+.tile-object { background: none; border-radius: 0; }
 .tile-object img { object-fit: contain; }
 
 .tile-color {
@@ -155,10 +173,15 @@ body { color: var(--ink); user-select: none; }
 }
 .cta {
   font-family: Anton, Impact, sans-serif; font-size: 26px; letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--navy-deep) !important; height: 60px; padding: 0 34px;
+  text-transform: uppercase; height: 60px; padding: 0 34px;
+  background: var(--bleu-interface) !important; color: var(--blanc) !important;
 }
+.cta:hover { background: var(--bleu-survol) !important; color: var(--bleu-survol-texte) !important; }
+.cta:active { background: var(--bleu-actif) !important; color: var(--bleu-actif-texte) !important; }
 .cta:disabled { opacity: 0.4; }
-.restart { color: var(--sky) !important; font-size: 18px; }
+
+.restart { color: var(--bleu-interface) !important; font-size: 18px; }
+.restart:hover { color: var(--blanc) !important; }
 
 /* --- Grand ecran ------------------------------------------------------ */
 .display-root { position: absolute; inset: 0; display: grid; place-items: center; }

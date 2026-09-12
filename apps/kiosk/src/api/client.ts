@@ -27,6 +27,14 @@ export type CatalogItem = {
   file: string
   /** Chemin relatif a /media. */
   image: string
+  /**
+   * Vignette du panier, relative a /media. Un fond en a une, dessinee en 16:9
+   * par le studio ; un objet est sa propre vignette.
+   */
+  thumb: string
+  /** Dimensions intrinseques du SVG : rapport dans le panier et taille a la pose. */
+  width: number
+  height: number
   /** Texte au survol, par langue. */
   label: Partial<Record<string, string>>
 }
@@ -98,9 +106,14 @@ export class ApiClient {
     return `${this.config.apiBaseUrl}/media`
   }
 
-  /** URL absolue d'un element de catalogue. */
+  /** URL absolue d'un element de catalogue, tel qu'il sera pose sur la planche. */
   asset(item: CatalogItem) {
     return `${this.mediaBase}/${item.image}`
+  }
+
+  /** URL absolue de sa vignette, telle qu'elle parait dans le panier. */
+  thumb(item: CatalogItem) {
+    return `${this.mediaBase}/${item.thumb}`
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

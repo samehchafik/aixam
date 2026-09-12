@@ -4,7 +4,6 @@ import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { BrandMark } from '../../components/chrome/BrandMark'
 import { LangSwitch } from '../../components/chrome/LangSwitch'
 import { RegisterStep } from './RegisterStep'
 import { VerifyStep } from './VerifyStep'
@@ -50,7 +49,6 @@ export function TouchScreen() {
           planche (au-dessus du fond, sous les objets) : c'est SkinCanvas qui
           le place. Ailleurs, il n'a rien a traverser. */}
       {step !== 'editor' && <Ribbon />}
-      <BrandMark />
       <LangSwitch />
 
       {step === 'attract' && (

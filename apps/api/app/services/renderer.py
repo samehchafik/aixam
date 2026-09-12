@@ -17,10 +17,13 @@ Le tout est ensuite decoupe par le masque de la planche de bord.
 
 from __future__ import annotations
 
+import io
 import math
 import uuid
+from functools import lru_cache
 from pathlib import Path
 
+import cairosvg
 from PIL import Image
 
 from app.config import settings
@@ -33,6 +36,22 @@ RENDERS = MEDIA / "renders"
 BACKDROP = (24, 22, 40)  # fond du JPEG autour de la planche
 
 
+@lru_cache(maxsize=64)
+def _charger(rel: str, largeur: int) -> Image.Image:
+    """Ouvre un element du catalogue, a la largeur demandee.
+
+    Les elements sont livres en SVG : on les rasterise ici, a la taille ou ils
+    seront reellement poses, plutot que de les agrandir depuis une image fixe.
+    Le rendu garde donc la nettete du vectoriel quelle que soit la taille que
+    le visiteur a choisie. Le cache evite de recommencer pour chaque creation.
+    """
+    chemin = MEDIA / rel
+    if chemin.suffix.lower() == ".svg":
+        png = cairosvg.svg2png(url=str(chemin), output_width=max(1, largeur))
+        return Image.open(io.BytesIO(png)).convert("RGBA")
+    return Image.open(chemin).convert("RGBA")
+
+
 def _hex_to_rgb(value: str) -> tuple[int, int, int]:
     value = value.lstrip("#")
     if len(value) == 3:
@@ -40,12 +59,20 @@ def _hex_to_rgb(value: str) -> tuple[int, int, int]:
     return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
 
 
-def _asset_index(catalog: dict) -> dict[str, str]:
+def _asset_index(catalog: dict) -> dict[str, dict]:
+    """Les elements du catalogue, par identifiant."""
     return {
-        item["id"]: item["image"]
+        item["id"]: item
         for group in ("backgrounds", "objects")
         for item in catalog.get(group, [])
     }
+
+
+# Meme borne que la borne (MAX_ROTATION_FOND dans SkinCanvas) : un fond au-dela
+# de quelques degres devrait etre enormement agrandi pour couvrir encore la
+# planche. On la reapplique ici -- le rendu ne fait pas confiance a ce qu'on lui
+# envoie.
+MAX_ROTATION_FOND = 7.0
 
 
 def cadrer_fond(layer: dict, sprite_ratio: float, width: int, height: int) -> dict:
@@ -67,7 +94,9 @@ def cadrer_fond(layer: dict, sprite_ratio: float, width: int, height: int) -> di
 
     `sprite_ratio` = largeur / hauteur de l'image source.
     """
-    rad = math.radians(float(layer.get("rotation", 0) or 0))
+    angle = float(layer.get("rotation", 0) or 0)
+    angle = max(-MAX_ROTATION_FOND, min(MAX_ROTATION_FOND, angle))
+    rad = math.radians(angle)
     c, s_ = abs(math.cos(rad)), abs(math.sin(rad))
     wp = width * c + height * s_
     hp = width * s_ + height * c
@@ -88,14 +117,10 @@ def cadrer_fond(layer: dict, sprite_ratio: float, width: int, height: int) -> di
     rx = bx * cos - by * sin
     ry = bx * sin + by * cos
 
-    return {**layer, "scale": echelle, "x": 0.5 + rx / width, "y": 0.5 + ry / height}
+    return {**layer, "scale": echelle, "rotation": angle, "x": 0.5 + rx / width, "y": 0.5 + ry / height}
 
 
 def _paste_sprite(canvas: Image.Image, sprite: Image.Image, layer: dict, width: int, height: int) -> None:
-    target_w = max(1, int(width * float(layer.get("scale", 0.2))))
-    target_h = max(1, int(sprite.height * target_w / sprite.width))
-    sprite = sprite.resize((target_w, target_h), Image.LANCZOS)
-
     rotation = float(layer.get("rotation", 0))
     if rotation:
         sprite = sprite.rotate(-rotation, expand=True, resample=Image.BICUBIC)
@@ -144,13 +169,17 @@ def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> 
             continue
 
         if kind in ("background", "object"):
-            rel = assets.get(layer.get("assetId", ""))
-            if not rel:
+            element = assets.get(layer.get("assetId", ""))
+            if not element:
                 continue
-            sprite = Image.open(MEDIA / rel).convert("RGBA")
+
+            # Le rapport vient du catalogue, pas d'un fichier ouvert : on sait
+            # donc a quelle largeur rasteriser AVANT de lire le SVG.
+            ratio = element["width"] / element["height"]
             if kind == "background":
-                layer = cadrer_fond(layer, sprite.width / sprite.height, width, height)
-            _paste_sprite(canvas, sprite, layer, width, height)
+                layer = cadrer_fond(layer, ratio, width, height)
+            largeur = max(1, round(width * float(layer.get("scale", 0.2))))
+            _paste_sprite(canvas, _charger(element["image"], largeur), layer, width, height)
 
     canvas.putalpha(build_mask(shape, width, height))
 

@@ -11,8 +11,6 @@
     "dev:mock": "vite --mode mock"
   },
   "dependencies": {
-    "@fontsource/anton": "^5.2.5",
-    "@fontsource/poppins": "^5.2.5",
     "@mantine/core": "^9.6.0",
     "@mantine/hooks": "^9.6.0",
     "@tabler/icons-react": "^3.46.0",
