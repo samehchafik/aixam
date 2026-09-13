@@ -1,14 +1,41 @@
 const TOKEN_KEY = 'aixam.admin.token'
 
+/**
+ * La session, et qui la surveille.
+ *
+ * Effacer le jeton ne suffisait pas : l'ecran restait sur le tableau de bord,
+ * qui se vidait appel apres appel pendant que l'API repondait 401. Toute
+ * disparition du jeton previent donc maintenant l'application, qui revient a
+ * la page de connexion.
+ */
+const abonnes = new Set<() => void>()
+/** Vrai quand la session s'est terminee d'elle-meme, pas sur un clic. */
+let expiree = false
+
 export const auth = {
   get token() {
     return localStorage.getItem(TOKEN_KEY)
   },
-  set(token: string) {
-    localStorage.setItem(TOKEN_KEY, token)
+  /** Vrai si la derniere fin de session est une expiration, non une deconnexion. */
+  get aExpire() {
+    return expiree
   },
-  clear() {
+  set(token: string) {
+    expiree = false
+    localStorage.setItem(TOKEN_KEY, token)
+    abonnes.forEach((prevenir) => prevenir())
+  },
+  clear(cause: 'deconnexion' | 'expiration' = 'deconnexion') {
+    expiree = cause === 'expiration'
     localStorage.removeItem(TOKEN_KEY)
+    abonnes.forEach((prevenir) => prevenir())
+  },
+  /** S'abonner aux changements de session. Rend la fonction de desabonnement. */
+  surChangement(prevenir: () => void) {
+    abonnes.add(prevenir)
+    return () => {
+      abonnes.delete(prevenir)
+    }
   },
 }
 
@@ -45,7 +72,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   })
   if (res.status === 401) {
-    auth.clear()
+    auth.clear('expiration')
     throw new Unauthorized('Session expiree')
   }
   if (!res.ok) {
@@ -75,6 +102,12 @@ export async function telecharger(path: string, nom: string): Promise<void> {
     cache: 'no-store',
     headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {},
   })
+  // Un telechargement passe hors de `api()` : sans ce test, une session
+  // expiree rendait un fichier contenant le refus de l'API.
+  if (res.status === 401) {
+    auth.clear('expiration')
+    throw new Unauthorized('Session expiree')
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const url = URL.createObjectURL(await res.blob())
   const lien = document.createElement('a')

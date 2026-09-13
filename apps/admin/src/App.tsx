@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, HashRouter as Router, Routes } from 'react-router-dom'
 import { AppShell, Box, Burger, Group, NavLink as MantineNavLink, Stack, Text, UnstyledButton } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
@@ -22,7 +22,11 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(Boolean(auth.token))
   const [ouvert, { toggle, close }] = useDisclosure()
 
-  if (!authenticated) return <Login onSuccess={() => setAuthenticated(true)} />
+  // Une session expire en silence : c'est l'API qui l'apprend, au premier 401.
+  // Sans cette ecoute, l'ecran restait sur le tableau de bord.
+  useEffect(() => auth.surChangement(() => setAuthenticated(Boolean(auth.token))), [])
+
+  if (!authenticated) return <Login />
 
   return (
     <Router>
@@ -41,10 +45,7 @@ export default function App() {
               <Text c="dimmed" fz="sm" visibleFrom="sm">Back-office EASY</Text>
             </Group>
             <UnstyledButton
-              onClick={() => {
-                auth.clear()
-                setAuthenticated(false)
-              }}
+              onClick={() => auth.clear()}
             >
               <Text c="aixam.6" fz="sm" fw={500}>Déconnexion</Text>
             </UnstyledButton>

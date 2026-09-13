@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core'
 import { api, auth } from '../lib/api'
 
-export function Login({ onSuccess }: { onSuccess: () => void }) {
+export function Login() {
+  // Revenir ici sans explication ressemble a une deconnexion arbitraire.
+  const [expiree] = useState(auth.aExpire)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +20,6 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         body: JSON.stringify({ email, password }),
       })
       auth.set(res.access_token)
-      onSuccess()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
     } finally {
@@ -34,6 +35,12 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
             <Text fw={700} fz="sm" c="dimmed" style={{ letterSpacing: '0.16em' }}>AIXAM</Text>
             <Title order={2} mt={4}>Back-office EASY</Title>
           </div>
+
+          {expiree && (
+            <Alert color="aixam" variant="light">
+              Votre session a expiré. Reconnectez-vous pour continuer.
+            </Alert>
+          )}
 
           {/* name, id et autoComplete : sans eux les gestionnaires de mots de
               passe ne reconnaissent pas le couple et ne proposent rien. */}
