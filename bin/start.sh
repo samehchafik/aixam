@@ -85,11 +85,25 @@ if [ $BUILD -eq 1 ]; then
 fi
 
 # Une SPA absente ne se voit qu'a l'ecran, en 503 : autant le dire ici.
+#
+# Et une SPA perimee ne se voit pas du tout. apps/api/static est ignore par
+# git : un `git pull` apporte les sources, jamais les bundles. Sans
+# recompilation le serveur continue a servir ceux du build precedent, sans
+# rien signaler -- on croit alors que le deploiement n'a pas pris. Meme piege
+# que pour le code Python plus bas, donc meme avertissement.
 check_built() {
-  [ -f "$STATIC/$1/index.html" ] || die "$2 pas compile -- lancer bin/build.sh $3 (ou ajouter --build)"
+  [ -f "$STATIC/$1/index.html" ] \
+    || die "$2 pas compile -- lancer bin/build.sh $3 (ou ajouter --build)"
+  local recent
+  recent="$(find "$ROOT/apps/$4/src" "$ROOT/apps/$4/public" "$ROOT/apps/$4/package.json" \
+              -newer "$STATIC/$1/index.html" -print -quit 2>/dev/null || true)"
+  if [ -n "$recent" ]; then
+    warn "$2 : les sources sont plus recentes que le bundle servi."
+    warn "        Recompiler : ./bin/build.sh $3 (ou ajouter --build)"
+  fi
 }
-if [ $ADMIN -eq 1 ]; then check_built admin "le back-office" --admin; fi
-if [ $FRONT -eq 1 ]; then check_built kiosk "la borne" --front; fi
+if [ $ADMIN -eq 1 ]; then check_built admin "le back-office" --admin admin; fi
+if [ $FRONT -eq 1 ]; then check_built kiosk "la borne" --front kiosk; fi
 
 # --- Demarrage ---
 
