@@ -19,7 +19,15 @@ type Row = {
   moderated_at: string | null
 }
 
-type Compteurs = { pending: number; approved: number; rejected: number }
+type Compteurs = {
+  pending: number
+  approved: number
+  rejected: number
+  /** Horodatage de l'attente la plus recente : le repere du guet. */
+  latest: string | null
+  /** Combien d'attentes sont arrivees depuis le repere envoye. */
+  newer: number
+}
 
 const TRIS = [
   { value: 'date_desc', label: 'Plus récentes' },
@@ -60,7 +68,13 @@ export function Designs() {
   const [onglet, setOnglet] = useState<'attente' | 'traitees'>('attente')
   const [verdicts, setVerdicts] = useState<string[]>(['approved'])
   const [page, setPage] = useState(1)
-  const [compteurs, setCompteurs] = useState<Compteurs>({ pending: 0, approved: 0, rejected: 0 })
+  const [compteurs, setCompteurs] = useState<Compteurs>({
+    pending: 0, approved: 0, rejected: 0, latest: null, newer: 0,
+  })
+  // Le repere du guet : l'attente la plus recente au moment ou cette grille a
+  // ete chargee. Ce qui est arrive apres n'est pas sous les yeux de l'animateur.
+  const [repere, setRepere] = useState<string | null>(null)
+  const [nouvelles, setNouvelles] = useState(0)
   const [rafraichir, setRafraichir] = useState(0)
   const [agrandie, setAgrandie] = useState<number | null>(null)
 
@@ -68,9 +82,41 @@ export function Designs() {
   // retirer. La liste se vide, et un message le dit.
   const moderation = onglet === 'attente' ? 'pending' : verdicts.join(',')
 
+  // Memes dependances que la grille : le repere doit valoir pour CE qui est
+  // affiche. Le laisser sur `rafraichir` seul laissait le bandeau annoncer des
+  // creations deja revenues dans la liste -- un changement d'onglet la recharge
+  // sans passer par un verdict.
   useEffect(() => {
-    api<Compteurs>('/api/admin/designs/counts').then(setCompteurs)
-  }, [rafraichir])
+    api<Compteurs>('/api/admin/designs/counts').then((recus) => {
+      setCompteurs(recus)
+      setRepere(recus.latest)
+      setNouvelles(0)
+    })
+  }, [search, sort, moderation, page, rafraichir])
+
+  // Le guet. Un COUNT toutes les 15 s, jamais un rechargement : la grille ne
+  // doit pas changer sous les mains de l'animateur -- une carte qui se decale
+  // entre la lecture et le clic ferait valider la mauvaise creation, et la
+  // loupe ouverte se refermerait d'elle-meme. On compte, on propose, il decide.
+  useEffect(() => {
+    const sonder = () => {
+      const q = repere ? `?since=${encodeURIComponent(repere)}` : ''
+      api<Compteurs>(`/api/admin/designs/counts${q}`)
+        .then((recus) => {
+          setCompteurs(recus)
+          setNouvelles(recus.newer)
+        })
+        .catch(() => {})
+    }
+    const id = setInterval(sonder, 15_000)
+    return () => clearInterval(id)
+  }, [repere])
+
+  // Les nouvelles sont en tete du tri par date : on revient page 1 les chercher.
+  const actualiser = () => {
+    setPage(1)
+    setRafraichir((n) => n + 1)
+  }
 
   // Changer de filtre ramene en page 1 : rester en page 3 d'un resultat qui
   // n'en compte plus qu'une afficherait une grille vide sans raison.
@@ -168,6 +214,17 @@ export function Designs() {
           </Checkbox.Group>
         )}
       </Group>
+
+      {/* Le guet n'agit pas, il previent. L'animateur choisit son moment :
+          entre deux visiteurs, pas au milieu d'une decision. */}
+      {onglet === 'attente' && nouvelles > 0 && (
+        <Button variant="light" color="teal" onClick={actualiser}>
+          {nouvelles === 1
+            ? 'Une nouvelle création est arrivée'
+            : `${nouvelles} nouvelles créations sont arrivées`}
+          {' '}— Actualiser
+        </Button>
+      )}
 
       {rows.length === 0 && (
         <Text c="dimmed">

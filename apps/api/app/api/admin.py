@@ -243,14 +243,60 @@ def _vignette(design) -> str | None:
     return skin_url(design.skin, design.render_path)
 
 
+def _repere(since: str) -> datetime:
+    """Relit l'horodatage que l'ecran nous a renvoye.
+
+    Deux tolerances, parce que l'echec serait muet : l'ecran avale l'erreur et
+    le bandeau ne paraitrait jamais, sans que rien ne le dise.
+
+    Le `+` du fuseau arrive en espace quand l'appelant n'a pas encode sa query
+    string -- c'est la regle des formulaires, pas une faute de frappe. Et un
+    horodatage sans fuseau serait compare par Postgres selon le fuseau de la
+    session : on le pose en UTC, comme tout ce qui est en base.
+    """
+    try:
+        valeur = datetime.fromisoformat(since)
+    except ValueError:
+        valeur = datetime.fromisoformat(since.replace(" ", "+"))
+    return valeur if valeur.tzinfo else valeur.replace(tzinfo=UTC)
+
+
 @router.get("/designs/counts")
-def designs_counts(db: Session = Depends(get_db)) -> dict:
-    """Combien de creations dans chaque etat, pour les compteurs des onglets."""
+def designs_counts(since: str = "", db: Session = Depends(get_db)) -> dict:
+    """Combien de creations dans chaque etat, pour les compteurs des onglets.
+
+    Rend aussi de quoi tenir le guet des arrivees. `latest` est l'horodatage de
+    la creation en attente la plus recente : l'ecran le garde comme repere.
+    Repasse en `since`, il fait compter dans `newer` ce qui est arrive depuis
+    -- un simple COUNT, que l'on peut donc demander souvent.
+
+    Sans repere, `newer` vaut le nombre d'attentes : un repere absent veut dire
+    qu'il n'y avait rien en attente au chargement, donc que tout est nouveau.
+    """
     lignes = db.execute(
         select(Design.moderation, func.count()).group_by(Design.moderation)
     ).all()
     compte = {m.value: 0 for m in Moderation}
     compte.update({etat: n for etat, n in lignes})
+
+    en_attente = Design.moderation == Moderation.pending.value
+    derniere = db.scalar(select(func.max(Design.created_at)).where(en_attente))
+    compte["latest"] = derniere.isoformat() if derniere else None
+
+    if since:
+        try:
+            repere = _repere(since)
+        except ValueError:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, f"repere illisible : {since!r}"
+            ) from None
+        compte["newer"] = db.scalar(
+            select(func.count())
+            .select_from(Design)
+            .where(en_attente, Design.created_at > repere)
+        ) or 0
+    else:
+        compte["newer"] = compte[Moderation.pending.value]
     return compte
 
 
