@@ -8,6 +8,7 @@ pour qu'un ecran qui redemarre en pleine animation se resynchronise seul.
 from __future__ import annotations
 
 import asyncio
+import time
 from collections import defaultdict
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -19,8 +20,18 @@ from app.models import Kiosk
 router = APIRouter(tags=["ws"])
 
 _rooms: dict[str, set[WebSocket]] = defaultdict(set)
-_last_state: dict[str, dict] = {}
+_last_state: dict[str, tuple[float, dict]] = {}
 _lock = asyncio.Lock()
+
+# Peremption de l'etat conserve.
+#
+# La borne renvoie « idle » d'elle-meme apres son delai d'inactivite, donc en
+# temps normal cet etat ne survit pas a une session abandonnee. Mais ce minuteur
+# vit dans la page : un onglet ferme, un plantage, la machine tactile qu'on
+# redemarre, et plus personne n'envoie « idle ». Le serveur rejouerait alors la
+# composition inachevee d'un visiteur a chaque ecran qui se connecte -- en
+# public, indefiniment. Passe ce delai on considere la session perdue.
+PEREMPTION_ETAT = 5 * 60
 
 
 def _resolve_kiosk(token: str) -> str | None:
@@ -39,7 +50,11 @@ async def screens(websocket: WebSocket, token: str = Query(...), role: str = Que
     await websocket.accept()
     async with _lock:
         _rooms[room].add(websocket)
-        snapshot = _last_state.get(room)
+        garde = _last_state.get(room)
+        if garde and time.monotonic() - garde[0] > PEREMPTION_ETAT:
+            _last_state.pop(room, None)
+            garde = None
+        snapshot = garde[1] if garde else None
 
     if snapshot is not None and role != "touch":
         await websocket.send_json(snapshot)
@@ -50,7 +65,7 @@ async def screens(websocket: WebSocket, token: str = Query(...), role: str = Que
             async with _lock:
                 kind = message.get("type")
                 if kind == "state":
-                    _last_state[room] = message
+                    _last_state[room] = (time.monotonic(), message)
                 elif kind in ("idle", "finished"):
                     # Fin de session : un ecran qui se (re)connecte ensuite ne
                     # doit pas recevoir la composition du visiteur precedent.

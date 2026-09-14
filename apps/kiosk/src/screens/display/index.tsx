@@ -68,9 +68,9 @@ export function DisplayScreen() {
 /**
  * L'attente : les creations des visiteurs defilent, posees sur la planche de
  * bord. Tant qu'aucune n'a ete approuvee -- au debut du salon, par exemple --
- * ce sont les fonds du catalogue qui defilent, poses sur la meme planche : la
- * voiture est la des la premiere minute, et l'ecran ne donne jamais
- * l'impression d'etre en panne.
+ * la planche reste noire. La voiture est la des la premiere minute, et un
+ * skin noir est une planche neuve : on ne le prend ni pour une panne, ni pour
+ * la creation de quelqu'un.
  */
 function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
   const { api } = useApp()
@@ -103,8 +103,7 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
     () => liste.filter((c) => !manquants.has(c.id)),
     [liste, manquants],
   )
-  const fonds = useMemo(() => catalog?.backgrounds ?? [], [catalog])
-  const total = creations.length || fonds.length
+  const total = creations.length
 
   useEffect(() => {
     if (total < 2) return
@@ -113,14 +112,15 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
   }, [total, intervalSeconds])
 
   const courante = creations[index % Math.max(1, creations.length)]
-  const fond = fonds[index % Math.max(1, fonds.length)]
   const mockup = catalog?.mockup
 
   return (
     <div className="display-root attract">
       {mockup && catalog && (
+        // Sans creation approuvee, aucun skin n'est pose : la zone du mockup
+        // laisse voir son fond noir, et la planche parait neuve.
         <SkinMockup
-          key={courante?.id ?? fond?.id}
+          key={courante?.id ?? 'vide'}
           mockup={mockup}
           shape={catalog.shape}
           mediaBase={api.mediaBase}
@@ -129,12 +129,7 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
             courante &&
             setManquants((vus) => new Set(vus).add(courante.id))
           }
-        >
-          {/* Aucune creation approuvee : on pose un fond du catalogue sur la
-              planche. L'ecran montre la voiture des le premier jour, au lieu
-              d'un repli qu'on prendrait pour une panne. */}
-          {!courante && fond && <img src={api.asset(fond)} alt="" />}
-        </SkinMockup>
+        />
       )}
       <div className="attract-overlay">
         <Title order={1} className="display-title">{t('display.attractTitle')}</Title>

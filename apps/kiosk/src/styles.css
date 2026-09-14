@@ -189,14 +189,15 @@ body {
 .mockup-decor, .mockup-ombrage { width: 100%; height: 100%; }
 /* La zone porte le masque : ce qui deborde de la planche, ou ce que le volant
    cache, est retenu ici. */
-/* Le fond de la zone est une securite, pas une decoration : le mockup livre
-   par le studio porte, sous le skin, une plaque verte « Placer le design
-   ici ». Elle ne doit jamais paraitre sur le stand. Le masque borne cette
-   couleur a la silhouette de la planche, donc si le skin manque on voit une
-   planche bleu nuit -- jamais la consigne de montage. */
+/* Le noir de la zone sert deux fois. C'est l'etat d'attente, avant qu'une
+   creation soit approuvee : une planche neuve, qu'on ne prend ni pour une
+   panne ni pour le skin de quelqu'un. Et c'est la securite qui couvre la
+   plaque verte « Placer le design ici » que le mockup du studio porte sous le
+   skin -- elle ne doit jamais paraitre sur le stand. Le masque borne cette
+   couleur a la silhouette de la planche. */
 .mockup-zone {
   position: absolute; inset: 0;
-  background: var(--bleu-nuit);
+  background: #000;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
 .mockup-skin { position: absolute; top: 0; left: 0; transform-origin: 0 0; }

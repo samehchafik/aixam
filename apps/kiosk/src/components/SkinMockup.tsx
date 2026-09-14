@@ -70,16 +70,18 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
             maskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
           }}
         >
-          <div
-            className="mockup-skin"
-            style={{
-              width: shape.width + marge * 2,
-              height: shape.height + marge * 2,
-              transform: matriceSkin(shape, mockup.corners, marge),
-            }}
-          >
-            {src ? <img src={src} alt="" onError={onErreur} /> : children}
-          </div>
+          {(src || children) && (
+            <div
+              className="mockup-skin"
+              style={{
+                width: shape.width + marge * 2,
+                height: shape.height + marge * 2,
+                transform: matriceSkin(shape, mockup.corners, marge),
+              }}
+            >
+              {src ? <img src={src} alt="" onError={onErreur} /> : children}
+            </div>
+          )}
         </div>
       )}
 
