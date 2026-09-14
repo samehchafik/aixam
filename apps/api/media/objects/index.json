@@ -1,41 +1,6 @@
 {
   "items": [
     {
-      "id": "objet-1",
-      "file": "objet_1.svg",
-      "width": 699.46,
-      "height": 209.0,
-      "label": {
-        "fr": "Objet 1",
-        "en": "Object 1",
-        "es": "Objeto 1"
-      }
-    },
-    {
-      "id": "objet-1-2",
-      "file": "objet_1-2.svg",
-      "width": 699.46,
-      "height": 209.0,
-      "label": {
-        "fr": "Objet 1 · 2",
-        "en": "Object 1 · 2",
-        "es": "Objeto 1 · 2"
-      },
-      "demo": true
-    },
-    {
-      "id": "objet-1-3",
-      "file": "objet_1-3.svg",
-      "width": 699.46,
-      "height": 209.0,
-      "label": {
-        "fr": "Objet 1 · 3",
-        "en": "Object 1 · 3",
-        "es": "Objeto 1 · 3"
-      },
-      "demo": true
-    },
-    {
       "id": "objet-2",
       "file": "objet_2.svg",
       "width": 705.19,
@@ -47,38 +12,14 @@
       }
     },
     {
-      "id": "objet-2-2",
-      "file": "objet_2-2.svg",
-      "width": 705.19,
-      "height": 157.48,
+      "id": "objet-1",
+      "file": "objet_1.svg",
+      "width": 699.46,
+      "height": 209.0,
       "label": {
-        "fr": "Objet 2 · 2",
-        "en": "Object 2 · 2",
-        "es": "Objeto 2 · 2"
-      },
-      "demo": true
-    },
-    {
-      "id": "objet-2-3",
-      "file": "objet_2-3.svg",
-      "width": 705.19,
-      "height": 157.48,
-      "label": {
-        "fr": "Objet 2 · 3",
-        "en": "Object 2 · 3",
-        "es": "Objeto 2 · 3"
-      },
-      "demo": true
-    },
-    {
-      "id": "objet-3",
-      "file": "objet_3.svg",
-      "width": 228.08,
-      "height": 235.26,
-      "label": {
-        "fr": "Objet 3",
-        "en": "Object 3",
-        "es": "Objeto 3"
+        "fr": "Objet 1",
+        "en": "Object 1",
+        "es": "Objeto 1"
       }
     },
     {
@@ -94,26 +35,38 @@
       "demo": true
     },
     {
-      "id": "objet-3-3",
-      "file": "objet_3-3.svg",
-      "width": 228.08,
-      "height": 235.26,
+      "id": "objet-6-3",
+      "file": "objet_6-3.svg",
+      "width": 1248.78,
+      "height": 265.11,
       "label": {
-        "fr": "Objet 3 · 3",
-        "en": "Object 3 · 3",
-        "es": "Objeto 3 · 3"
+        "fr": "Objet 6 · 3",
+        "en": "Object 6 · 3",
+        "es": "Objeto 6 · 3"
       },
       "demo": true
     },
     {
-      "id": "objet-4",
-      "file": "objet_4.svg",
-      "width": 523.78,
-      "height": 470.95,
+      "id": "objet-5-3",
+      "file": "objet_5-3.svg",
+      "width": 385.81,
+      "height": 400.5,
       "label": {
-        "fr": "Objet 4",
-        "en": "Object 4",
-        "es": "Objeto 4"
+        "fr": "Objet 5 · 3",
+        "en": "Object 5 · 3",
+        "es": "Objeto 5 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-3",
+      "file": "objet_3.svg",
+      "width": 228.08,
+      "height": 235.26,
+      "label": {
+        "fr": "Objet 3",
+        "en": "Object 3",
+        "es": "Objeto 3"
       }
     },
     {
@@ -125,6 +78,30 @@
         "fr": "Objet 4 · 2",
         "en": "Object 4 · 2",
         "es": "Objeto 4 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-6-2",
+      "file": "objet_6-2.svg",
+      "width": 1248.78,
+      "height": 265.11,
+      "label": {
+        "fr": "Objet 6 · 2",
+        "en": "Object 6 · 2",
+        "es": "Objeto 6 · 2"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-1-3",
+      "file": "objet_1-3.svg",
+      "width": 699.46,
+      "height": 209.0,
+      "label": {
+        "fr": "Objet 1 · 3",
+        "en": "Object 1 · 3",
+        "es": "Objeto 1 · 3"
       },
       "demo": true
     },
@@ -152,26 +129,49 @@
       }
     },
     {
-      "id": "objet-5-2",
-      "file": "objet_5-2.svg",
-      "width": 385.81,
-      "height": 400.5,
+      "id": "objet-2-3",
+      "file": "objet_2-3.svg",
+      "width": 705.19,
+      "height": 157.48,
       "label": {
-        "fr": "Objet 5 · 2",
-        "en": "Object 5 · 2",
-        "es": "Objeto 5 · 2"
+        "fr": "Objet 2 · 3",
+        "en": "Object 2 · 3",
+        "es": "Objeto 2 · 3"
       },
       "demo": true
     },
     {
-      "id": "objet-5-3",
-      "file": "objet_5-3.svg",
-      "width": 385.81,
-      "height": 400.5,
+      "id": "objet-4",
+      "file": "objet_4.svg",
+      "width": 523.78,
+      "height": 470.95,
       "label": {
-        "fr": "Objet 5 · 3",
-        "en": "Object 5 · 3",
-        "es": "Objeto 5 · 3"
+        "fr": "Objet 4",
+        "en": "Object 4",
+        "es": "Objeto 4"
+      }
+    },
+    {
+      "id": "objet-3-3",
+      "file": "objet_3-3.svg",
+      "width": 228.08,
+      "height": 235.26,
+      "label": {
+        "fr": "Objet 3 · 3",
+        "en": "Object 3 · 3",
+        "es": "Objeto 3 · 3"
+      },
+      "demo": true
+    },
+    {
+      "id": "objet-2-2",
+      "file": "objet_2-2.svg",
+      "width": 705.19,
+      "height": 157.48,
+      "label": {
+        "fr": "Objet 2 · 2",
+        "en": "Object 2 · 2",
+        "es": "Objeto 2 · 2"
       },
       "demo": true
     },
@@ -187,26 +187,26 @@
       }
     },
     {
-      "id": "objet-6-2",
-      "file": "objet_6-2.svg",
-      "width": 1248.78,
-      "height": 265.11,
+      "id": "objet-5-2",
+      "file": "objet_5-2.svg",
+      "width": 385.81,
+      "height": 400.5,
       "label": {
-        "fr": "Objet 6 · 2",
-        "en": "Object 6 · 2",
-        "es": "Objeto 6 · 2"
+        "fr": "Objet 5 · 2",
+        "en": "Object 5 · 2",
+        "es": "Objeto 5 · 2"
       },
       "demo": true
     },
     {
-      "id": "objet-6-3",
-      "file": "objet_6-3.svg",
-      "width": 1248.78,
-      "height": 265.11,
+      "id": "objet-1-2",
+      "file": "objet_1-2.svg",
+      "width": 699.46,
+      "height": 209.0,
       "label": {
-        "fr": "Objet 6 · 3",
-        "en": "Object 6 · 3",
-        "es": "Objeto 6 · 3"
+        "fr": "Objet 1 · 2",
+        "en": "Object 1 · 2",
+        "es": "Objeto 1 · 2"
       },
       "demo": true
     }

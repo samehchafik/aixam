@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import colorsys
 import json
+import random
 import re
 import shutil
 import sys
@@ -201,6 +202,10 @@ FONDS_DEMO = [
 # Deux tiers de tour chacune : les variantes restent distinctes entre elles.
 TEINTES = [(1, 120.0), (2, 240.0)]
 
+# Lignes du panier des objets. Le melange s'en sert pour eviter qu'une meme
+# forme occupe une colonne entiere.
+LIGNES_PANIER = 3
+
 
 def fond_demo(numero: int, fond: str, encre: str, largeur: int, hauteur: int, taille: int) -> str:
     """Un fond de demonstration, calque sur ceux du studio.
@@ -247,6 +252,26 @@ def variante(svg: str, degres: float) -> str:
     )
 
 
+def melanger(elements: list[tuple[str, dict]], fenetre: int) -> list[dict]:
+    """Melange les objets, sans laisser deux fois la meme forme dans une colonne.
+
+    Le panier remplit ses colonnes par groupes de `fenetre` elements qui se
+    suivent. Range par origine, chaque colonne montrait donc une seule forme
+    dans ses trois teintes -- repetitif, et on ne voyait qu'un tiers du
+    catalogue d'un coup d'oeil. Un melange simple laisserait le hasard
+    reformer ces paquets ; on ecarte donc ce qui vient de la meme origine.
+    """
+    reste = elements[:]
+    random.shuffle(reste)
+    ordre: list[tuple[str, dict]] = []
+    while reste:
+        voisins = {origine for origine, _ in ordre[-(fenetre - 1):]} if fenetre > 1 else set()
+        choix = next((e for e in reste if e[0] not in voisins), reste[0])
+        reste.remove(choix)
+        ordre.append(choix)
+    return [item for _, item in ordre]
+
+
 def completer(source: Path) -> None:
     fonds = MEDIA / "backgrounds"
     index = json.loads((fonds / "index.json").read_text(encoding="utf-8"))
@@ -271,22 +296,23 @@ def completer(source: Path) -> None:
     index = json.loads((objets / "index.json").read_text(encoding="utf-8"))
     # Les variantes suivent leur original : le visiteur voit la meme forme en
     # trois teintes, cote a cote dans la bande.
-    enrichi, faits = [], 0
+    enrichi: list[tuple[str, dict]] = []
+    faits = 0
     for item in index["items"]:
-        enrichi.append(item)
+        enrichi.append((item["id"], item))
         svg = (objets / item["file"]).read_text(encoding="utf-8")
         for suffixe, degres in TEINTES:
             nom = item["file"].replace(".svg", f"-{suffixe + 1}.svg")
             (objets / nom).write_text(variante(svg, degres), encoding="utf-8")
-            enrichi.append({
+            enrichi.append((item["id"], {
                 **item, "id": f"{item['id']}-{suffixe + 1}", "file": nom,
                 "label": {lg: f"{txt} · {suffixe + 1}" for lg, txt in item["label"].items()},
                 "demo": True,
-            })
+            }))
             faits += 1
-    index["items"] = enrichi
+    index["items"] = melanger(enrichi, LIGNES_PANIER)
     (objets / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"{faits:2d} variantes de teinte -> {len(enrichi)} objets en tout")
+    print(f"{faits:2d} variantes de teinte -> {len(index['items'])} objets, ordre melange")
 
 
 NOTE = """# {titre}
