@@ -341,6 +341,248 @@ def ecrire_note(cible: str, titre: str, quoi: str) -> None:
     (MEDIA / cible / "README.md").write_text(NOTE.format(titre=titre, quoi=quoi), encoding="utf-8")
 
 
+# ---------------------------------------------------------------- le mockup
+#
+# Le diaporama pose les creations sur une planche de bord photographiee. Le
+# studio livre trois images de meme cadre : le decor, le masque de la zone, et
+# l'ombrage qui se pose par-dessus. Reste a savoir OU tombent les quatre coins
+# de la planche dans cette photo -- c'est une projection a quatre points, et on
+# la calcule ici plutot que de la relever a la main : le jour ou le studio
+# livre une photo en haute definition, il suffit de relancer l'import.
+
+
+def _silhouette(forme: dict):
+    """Les points du gabarit, ramenes au carre unite."""
+    return [(x / forme["width"], y / forme["height"]) for x, y in forme["points"]]
+
+
+def _homographie(coins: list) -> list[float]:
+    """Coefficients menant le carre unite vers quatre coins."""
+    A, B = [], []
+    for (u, v), (x, y) in zip([(0, 0), (1, 0), (1, 1), (0, 1)], coins):
+        A.append([u, v, 1, 0, 0, 0, -u * x, -v * x]); B.append(x)
+        A.append([0, 0, 0, u, v, 1, -u * y, -v * y]); B.append(y)
+    for i in range(8):
+        p = max(range(i, 8), key=lambda r: abs(A[r][i]))
+        A[i], A[p] = A[p], A[i]; B[i], B[p] = B[p], B[i]
+        for r in range(8):
+            if r == i or A[r][i] == 0:
+                continue
+            q = A[r][i] / A[i][i]
+            A[r] = [t - q * w for t, w in zip(A[r], A[i])]; B[r] -= q * B[i]
+    return [B[i] / A[i][i] for i in range(8)]
+
+
+def _projeter(coins, points):
+    a, b, c, d, e, f, g, h = _homographie(coins)
+    out = []
+    for u, v in points:
+        w = g * u + h * v + 1
+        out.append(((a * u + b * v + c) / w, (d * u + e * v + f) / w))
+    return out
+
+
+def _droite(points) -> tuple[float, float, float]:
+    """Ajuste une droite a x + b y + c = 0 sur un nuage, par moindres carres."""
+    n = len(points)
+    mx = sum(p[0] for p in points) / n
+    my = sum(p[1] for p in points) / n
+    cxx = sum((p[0] - mx) ** 2 for p in points) / n
+    cyy = sum((p[1] - my) ** 2 for p in points) / n
+    cxy = sum((p[0] - mx) * (p[1] - my) for p in points) / n
+    tr, det = cxx + cyy, cxx * cyy - cxy * cxy
+    lam = tr / 2 - max(0.0, (tr / 2) ** 2 - det) ** 0.5
+    nx, ny = (cxy, lam - cxx) if abs(cxy) > 1e-9 else (1.0, 0.0)
+    k = (nx * nx + ny * ny) ** 0.5
+    return (nx / k, ny / k, -(nx * mx + ny * my) / k)
+
+
+def _depart(masque_img, forme: dict) -> list:
+    """Premiere projection, tiree des quatre droites de la planche.
+
+    Le contour seul ne suffit pas a fixer la projection : la planche est
+    presque symetrique, et plusieurs perspectives epousent la meme silhouette
+    en repartissant tout autrement ce qu'il y a dedans. L'encoche, elle, est un
+    reperage interne -- ses deux murs, avec les bords haut et bas, donnent
+    quatre droites, et quatre droites suffisent a determiner une projection.
+    """
+    W, H = masque_img.size
+    a = masque_img.load()
+    plein = lambda x, y: 0 <= x < W and 0 <= y < H and a[x, y] > 127
+
+    haut, bas = {}, {}
+    for x in range(W):
+        ys = [y for y in range(H) if plein(x, y)]
+        if ys:
+            haut[x], bas[x] = ys[0], ys[-1]
+
+    # Bande principale : le plus long morceau contigu (le reste est occulte).
+    cols = sorted(haut)
+    morceaux, debut = [], cols[0]
+    for i in range(1, len(cols)):
+        if cols[i] != cols[i - 1] + 1:
+            morceaux.append((debut, cols[i - 1]))
+            debut = cols[i]
+    morceaux.append((debut, cols[-1]))
+    g, d = max(morceaux, key=lambda m: m[1] - m[0])
+
+    # Murs de l'encoche : les deux ruptures franches du bord bas.
+    sauts = sorted(((abs(bas[x + 1] - bas[x]), x) for x in range(g, d) if x + 1 in bas),
+                   reverse=True)[:2]
+    murs = sorted(x for _, x in sauts)
+    if len(murs) < 2:
+        raise SystemExit("encoche introuvable dans le masque")
+
+    def mur(xa):
+        pts = []
+        for y in range(H):
+            for x in range(xa - 25, xa + 26):
+                if plein(x, y) != plein(x + 1, y):
+                    pts.append((x + 0.5, y))
+                    break
+        return pts
+
+    marge = max(10, (d - g) // 24)
+    dst = [
+        _droite([(x, haut[x]) for x in range(g + marge, d - marge) if x in haut]),
+        _droite([(x, bas[x]) for x in range(g + marge, d - marge)
+                 if x in bas and not murs[0] - 6 <= x <= murs[1] + 6]),
+        _droite(mur(murs[0])),
+        _droite(mur(murs[1])),
+    ]
+
+    # Repere centre sur la planche : aucune de ces droites ne passe alors par
+    # l'origine, ou le systeme degenererait.
+    LW, LH, n = forme["width"], forme["height"], forme["notch"]
+    cx, cy = LW / 2, LH / 2
+    src = [(0, 1, cy), (0, 1, -cy), (1, 0, cx - n["x"]), (1, 0, cx - (n["x"] + n["width"]))]
+
+    A, B = [], []
+    for (u, v, w), (x, y, z) in zip(src, dst):
+        u, v, x, y = u / w, v / w, x / z, y / z
+        A.append([u, v, 1, 0, 0, 0, -u * x, -v * x]); B.append(x)
+        A.append([0, 0, 0, u, v, 1, -u * y, -v * y]); B.append(y)
+    for i in range(8):
+        p = max(range(i, 8), key=lambda r: abs(A[r][i]))
+        A[i], A[p] = A[p], A[i]; B[i], B[p] = B[p], B[i]
+        for r in range(8):
+            if r == i or A[r][i] == 0:
+                continue
+            q = A[r][i] / A[i][i]
+            A[r] = [t - q * w for t, w in zip(A[r], A[i])]; B[r] -= q * B[i]
+    c = [B[i] / A[i][i] for i in range(8)]
+    # Les droites se transforment par l'inverse transposee : on revient donc
+    # aux points en inversant puis transposant.
+    Hd = [[c[0], c[1], c[2]], [c[3], c[4], c[5]], [c[6], c[7], 1.0]]
+    t = [[Hd[j][i] for j in range(3)] for i in range(3)]
+    (a1, b1, c1), (d1, e1, f1), (g1, h1, i1) = t
+    det = a1 * (e1 * i1 - f1 * h1) - b1 * (d1 * i1 - f1 * g1) + c1 * (d1 * h1 - e1 * g1)
+    inv = [[(e1 * i1 - f1 * h1) / det, -(b1 * i1 - c1 * h1) / det, (b1 * f1 - c1 * e1) / det],
+           [-(d1 * i1 - f1 * g1) / det, (a1 * i1 - c1 * g1) / det, -(a1 * f1 - c1 * d1) / det],
+           [(d1 * h1 - e1 * g1) / det, -(a1 * h1 - b1 * g1) / det, (a1 * e1 - b1 * d1) / det]]
+
+    def proj(x, y):
+        w = inv[2][0] * x + inv[2][1] * y + inv[2][2]
+        return [(inv[0][0] * x + inv[0][1] * y + inv[0][2]) / w,
+                (inv[1][0] * x + inv[1][1] * y + inv[1][2]) / w]
+
+    return [proj(-cx, -cy), proj(cx, -cy), proj(cx, cy), proj(-cx, cy)]
+
+
+def coins_planche(masque_img, forme: dict) -> tuple[list, float]:
+    """Les quatre coins de la planche dans la photo.
+
+    On part de la projection tiree des droites, puis on l'affine par petits
+    pas : le contour du gabarit est arrondi et l'ajustement des droites porte
+    sur quelques pixels d'erreur, que ce reglage final rattrape.
+    """
+    from PIL import Image, ImageDraw
+
+    W, H = masque_img.size
+    mk = masque_img.load()
+    pts = _silhouette(forme)
+    dedans = [(x, y) for y in range(0, H, 2) for x in range(0, W, 2) if mk[x, y] > 127]
+    dehors = [(x, y) for y in range(0, H, 2) for x in range(0, W, 2) if mk[x, y] <= 127]
+
+    def note(coins):
+        im = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(im).polygon(_projeter(coins, pts), fill=255)
+        r = im.load()
+        couvre = sum(1 for x, y in dedans if r[x, y]) / max(1, len(dedans))
+        deborde = sum(1 for x, y in dehors if r[x, y]) / max(1, len(dehors))
+        return couvre - 0.25 * deborde, couvre
+
+    coins = _depart(masque_img, forme)
+    meilleure = note(coins)[0]
+    pas = max(W, H) / 40
+    while pas > 0.3:
+        bouge = False
+        for i in range(4):
+            for axe in (0, 1):
+                for signe in (1, -1):
+                    essai = [list(c) for c in coins]
+                    essai[i][axe] += signe * pas
+                    v = note(essai)[0]
+                    if v > meilleure + 1e-5:
+                        coins, meilleure, bouge = essai, v, True
+        if not bouge:
+            pas /= 2
+    return coins, note(coins)[1]
+
+
+def importer_mockup(source: Path) -> None:
+    from PIL import Image
+
+    # Le studio ne range pas toujours les deux dossiers au meme niveau : on
+    # remonte de quelques crans plutot que d'imposer une arborescence.
+    dossier = next(
+        (d for d in (source.parent, source.parent.parent, source.parent.parent.parent)
+         if (d / "mock_up_slideshow").is_dir()),
+        None,
+    )
+    if dossier is None:
+        print("  pas de mock_up_slideshow a cote : diaporama inchange")
+        return
+    dossier = dossier / "mock_up_slideshow"
+
+    fichiers = {
+        "decor": "Mockup_Skin.png",
+        "masque": "Mockup_masque_Skin.png",
+        "ombrage": "Mockup_Skin_ombrage.png",
+    }
+    if not all((dossier / f).is_file() for f in fichiers.values()):
+        print("  mock_up_slideshow incomplet : diaporama inchange")
+        return
+
+    cible = MEDIA / "mockup"
+    if cible.exists():
+        shutil.rmtree(cible)
+    cible.mkdir(parents=True)
+    for nom in fichiers.values():
+        shutil.copy2(dossier / nom, cible / nom)
+
+    decor = Image.open(cible / fichiers["decor"])
+    ombrage = Image.open(cible / fichiers["ombrage"])
+    masque = Image.open(cible / fichiers["masque"]).getchannel("A")
+
+    # Le masque est livre recadre sur la zone : l'ombrage, lui, est au cadre
+    # complet, et son etendue opaque donne exactement ou poser le masque.
+    boite = ombrage.getchannel("A").getbbox()
+    origine = (boite[0], boite[1]) if boite else (0, 0)
+
+    forme = json.loads((MEDIA / "base" / "shape.json").read_text(encoding="utf-8"))
+    coins, couverture = coins_planche(masque, forme)
+
+    (cible / "index.json").write_text(json.dumps({
+        "width": decor.size[0], "height": decor.size[1],
+        "decor": fichiers["decor"], "masque": fichiers["masque"], "ombrage": fichiers["ombrage"],
+        "maskOrigin": list(origine),
+        "corners": [[round(x + origine[0], 2), round(y + origine[1], 2)] for x, y in coins],
+    }, indent=2), encoding="utf-8")
+    print(f"   mockup {decor.size[0]}x{decor.size[1]} -> {cible}"
+          f"  (masque couvert a {couverture * 100:.1f} %)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     demo = "--demo" in sys.argv
@@ -353,6 +595,7 @@ def main() -> None:
     importer(source / "objets_skin", "objet", "objet_*.svg", "objects")
     if demo:
         completer(source)
+    importer_mockup(source)
     ecrire_note("backgrounds", "Fonds de skin", "fonds")
     ecrire_note("objects", "Objets de skin", "objets")
 

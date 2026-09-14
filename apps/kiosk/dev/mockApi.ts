@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { Plugin } from 'vite'
 
@@ -48,6 +48,11 @@ export function mockApi(): Plugin {
                 points: [[0, 0], [3218, 0], [3218, 325], [0, 325]],
                 notch: { x: 1330, y: 142, width: 557, height: 180 },
               }),
+              mockup: (() => {
+                const m = readJson('mockup/index.json', null) as Record<string, string> | null
+                if (!m) return null
+                return { ...m, decor: `mockup/${m.decor}`, masque: `mockup/${m.masque}`, ombrage: `mockup/${m.ombrage}` }
+              })(),
               backgrounds: index('backgrounds'),
               objects: index('objects'),
             },
@@ -56,6 +61,15 @@ export function mockApi(): Plugin {
         }
         if (url.startsWith('/api/kiosk/register')) return json({ visitor_id: '00000000-0000-0000-0000-000000000000', verification_required: false })
         if (url.startsWith('/api/kiosk/verify')) return json({ verified: true, remaining_attempts: 5 })
+        // En developpement, les creations approuvees sont simplement les
+        // rendus presents sur le disque : de quoi voir le diaporama sans base.
+        if (url.startsWith('/api/kiosk/designs/recent')) {
+          const dossier = join(media, 'renders')
+          const fichiers = existsSync(dossier)
+            ? readdirSync(dossier).filter((f) => f.endsWith('.jpg')).slice(0, 24)
+            : []
+          return json(fichiers.map((f) => ({ id: f, render_url: `/media/renders/${f}` })))
+        }
         if (url.startsWith('/api/kiosk/designs')) return json({ id: 'mock', status: 'rendered', render_url: null })
         if (url.startsWith('/api/kiosk/events')) return json(null, 204)
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from app.models import (
     DesignStatus,
     Event,
     Kiosk,
+    Moderation,
     VerificationCode,
     Visitor,
 )
@@ -247,6 +248,30 @@ def save_design(
         # un UUID, et un <img src> ne peut de toute facon pas porter de header.
         render_url=render_url(design.render_path),
     )
+
+
+@router.get("/designs/recent")
+def creations_recentes(
+    limit: int = Query(24, ge=1, le=60),
+    kiosk: Kiosk = Depends(current_kiosk),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Les dernieres creations a montrer sur le grand ecran.
+
+    Uniquement celles que l'animateur a approuvees : le diaporama tourne en
+    public sur le stand, une creation n'y parait pas avant d'avoir ete vue.
+    """
+    lignes = db.scalars(
+        select(Design)
+        .where(
+            Design.status == DesignStatus.rendered,
+            Design.moderation == Moderation.approved.value,
+            Design.render_path.isnot(None),
+        )
+        .order_by(Design.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [{"id": str(d.id), "render_url": render_url(d.render_path)} for d in lignes]
 
 
 @router.post("/events", status_code=status.HTTP_204_NO_CONTENT)

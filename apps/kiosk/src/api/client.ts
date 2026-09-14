@@ -39,8 +39,23 @@ export type CatalogItem = {
   label: Partial<Record<string, string>>
 }
 
+/** Le decor du diaporama : la planche de bord photographiee, et ou y poser un skin. */
+export type Mockup = {
+  width: number
+  height: number
+  decor: string
+  masque: string
+  ombrage: string
+  /** Coin haut-gauche du masque dans la photo : il est livre recadre. */
+  maskOrigin: [number, number]
+  /** Les quatre coins de la planche dans la photo, dans l'ordre hg, hd, bd, bg. */
+  corners: [number, number][]
+}
+
 export type Catalog = {
   shape: SkinShape
+  /** Absent tant que le studio n'a pas livre le decor. */
+  mockup: Mockup | null
   backgrounds: CatalogItem[]
   objects: CatalogItem[]
 }
@@ -164,6 +179,13 @@ export class ApiClient {
     return this.request<{ id: string; status: string; render_url: string | null }>(
       '/api/kiosk/designs',
       { method: 'POST', body: JSON.stringify(body) },
+    )
+  }
+
+  /** Les dernieres creations approuvees, pour le diaporama du grand ecran. */
+  creationsRecentes(limit = 24) {
+    return this.request<{ id: string; render_url: string }[]>(
+      `/api/kiosk/designs/recent?limit=${limit}`,
     )
   }
 

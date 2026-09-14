@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Text, Title } from '@mantine/core'
 import { SkinCanvas } from '../../components/SkinCanvas'
+import { SkinMockup } from '../../components/SkinMockup'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
@@ -64,23 +65,66 @@ export function DisplayScreen() {
   )
 }
 
-/** Defilement des fonds du catalogue + appel a jouer, comme prevu au brief. */
+/**
+ * L'attente : les creations des visiteurs defilent, posees sur la planche de
+ * bord. Tant qu'aucune n'a ete approuvee -- au debut du salon, par exemple --
+ * on montre les fonds du catalogue, pour que l'ecran ne reste pas vide.
+ */
 function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
   const { api } = useApp()
   const { t } = useI18n()
   const { catalog } = useSession()
+  const [creations, setCreations] = useState<{ id: string; render_url: string }[]>([])
   const [index, setIndex] = useState(0)
-  const slides = useMemo(() => catalog?.backgrounds ?? [], [catalog])
+
+  // La liste est relue de temps en temps : une creation approuvee pendant le
+  // salon doit rejoindre le defilement sans qu'on redemarre l'ecran.
+  useEffect(() => {
+    let vivant = true
+    const charger = () =>
+      api
+        .creationsRecentes()
+        .then((liste) => vivant && setCreations(liste))
+        .catch(() => {})
+    charger()
+    const id = window.setInterval(charger, 60_000)
+    return () => {
+      vivant = false
+      window.clearInterval(id)
+    }
+  }, [api])
+
+  const fonds = useMemo(() => catalog?.backgrounds ?? [], [catalog])
+  const total = creations.length || fonds.length
 
   useEffect(() => {
-    if (slides.length < 2) return
-    const id = window.setInterval(() => setIndex((i) => (i + 1) % slides.length), intervalSeconds * 1000)
+    if (total < 2) return
+    const id = window.setInterval(() => setIndex((i) => (i + 1) % total), intervalSeconds * 1000)
     return () => window.clearInterval(id)
-  }, [slides.length, intervalSeconds])
+  }, [total, intervalSeconds])
+
+  const courante = creations[index % Math.max(1, creations.length)]
+  const mockup = catalog?.mockup
 
   return (
     <div className="display-root attract">
-      {slides[index] && <img key={slides[index].id} src={api.thumb(slides[index])} alt="" />}
+      {courante && mockup && catalog ? (
+        <SkinMockup
+          key={courante.id}
+          mockup={mockup}
+          shape={catalog.shape}
+          mediaBase={api.mediaBase}
+          src={`${api.base}${courante.render_url}`}
+        />
+      ) : (
+        fonds[index % Math.max(1, fonds.length)] && (
+          <img
+            key={fonds[index % fonds.length].id}
+            src={api.thumb(fonds[index % fonds.length])}
+            alt=""
+          />
+        )
+      )}
       <div className="attract-overlay">
         <Title order={1} className="display-title">{t('display.attractTitle')}</Title>
         <Text size="xl">{t('display.attractCta')}</Text>

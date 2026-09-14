@@ -183,6 +183,20 @@ body {
 .restart { color: var(--bleu-interface) !important; font-size: 18px; }
 .restart:hover { color: var(--blanc) !important; }
 
+/* --- Diaporama : une creation posee sur la planche de bord ------------- */
+.mockup { position: absolute; }
+.mockup img { position: absolute; top: 0; left: 0; display: block; }
+.mockup-decor, .mockup-ombrage { width: 100%; height: 100%; }
+/* La zone porte le masque : ce qui deborde de la planche, ou ce que le volant
+   cache, est retenu ici. */
+.mockup-zone {
+  position: absolute; inset: 0;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+.mockup-zone img { transform-origin: 0 0; }
+/* L'ombrage repose sur le skin : il lui donne la lumiere de la photo. */
+.mockup-ombrage { pointer-events: none; }
+
 /* --- Grand ecran ------------------------------------------------------ */
 .display-root { position: absolute; inset: 0; display: grid; place-items: center; }
 .display-root.attract img, .display-root.finished img { width: 100%; height: 100%; object-fit: cover; }

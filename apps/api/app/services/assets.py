@@ -74,9 +74,25 @@ def _load_index(folder: str) -> list[CatalogItem]:
     return items
 
 
+def _mockup() -> dict | None:
+    """Le decor du diaporama, ou None s'il n'a pas ete importe.
+
+    Les chemins sont rendus relatifs a /media, comme pour le reste : le front
+    n'a jamais a savoir comment les dossiers sont ranges.
+    """
+    brut = _read_json(MEDIA / "mockup" / "index.json", {})
+    if not brut:
+        return None
+    return {
+        **brut,
+        **{cle: f"mockup/{brut[cle]}" for cle in ("decor", "masque", "ombrage") if cle in brut},
+    }
+
+
 def load_catalog() -> dict:
     return {
         "shape": _read_json(MEDIA / "base" / "shape.json", DEFAULT_SHAPE),
+        "mockup": _mockup(),
         "backgrounds": _load_index("backgrounds"),
         "objects": _load_index("objects"),
     }

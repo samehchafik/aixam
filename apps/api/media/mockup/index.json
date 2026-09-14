@@ -1,0 +1,29 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "decor": "Mockup_Skin.png",
+  "masque": "Mockup_masque_Skin.png",
+  "ombrage": "Mockup_Skin_ombrage.png",
+  "maskOrigin": [
+    764,
+    430
+  ],
+  "corners": [
+    [
+      718.21,
+      417.71
+    ],
+    [
+      1956.82,
+      451.06
+    ],
+    [
+      1933.24,
+      596.15
+    ],
+    [
+      719.71,
+      517.25
+    ]
+  ]
+}
