@@ -44,7 +44,11 @@ const newSessionId = () =>
 
 /** Marge de part et d'autre de l'encoche, en fraction de la largeur. */
 const NOTCH_MARGIN = 0.015
-/** Un objet ne nait pas a cheval sur un bord de la planche. */
+/**
+ * Marge minimale entre un objet et le bord de la planche. Minimale seulement :
+ * la marge reelle tient compte de la largeur de l'objet, sans quoi les plus
+ * larges naissaient a cheval sur le bord et le masque les coupait net.
+ */
 const EDGE = 0.08
 /** Tirages tentes avant de garder le moins encombre. */
 const ESSAIS = 14
@@ -62,12 +66,32 @@ function bandeInterdite(catalog: Catalog | null): [number, number] {
   return [debut, fin]
 }
 
-/** Un tirage dans les deux couloirs que l'encoche laisse libres. */
-function tirage([interditDebut, interditFin]: [number, number]): number {
-  const gauche = Math.max(0, interditDebut - EDGE)
-  const droite = Math.max(0, 1 - EDGE - interditFin)
+/**
+ * Un tirage dans les deux couloirs que l'encoche laisse libres.
+ *
+ * Les couloirs se resserrent de la demi-largeur de l'objet : c'est son BORD
+ * qui doit rester sur la planche, pas son centre. Un objet large tire a
+ * `EDGE` du bord debordait de la moitie de sa largeur moins EDGE, et le
+ * masque le tranchait -- on voyait un dessin coupe, sans comprendre pourquoi.
+ *
+ * Quand l'objet est si large qu'aucun couloir ne le contient, on le pose au
+ * milieu du plus grand : deborder un peu des deux cotes vaut mieux que
+ * deborder beaucoup d'un seul.
+ */
+function tirage([interditDebut, interditFin]: [number, number], demiLargeur = 0): number {
+  const marge = Math.max(EDGE, demiLargeur)
+  const gauche = Math.max(0, interditDebut - demiLargeur - marge)
+  const droite = Math.max(0, 1 - marge - (interditFin + demiLargeur))
+
+  if (gauche + droite <= 0) {
+    const milieu = (debut: number, fin: number) => (debut + fin) / 2
+    return interditDebut > 1 - interditFin
+      ? milieu(0, interditDebut)
+      : milieu(interditFin, 1)
+  }
+
   const t = Math.random() * (gauche + droite)
-  return t < gauche ? EDGE + t : interditFin + (t - gauche)
+  return t < gauche ? marge + t : interditFin + demiLargeur + (t - gauche)
 }
 
 /**
@@ -87,12 +111,12 @@ function spawnX(
   poses: { x: number; demi: number }[],
 ): number {
   const bande = bandeInterdite(catalog)
-  let meilleur = tirage(bande)
+  let meilleur = tirage(bande, demiLargeur)
   if (!poses.length) return meilleur
 
   let meilleurEcart = -Infinity
   for (let i = 0; i < ESSAIS; i++) {
-    const candidat = i === 0 ? meilleur : tirage(bande)
+    const candidat = i === 0 ? meilleur : tirage(bande, demiLargeur)
     const ecart = Math.min(
       ...poses.map((p) => Math.abs(candidat - p.x) - (demiLargeur + p.demi)),
     )

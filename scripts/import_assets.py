@@ -33,7 +33,9 @@ import json
 import random
 import re
 import shutil
+import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
@@ -71,6 +73,62 @@ def numero(nom: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+# Familles generiques : elles n'ont pas a etre installees.
+_GENERIQUES = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"}
+# Ce qui fait qu'un SVG dessine quelque chose sans dependre d'une police.
+_DESSIN = re.compile(r"<(path|rect|circle|ellipse|polygon|polyline|line|image)\b")
+
+
+def _polices_citees(svg: str) -> set[str]:
+    familles = set()
+    for declaration in re.findall(r"font-family\s*:\s*([^;}]+)", svg):
+        for nom in declaration.split(","):
+            nom = nom.strip().strip("'\"")
+            if nom and nom.lower() not in _GENERIQUES:
+                familles.add(nom)
+    return familles
+
+
+@lru_cache(maxsize=64)
+def _police_installee(famille: str) -> bool | None:
+    """La police est-elle reellement disponible ? None si on ne peut pas savoir.
+
+    fontconfig repond TOUJOURS quelque chose a `fc-match` : a defaut de la
+    police demandee, il propose un remplacant. C'est ce silence qui fait mal --
+    le rendu ne signale rien, il substitue.
+    """
+    try:
+        resultat = subprocess.run(
+            ["fc-match", "-f", "%{family}", famille],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if resultat.returncode != 0:
+        return None
+    proposees = {p.strip().lower() for p in resultat.stdout.split(",")}
+    return famille.strip().lower() in proposees
+
+
+def verifier_polices(svg: Path) -> list[str]:
+    """Les polices que ce SVG reclame et que la machine n'a pas.
+
+    Un SVG d'Illustrator garde le TEXTE, pas ses contours : sans la police, le
+    rendu substitue en silence. Quand ce texte est une ligature d'icone --
+    « paper-plane » en Font Awesome -- on n'obtient pas un avion mais les onze
+    lettres du mot, bien plus larges que la zone de dessin, donc tranchees a
+    « pa ». C'est passe en production une fois ; on regarde desormais.
+    """
+    contenu = svg.read_text(encoding="utf-8", errors="replace")
+    return sorted(f for f in _polices_citees(contenu) if _police_installee(f) is False)
+
+
+def _que_du_texte(svg: Path) -> bool:
+    """Le dessin repose-t-il entierement sur du texte ?"""
+    contenu = svg.read_text(encoding="utf-8", errors="replace")
+    return "<text" in contenu and not _DESSIN.search(contenu)
+
+
 def importer(source: Path, groupe: str, motif: str, cible: str, vignettes: str | None = None) -> int:
     dossier = MEDIA / cible
     if dossier.exists():
@@ -87,7 +145,16 @@ def importer(source: Path, groupe: str, motif: str, cible: str, vignettes: str |
 
     fichiers = sorted(source.glob(motif), key=lambda p: numero(p.name))
     items = []
+    ecartes: list[str] = []
     for svg in fichiers:
+        manquantes = verifier_polices(svg)
+        if manquantes and _que_du_texte(svg):
+            # Cet element n'a aucun dessin : sans sa police il ne montre rien
+            # d'utilisable. Le garder, c'est livrer « pa » au salon.
+            ecartes.append(f"{svg.name} ({', '.join(manquantes)})")
+            continue
+        if manquantes:
+            print(f"  attention : {svg.name} porte du texte en {', '.join(manquantes)}, absente ici")
         shutil.copy2(svg, dossier / svg.name)
         w, h = dimensions(svg)
         n = numero(svg.name)
@@ -110,6 +177,12 @@ def importer(source: Path, groupe: str, motif: str, cible: str, vignettes: str |
     (dossier / "index.json").write_text(
         json.dumps({"items": items}, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    if ecartes:
+        print(f"  ECARTE{'S' if len(ecartes) > 1 else ' '} : {'; '.join(ecartes)}")
+        print("           Ces elements ne sont QUE du texte, dans une police que cette")
+        print("           machine n'a pas -- le rendu substituerait en silence et les")
+        print("           livrerait coupes. Installer la police, ou demander au studio")
+        print("           un SVG vectorise (Texte > Vectoriser dans Illustrator).")
     print(f"{len(items):2d} {cible:12s} -> {dossier}")
     return len(items)
 
@@ -599,11 +672,19 @@ def main() -> None:
     ecrire_note("backgrounds", "Fonds de skin", "fonds")
     ecrire_note("objects", "Objets de skin", "objets")
 
-    rendus = MEDIA / "renders"
-    if rendus.is_dir():
-        for f in rendus.glob("*.jpg"):
-            f.unlink()
-        print("rendus precedents effaces")
+    # On ne touche NI a users/skins NI a media/renders. Ce script refait le
+    # catalogue ; les creations des visiteurs ne lui appartiennent pas.
+    #
+    # Il effacait les rendus, du temps ou une creation se refabriquait depuis
+    # ses calques -- un rendu perime n'etait alors qu'un cache. Ce n'est plus
+    # vrai : les calques ont disparu, l'image est la seule forme durable du
+    # travail d'un visiteur. Reimporter le catalogue detruirait le salon.
+    restants = MEDIA / "renders"
+    anciens = len(list(restants.glob("*.jpg"))) if restants.is_dir() else 0
+    skins = RACINE / "users" / "skins"
+    faits = len(list(skins.glob("*.png"))) if skins.is_dir() else 0
+    if anciens or faits:
+        print(f"creations intactes : {faits} skin(s), {anciens} rendu(s) d'avant")
 
 
 if __name__ == "__main__":
