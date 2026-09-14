@@ -343,14 +343,27 @@ monte — c'est arrivé, et les créations d'un salon ont paru perdues.
 | Chemin | Nature | Sauvegarde |
 | --- | --- | --- |
 | `apps/api/media/backgrounds`, `objects`, `base`, `mockup` | catalogue, versionné, monté en lecture seule | le dépôt |
-| `apps/api/media/renders` | images des créations, produites au salon | **à sauvegarder** |
+| `users/skins` | **les skins des visiteurs**, PNG nommés par empreinte | **à sauvegarder** |
+| `apps/api/media/renders` | rendus des salons passés, plus alimentés | à archiver |
 | volume `pgdata` | base : visiteurs, créations, file d'emails | `pg_dump` |
 
-`renders/` est la mémoire du salon. L'image d'une création **ne se refabrique
-pas** : ses calques citent des éléments du catalogue par identifiant, et il
-suffit qu'un fond soit renommé pour qu'elle devienne irreconstituable. C'est
-pourquoi le PNG est produit une fois pour toutes à la validation du visiteur,
-puis jamais recalculé. Perdre ce dossier, c'est perdre les créations.
+`users/skins/` est la mémoire du salon. L'image d'une création **ne se
+refabrique pas** : ses calques citent des éléments du catalogue par
+identifiant, et il suffit qu'un fond soit renommé pour qu'elle devienne
+irreconstituable. C'est pourquoi le PNG est produit une fois pour toutes à la
+validation du visiteur, puis jamais recalculé. Perdre ce dossier, c'est perdre
+les créations.
+
+Le nom du fichier est l'empreinte SHA-256 de son contenu : il ne dépend
+d'aucun compteur ni d'aucune horloge, ne dit rien du visiteur, et deux skins
+identiques ne font qu'un fichier.
+
+Pour poser ce dossier ailleurs que dans le dépôt — sur le disque sauvegardé du
+serveur, par exemple — renseigner `SKINS_HOST_DIR` dans `.env` :
+
+```
+SKINS_HOST_DIR=/var/lib/aixam/skins
+```
 
 Le symptôme d'une image restée en arrière n'aide pas — un `ModuleNotFoundError`
 sur un fichier pourtant présent dans le dépôt, ou un correctif sans effet.
@@ -455,7 +468,7 @@ en un seul `location` ; la borne en demande deux, pour une seule raison.
 de la borne la remonte donc à la racine de son domaine :
 
 ```nginx
-location ~ ^/(api|ws|media|healthz) { proxy_pass http://127.0.0.1:8080; }
+location ~ ^/(api|ws|media|skins|healthz) { proxy_pass http://127.0.0.1:8080; }
 location /                          { proxy_pass http://127.0.0.1:8080/kiosk/; }
 ```
 

@@ -10,6 +10,10 @@ apps/api/static/
 # un chemin fixe, et le creerait sinon en root.
 apps/api/media/renders/*
 !apps/api/media/renders/.gitkeep
+# Les skins des visiteurs : des donnees du salon, jamais du code. Le DOSSIER
+# existe des le clone, docker le monte a un chemin fixe.
+users/skins/*
+!users/skins/.gitkeep
 apps/kiosk/src-tauri/target/
 .DS_Store
 tsconfig.tsbuildinfo

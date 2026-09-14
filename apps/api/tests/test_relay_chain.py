@@ -31,6 +31,7 @@ server_env = {**os.environ,
     "DATABASE_URL": SERVER_DB, "RELAY_SERVER_ENABLED": "true", "MAIL_TRANSPORT": "smtp",
     "SMTP_HOST": "", "ADMIN_EMAIL": "admin@aixam-test.fr", "ADMIN_PASSWORD": "distant",
     "MEDIA_DIR": tempfile.mkdtemp(prefix="distant-media-"), "STATIC_DIR": tempfile.mkdtemp(),
+    "SKINS_DIR": tempfile.mkdtemp(prefix="aixam-skins-"),
     "PYTHONPATH": str(API_DIR)}
 server = subprocess.Popen(
     [str(VENV_UVICORN), "app.main:app", "--port", str(PORT), "--log-level", "warning"],

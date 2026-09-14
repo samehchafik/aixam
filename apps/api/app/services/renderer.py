@@ -17,9 +17,9 @@ Le tout est ensuite decoupe par le masque de la planche de bord.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import math
-import uuid
 from functools import lru_cache
 from pathlib import Path
 
@@ -31,6 +31,11 @@ from app.services.assets import load_catalog
 from app.services.shape import build_mask
 
 MEDIA = Path(settings.media_dir)
+# Les skins des visiteurs. Hors de MEDIA, et hors de tout volume docker : le
+# catalogue se refabrique depuis le depot, une creation non.
+SKINS = Path(settings.skins_dir)
+# Les JPEG d'avant, quand les rendus vivaient dans les medias. On n'y ecrit
+# plus, mais les creations des salons passes s'y trouvent encore.
 RENDERS = MEDIA / "renders"
 
 BACKDROP = (24, 22, 40)  # fond du JPEG autour de la planche
@@ -137,18 +142,25 @@ def _paste_sprite(canvas: Image.Image, sprite: Image.Image, layer: dict, width: 
 def render_url(path: str | None) -> str | None:
     """URL publique d'un rendu, quel que soit MEDIA_DIR.
 
-    `/media` est monte sur MEDIA_DIR : l'URL est donc le chemin RELATIF a ce
-    dossier. Coller le chemin stocke marchait tant que MEDIA_DIR restait
-    relatif (`media`, le cas du conteneur) et produisait `//Users/...` des
-    qu'on lui donnait un chemin absolu.
+    Deux racines sont servies : `/skins` pour les creations des visiteurs,
+    `/media` pour le catalogue et les rendus des salons passes. L'URL est le
+    chemin RELATIF a l'une ou l'autre. Coller le chemin stocke marchait tant
+    que ces dossiers restaient relatifs (le cas du conteneur) et produisait
+    `//Users/...` des qu'on leur donnait un chemin absolu.
     """
     if not path:
         return None
     chemin = Path(path)
-    try:
-        chemin = chemin.relative_to(MEDIA)
-    except ValueError:
-        pass
+    # Compare en absolu : le chemin stocke peut etre absolu la ou la racine est
+    # relative, ou l'inverse. Les comparer tels quels produisait `//Users/...`.
+    absolu = chemin if chemin.is_absolute() else Path.cwd() / chemin
+    for racine, prefixe in ((SKINS, "/skins"), (MEDIA, "/media")):
+        try:
+            relatif = absolu.resolve().relative_to(racine.resolve())
+        except (ValueError, OSError):
+            continue
+        return f"{prefixe}/{relatif.as_posix()}"
+    # Chemin d'une autre epoque : on le sert depuis les medias, comme avant.
     return f"/media/{chemin.as_posix()}"
 
 
@@ -167,11 +179,16 @@ def render_present(path: str | None) -> bool:
     # relatif au dossier de travail -- comme MEDIA lui-meme. Il s'utilise donc
     # tel quel. On essaie malgre tout MEDIA / path, au cas ou une ligne ancienne
     # porterait un chemin relatif au dossier des medias.
-    return Path(path).is_file() or (MEDIA / path).is_file()
+    return Path(path).is_file() or (MEDIA / path).is_file() or (SKINS / path).is_file()
 
 
-def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> Path:
-    """Compose les calques, applique le masque, ecrit un JPEG."""
+def render_design(layers: dict, *, padding: float = 0.04) -> Path:
+    """Compose les calques, applique le masque, ecrit le PNG du skin.
+
+    Appele une seule fois, quand le visiteur valide. Le fichier produit est la
+    creation : ses calques citent le catalogue par identifiant, et un element
+    renomme les rendrait illisibles. On ne re-rend donc jamais.
+    """
     catalog = load_catalog()
     shape = catalog["shape"]
     width, height = int(shape["width"]), int(shape["height"])
@@ -205,7 +222,17 @@ def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> 
     out_img = Image.new("RGB", (width + 2 * pad, height + 2 * pad), BACKDROP)
     out_img.paste(canvas, (pad, pad), canvas)
 
-    RENDERS.mkdir(parents=True, exist_ok=True)
-    out = RENDERS / f"{uuid.uuid4().hex}.jpg"
-    out_img.save(out, "JPEG", quality=quality, optimize=True, progressive=True)
+    # PNG : le skin part en fabrication, il ne doit pas trainer les artefacts
+    # d'une compression avec perte sur des aplats et du texte.
+    tampon = io.BytesIO()
+    out_img.save(tampon, "PNG", optimize=True)
+    octets = tampon.getvalue()
+
+    # Le nom est l'empreinte du contenu. Deux consequences voulues : il ne
+    # depend d'aucun compteur ni d'aucune horloge, donc un meme skin rendu deux
+    # fois ne fait qu'un fichier ; et le nom ne dit rien du visiteur.
+    SKINS.mkdir(parents=True, exist_ok=True)
+    out = SKINS / f"{hashlib.sha256(octets).hexdigest()[:32]}.png"
+    if not out.exists():
+        out.write_bytes(octets)
     return out

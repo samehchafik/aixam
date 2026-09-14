@@ -54,15 +54,18 @@ check("aucune balise residuelle", "<" not in texte and "&nbsp;" not in texte)
 check("le texte n'est pas une coquille", len(texte.split()) > 25, len(texte.split()))
 
 print("\n[3] La creation voyage en piece jointe")
-jpeg = render_design({"layers": [Layer(type="background", assetId="smileys").model_dump(exclude_none=True)]})
+skin = render_design({"layers": [Layer(type="background", assetId="smileys").model_dump(exclude_none=True)]})
 avec = build_message(Outgoing(message_id="y", to_email="v@example.com", subject="Votre creation",
                               body_html="<p>Voici votre skin</p>",
-                              attachment=load_attachment(str(jpeg))))
+                              attachment=load_attachment(str(skin))))
 check("structure multipart/mixed", avec.get_content_type() == "multipart/mixed", avec.get_content_type())
 jointes = list(avec.iter_attachments())
 check("une piece jointe", len(jointes) == 1, len(jointes))
-check("en image/jpeg", jointes[0].get_content_type() == "image/jpeg")
-check("un JPEG valide", jointes[0].get_payload(decode=True)[:3] == b"\xff\xd8\xff")
+# PNG et non JPEG : le skin part en fabrication, une compression avec perte
+# laisserait des artefacts sur ses aplats et son texte.
+check("en image/png", jointes[0].get_content_type() == "image/png",
+      jointes[0].get_content_type())
+check("un PNG valide", jointes[0].get_payload(decode=True)[:8] == b"\x89PNG\r\n\x1a\n")
 check("le corps garde ses deux versions",
       {"text/plain", "text/html"} <= {p.get_content_type() for p in avec.walk() if not p.is_multipart()})
 

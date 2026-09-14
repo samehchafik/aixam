@@ -19,6 +19,7 @@ from app.services import materiel
 
 STATIC = Path(settings.static_dir)
 MEDIA = Path(settings.media_dir)
+SKINS = Path(settings.skins_dir)
 
 
 # Colonnes ajoutees apres coup. `create_all` ne sait que creer des tables : il
@@ -99,6 +100,10 @@ def healthz() -> dict:
 
 
 MEDIA.mkdir(parents=True, exist_ok=True)
+# Les skins des visiteurs, a part des medias : dossier propre sur le disque de
+# la machine, que ni un volume ni un `git pull` ne peut emporter.
+SKINS.mkdir(parents=True, exist_ok=True)
+app.mount("/skins", StaticFiles(directory=SKINS), name="skins")
 app.mount("/media", StaticFiles(directory=MEDIA), name="media")
 
 

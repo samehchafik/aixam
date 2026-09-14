@@ -118,6 +118,12 @@ if [ $SANS_DOCKER -eq 1 ]; then
   # apps/api -- c'est de la que les chemins relatifs `static` et `media` du
   # .env prennent leur sens.
   VENV="$ROOT/.venv/bin"
+  # Les skins se deposent au meme endroit qu'avec docker : a la racine du
+  # projet, pas dans apps/api. Sans ce reglage, le chemin relatif du .env les
+  # poserait a cote du code -- deux emplacements selon le mode de lancement,
+  # donc un jour un dossier oublie a la sauvegarde.
+  export SKINS_DIR="${SKINS_DIR:-$ROOT/users/skins}"
+  mkdir -p "$SKINS_DIR"
   [ -x "$VENV/uvicorn" ] || die "$VENV/uvicorn introuvable -- creer l'environnement : python3 -m venv .venv && .venv/bin/pip install -r apps/api/requirements.txt"
 
   mkdir -p "$ROOT/.run"
