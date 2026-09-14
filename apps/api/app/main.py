@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 
@@ -107,12 +107,47 @@ def healthz() -> dict:
     return {"status": "ok"}
 
 
+class FichiersCaches(StaticFiles):
+    """StaticFiles qui dit au navigateur combien de temps garder ce qu'il recoit.
+
+    Sans `Cache-Control`, une reponse qui porte seulement `Last-Modified` est
+    soumise a la FRAICHEUR HEURISTIQUE : le navigateur s'autorise a la garder
+    sans rien redemander, couramment un dixieme de son age. Un element du
+    catalogue vieux d'un mois est donc tenu pour frais pendant trois jours. Un
+    deploiement corrigeait le fichier sur le serveur sans que personne le voie.
+    """
+
+    def __init__(self, *args, cache: str, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._cache = cache
+
+    def file_response(self, *args, **kwargs) -> Response:
+        reponse = super().file_response(*args, **kwargs)
+        reponse.headers["Cache-Control"] = self._cache
+        return reponse
+
+
 MEDIA.mkdir(parents=True, exist_ok=True)
 # Les skins des visiteurs, a part des medias : dossier propre sur le disque de
 # la machine, que ni un volume ni un `git pull` ne peut emporter.
 SKINS.mkdir(parents=True, exist_ok=True)
-app.mount("/skins", StaticFiles(directory=SKINS), name="skins")
-app.mount("/media", StaticFiles(directory=MEDIA), name="media")
+
+# Un skin est nomme par l'empreinte de son contenu : ce nom ne designera jamais
+# une autre image. Il se garde donc sans limite et sans jamais redemander.
+app.mount(
+    "/skins",
+    FichiersCaches(directory=SKINS, cache="public, max-age=31536000, immutable"),
+    name="skins",
+)
+# Le catalogue, lui, change sous le meme nom : fond_3.svg d'aujourd'hui n'est
+# pas celui d'hier. `no-cache` ne dit pas « ne garde rien », il dit « redemande
+# avant de servir » -- avec l'ETag, un 304 de quelques octets quand rien n'a
+# bouge, et le nouveau fichier le jour ou il bouge.
+app.mount(
+    "/media",
+    FichiersCaches(directory=MEDIA, cache="no-cache"),
+    name="media",
+)
 
 
 def _serve_spa(root: Path, sub_path: str) -> FileResponse:

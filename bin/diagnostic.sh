@@ -79,12 +79,42 @@ PORT="$(grep -E '^API_PORT=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2 ||
 PORT="${PORT:-8080}"
 if curl -fsS "http://localhost:$PORT/healthz" >/dev/null 2>&1; then
   ok "repond sur le port $PORT"
-  SERVI="$(curl -fsS "http://localhost:$PORT/kiosk/" 2>/dev/null | grep -o 'assets/index-[^\"]*\.js' | head -1 || true)"
+  # La borne peut etre protegee par un mot de passe (KIOSK_BASIC_*). Sans
+  # identifiants curl recoit un 401 : la comparaison est alors IMPOSSIBLE, et
+  # il faut le dire. Une verification qui disparait en silence est pire que
+  # pas de verification -- on croit qu'elle a reussi.
+  CODE="$(curl -s -o /tmp/diag-kiosk.$$ -w '%{http_code}' "http://localhost:$PORT/kiosk/" 2>/dev/null || echo 000)"
   ATTENDU="$(grep -o 'assets/index-[^\"]*\.js' "$ROOT/apps/api/static/kiosk/index.html" 2>/dev/null | head -1 || true)"
-  if [ -n "$SERVI" ] && [ "$SERVI" != "$ATTENDU" ]; then
-    ko "la borne servie ($SERVI) n'est pas celle du disque ($ATTENDU)"
-  elif [ -n "$SERVI" ]; then
-    ok "la borne servie est bien celle du disque"
+  case "$CODE" in
+    200)
+      SERVI="$(grep -o 'assets/index-[^\"]*\.js' /tmp/diag-kiosk.$$ | head -1 || true)"
+      if [ -n "$SERVI" ] && [ "$SERVI" != "$ATTENDU" ]; then
+        ko "la borne servie ($SERVI) n'est pas celle du disque ($ATTENDU)"
+      else
+        ok "la borne servie est bien celle du disque"
+      fi
+      ;;
+    401)
+      info "borne protegee par mot de passe : comparaison impossible sans identifiants."
+      info "Pour la faire quand meme, avec ceux du .env (KIOSK_BASIC_USER / _PASSWORD) :"
+      info "  curl -su USER:MOTDEPASSE http://localhost:$PORT/kiosk/ | grep -o 'assets/index-[^\"]*\.js'"
+      info "  a comparer avec : $ATTENDU"
+      ;;
+    *)
+      ko "la borne repond $CODE sur http://localhost:$PORT/kiosk/"
+      ;;
+  esac
+  rm -f /tmp/diag-kiosk.$$
+
+  # Le catalogue change sous le meme nom d'un deploiement a l'autre. Sans
+  # `Cache-Control`, le navigateur s'autorise a garder l'ancien plusieurs
+  # jours : le serveur est a jour, l'ecran non.
+  ENTETE="$(curl -sSI "http://localhost:$PORT/media/base/shape.json" 2>/dev/null | grep -i '^cache-control:' || true)"
+  if [ -z "$ENTETE" ]; then
+    ko "le catalogue est servi sans Cache-Control : un navigateur peut garder"
+    info "l'ancien plusieurs jours. Reconstruire l'image API (./bin/build.sh --api-image)."
+  else
+    ok "catalogue servi avec ${ENTETE#*: }"
   fi
 else
   ko "aucune reponse sur http://localhost:$PORT/healthz -- stack arretee ?"
