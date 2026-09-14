@@ -76,7 +76,10 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
   const { api } = useApp()
   const { t } = useI18n()
   const { catalog } = useSession()
-  const [creations, setCreations] = useState<{ id: string; render_url: string }[]>([])
+  const [liste, setListe] = useState<{ id: string; render_url: string }[]>([])
+  // Un rendu peut disparaitre entre la reponse de l'API et son affichage. On
+  // retient celui qui a echoue pour ne pas y revenir a chaque tour.
+  const [manquants, setManquants] = useState<Set<string>>(new Set())
   const [index, setIndex] = useState(0)
 
   // La liste est relue de temps en temps : une creation approuvee pendant le
@@ -86,7 +89,7 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
     const charger = () =>
       api
         .creationsRecentes()
-        .then((liste) => vivant && setCreations(liste))
+        .then((recues) => vivant && setListe(recues))
         .catch(() => {})
     charger()
     const id = window.setInterval(charger, 60_000)
@@ -96,6 +99,10 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
     }
   }, [api])
 
+  const creations = useMemo(
+    () => liste.filter((c) => !manquants.has(c.id)),
+    [liste, manquants],
+  )
   const fonds = useMemo(() => catalog?.backgrounds ?? [], [catalog])
   const total = creations.length || fonds.length
 
@@ -118,6 +125,10 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
           shape={catalog.shape}
           mediaBase={api.mediaBase}
           src={courante ? `${api.base}${courante.render_url}` : undefined}
+          onErreur={() =>
+            courante &&
+            setManquants((vus) => new Set(vus).add(courante.id))
+          }
         >
           {/* Aucune creation approuvee : on pose un fond du catalogue sur la
               planche. L'ecran montre la voiture des le premier jour, au lieu

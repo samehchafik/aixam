@@ -45,6 +45,25 @@ if [ $SANS_DOCKER -eq 1 ]; then
     fi
     rm -f "$pid"
   done
+
+  # Un pid oublie laisse un uvicorn orphelin sur le port : les redemarrages
+  # suivants echouent a se lier, en silence, et start.sh voit l'ANCIEN
+  # processus repondre a /healthz -- on croit alors avoir redemarre alors
+  # qu'on sert toujours l'ancien code. On libere donc le port pour de bon.
+  # Seulement nos uvicorn : le port peut appartenir a quelqu'un d'autre.
+  PORT="$(grep -E '^API_PORT=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2 || true)"
+  PORT="${PORT:-8080}"
+  if command -v lsof >/dev/null; then
+    for orphelin in $(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true); do
+      if ps -o command= -p "$orphelin" 2>/dev/null | grep -q 'uvicorn'; then
+        kill "$orphelin" 2>/dev/null && arrete=$((arrete + 1))
+        say "uvicorn orphelin arrete (pid $orphelin, port $PORT)"
+      else
+        warn "le port $PORT est pris par le pid $orphelin, qui n'est pas a nous"
+      fi
+    done
+  fi
+
   [ $arrete -gt 0 ] || say "rien ne tournait"
   exit 0
 fi

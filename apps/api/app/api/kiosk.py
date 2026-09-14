@@ -36,7 +36,7 @@ from app.schemas import (
 from app.security import generate_numeric_code, hash_secret, verify_secret
 from app.services import mailer
 from app.services.assets import load_catalog
-from app.services.renderer import render_design, render_url
+from app.services.renderer import render_design, render_present, render_url
 from app.services.settings_store import get_setting
 
 router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
@@ -271,7 +271,15 @@ def creations_recentes(
         .order_by(Design.created_at.desc())
         .limit(limit)
     ).all()
-    return [{"id": str(d.id), "render_url": render_url(d.render_path)} for d in lignes]
+    # Un chemin en base ne garantit pas le fichier : on ecarte les rendus
+    # disparus plutot que d'envoyer au grand ecran une image qui ne chargera
+    # pas -- le mockup du studio laisserait alors paraitre, en public, sa
+    # plaque « Placer le design ici ».
+    return [
+        {"id": str(d.id), "render_url": render_url(d.render_path)}
+        for d in lignes
+        if render_present(d.render_path)
+    ]
 
 
 @router.post("/events", status_code=status.HTTP_204_NO_CONTENT)

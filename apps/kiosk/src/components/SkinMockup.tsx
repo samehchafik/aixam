@@ -16,6 +16,8 @@ type Props = {
    * repli qui ressemble a une panne.
    */
   children?: ReactNode
+  /** Appele quand le rendu ne charge pas : au diaporama de passer au suivant. */
+  onErreur?: () => void
 }
 
 /**
@@ -30,7 +32,7 @@ type Props = {
  * compris ce que le volant et le montant de pare-brise cachent. L'ombrage
  * repose par-dessus, pour que le skin prenne la lumiere de la photo.
  */
-export function SkinMockup({ mockup, shape, mediaBase, src, children }: Props) {
+export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }: Props) {
   // Le rendu serveur entoure la planche d'un liseret. Sa largeur se lit sur
   // l'image elle-meme : inutile de la transporter dans une configuration, qui
   // finirait par diverger du serveur. Un calque dessine en direct, lui, n'en a
@@ -76,7 +78,7 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children }: Props) {
               transform: matriceSkin(shape, mockup.corners, marge),
             }}
           >
-            {src ? <img src={src} alt="" /> : children}
+            {src ? <img src={src} alt="" onError={onErreur} /> : children}
           </div>
         </div>
       )}

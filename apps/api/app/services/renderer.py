@@ -152,6 +152,24 @@ def render_url(path: str | None) -> str | None:
     return f"/media/{chemin.as_posix()}"
 
 
+def render_present(path: str | None) -> bool:
+    """Le fichier de rendu est-il encore la ?
+
+    La base garde un chemin, pas le fichier. Les deux ont deja diverge : le
+    dossier des rendus vivait dans un volume nomme, remplace par un volume
+    vide, et chaque ligne pointait alors sur un fichier disparu. Un chemin
+    stocke ne prouve donc rien -- on regarde le disque avant de promettre une
+    image.
+    """
+    if not path:
+        return False
+    # Le chemin est stocke tel que render_design l'a produit : absolu, ou
+    # relatif au dossier de travail -- comme MEDIA lui-meme. Il s'utilise donc
+    # tel quel. On essaie malgre tout MEDIA / path, au cas ou une ligne ancienne
+    # porterait un chemin relatif au dossier des medias.
+    return Path(path).is_file() or (MEDIA / path).is_file()
+
+
 def render_design(layers: dict, *, quality: int = 92, padding: float = 0.04) -> Path:
     """Compose les calques, applique le masque, ecrit un JPEG."""
     catalog = load_catalog()
