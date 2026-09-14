@@ -103,13 +103,31 @@ app.mount("/media", StaticFiles(directory=MEDIA), name="media")
 
 
 def _serve_spa(root: Path, sub_path: str) -> FileResponse:
-    """Sert un fichier statique s'il existe, sinon index.html (routage cote client)."""
+    """Sert un fichier statique s'il existe, sinon index.html (routage cote client).
+
+    Deux regimes de cache, parce que les deux natures de fichiers n'ont pas les
+    memes besoins.
+
+    Les fichiers compiles portent une empreinte dans leur nom : leur contenu ne
+    changera jamais, on les garde donc un an sans jamais revenir demander.
+
+    index.html, lui, garde le meme nom et designe ces empreintes. Sans en-tete,
+    le navigateur decide seul combien de temps le garder, et peut resservir
+    l'ancien longtemps apres un deploiement -- la borne montre alors une
+    version perimee sans que rien ne l'indique. On demande donc a le revalider
+    a chaque fois : c'est un seul aller-retour, et il rend la mise a jour
+    immediate.
+    """
     if not root.is_dir():
-        raise HTTPException(503, "Front non compile. Lancer `make build-front`.")
+        raise HTTPException(503, "Front non compile. Lancer `bin/build.sh --all`.")
+
     candidate = (root / sub_path).resolve()
     if root.resolve() in candidate.parents and candidate.is_file():
-        return FileResponse(candidate)
-    return FileResponse(root / "index.html")
+        fige = candidate.parent.name == "assets"
+        cache = "public, max-age=31536000, immutable" if fige else "no-cache"
+        return FileResponse(candidate, headers={"Cache-Control": cache})
+
+    return FileResponse(root / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 # La borne. Protegee par HTTP Basic quand KIOSK_BASIC_USER est defini, ce qui
