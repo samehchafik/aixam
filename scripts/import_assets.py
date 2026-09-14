@@ -29,6 +29,7 @@ disparaissent au prochain import sans --demo.
 from __future__ import annotations
 
 import colorsys
+import io
 import json
 import random
 import re
@@ -37,6 +38,9 @@ import subprocess
 import sys
 from functools import lru_cache
 from pathlib import Path
+
+import cairosvg
+from PIL import Image
 
 RACINE = Path(__file__).resolve().parent.parent
 MEDIA = RACINE / "apps" / "api" / "media"
@@ -129,7 +133,108 @@ def _que_du_texte(svg: Path) -> bool:
     return "<text" in contenu and not _DESSIN.search(contenu)
 
 
-def importer(source: Path, groupe: str, motif: str, cible: str, vignettes: str | None = None) -> int:
+# Un dessin deborde toujours un peu de sa zone : anti-aliasing, epaisseur de
+# trait, fond volontairement a fond perdu. Mesure sur le jeu livre, ce debord
+# normal ne depasse pas 4 %. On ne recadre qu'au-dela du quart -- a ce niveau
+# ce n'est plus du debord, c'est un dessin qui n'a plus rien a voir avec sa
+# zone, et c'est la signature d'une police substituee.
+TOLERANCE_CADRE = 0.25
+# La zone d'observation, en multiples de la zone d'origine. Elle est dilatee
+# tant que l'encre touche son bord : on ne sait pas d'avance de combien un
+# dessin deborde.
+SONDE = 12.0
+SONDE_MAX = 400.0
+
+
+def _vue(svg: str) -> tuple[float, float, float, float] | None:
+    trouve = re.search(r'viewBox="([^"]+)"', svg)
+    if not trouve:
+        return None
+    valeurs = [float(v) for v in re.split(r"[ ,]+", trouve.group(1).strip())]
+    return tuple(valeurs) if len(valeurs) == 4 else None
+
+
+def _encre(svg: str, sonde: float) -> tuple[tuple[float, float, float, float], bool] | None:
+    """Boite de l'encre en unites utilisateur, et si elle sature l'observation.
+
+    On regarde LARGE, bien au-dela de la zone declaree : c'est justement ce qui
+    en sort qu'on cherche. Un `<svg>` masque ce qui deborde, donc rien de tout
+    cela n'est visible tant qu'on ne dilate pas la vue.
+    """
+    vue = _vue(svg)
+    if not vue:
+        return None
+    x, y, w, h = vue
+    X, Y = x - w * (sonde - 1) / 2, y - h * (sonde - 1) / 2
+    W, H = w * sonde, h * sonde
+    essai = re.sub(r'viewBox="[^"]+"', f'viewBox="{X} {Y} {W} {H}"', svg, count=1)
+    essai = re.sub(r'\swidth="[^"]+"', f' width="{W:g}"', essai, count=1)
+    essai = re.sub(r'\sheight="[^"]+"', f' height="{H:g}"', essai, count=1)
+    image = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=essai.encode(), output_width=1400)))
+    boite = image.convert("RGBA").getchannel("A").getbbox()
+    if not boite:
+        return None
+    k = W / image.width
+    gx, gy, dx, dy = boite
+    sature = gx <= 0 or gy <= 0 or dx >= image.width or dy >= image.height
+    return (X + gx * k, Y + gy * k, X + dx * k, Y + dy * k), sature
+
+
+def recadrer_sur_encre(chemin: Path) -> tuple[tuple[float, float], tuple[float, float]] | None:
+    """Elargit la zone de dessin d'un SVG jusqu'a contenir tout son dessin.
+
+    Un SVG masque ce qui sort de sa zone. Illustrator ecrit cette zone d'apres
+    ce qu'il voit AVEC les polices du studio : que l'une manque ici, et le
+    texte de remplacement -- bien plus large -- passe hors de la zone et
+    disparait. C'est ce qui reduisait un avion en papier a « pa ».
+
+    On ne touche ni au dessin ni a ses coordonnees : seule la fenetre change.
+    Rien n'est supprime, tout redevient visible, et le panneau comme le rendu
+    montrent la meme chose puisqu'ils lisent le meme fichier.
+
+    Retourne (avant, apres) si le cadre a bouge, None sinon.
+    """
+    svg = chemin.read_text(encoding="utf-8")
+    vue = _vue(svg)
+    if not vue:
+        return None
+    x, y, w, h = vue
+
+    sonde = SONDE
+    while True:
+        mesure = _encre(svg, sonde)
+        if not mesure:
+            return None
+        (gx, gy, dx, dy), sature = mesure
+        if not sature or sonde >= SONDE_MAX:
+            break
+        sonde *= 4
+
+    marge_x, marge_y = w * TOLERANCE_CADRE, h * TOLERANCE_CADRE
+    if gx >= x - marge_x and gy >= y - marge_y and dx <= x + w + marge_x and dy <= y + h + marge_y:
+        return None
+
+    # Une marge d'un pour cent : l'anti-aliasing depose un voile juste au bord,
+    # que la mesure ne voit pas toujours.
+    marge = max(dx - gx, dy - gy) * 0.01
+    nx, ny = gx - marge, gy - marge
+    nw, nh = (dx - gx) + 2 * marge, (dy - gy) + 2 * marge
+
+    svg = re.sub(r'viewBox="[^"]+"', f'viewBox="{nx:.2f} {ny:.2f} {nw:.2f} {nh:.2f}"', svg, count=1)
+    svg = re.sub(r'\swidth="[^"]+"', f' width="{nw:.2f}"', svg, count=1)
+    svg = re.sub(r'\sheight="[^"]+"', f' height="{nh:.2f}"', svg, count=1)
+    chemin.write_text(svg, encoding="utf-8")
+    return (w, h), (nw, nh)
+
+
+def importer(
+    source: Path,
+    groupe: str,
+    motif: str,
+    cible: str,
+    vignettes: str | None = None,
+    recadrer: bool = False,
+) -> int:
     dossier = MEDIA / cible
     if dossier.exists():
         ancien = dossier / "index.json"
@@ -145,18 +250,18 @@ def importer(source: Path, groupe: str, motif: str, cible: str, vignettes: str |
 
     fichiers = sorted(source.glob(motif), key=lambda p: numero(p.name))
     items = []
-    ecartes: list[str] = []
     for svg in fichiers:
         manquantes = verifier_polices(svg)
-        if manquantes and _que_du_texte(svg):
-            # Cet element n'a aucun dessin : sans sa police il ne montre rien
-            # d'utilisable. Le garder, c'est livrer « pa » au salon.
-            ecartes.append(f"{svg.name} ({', '.join(manquantes)})")
-            continue
+        copie = dossier / svg.name
+        shutil.copy2(svg, copie)
         if manquantes:
             print(f"  attention : {svg.name} porte du texte en {', '.join(manquantes)}, absente ici")
-        shutil.copy2(svg, dossier / svg.name)
-        w, h = dimensions(svg)
+        recadre = recadrer_sur_encre(copie) if recadrer else None
+        if recadre:
+            avant, apres = recadre
+            print(f"             recadre : {avant[0]:.0f}x{avant[1]:.0f} -> {apres[0]:.0f}x{apres[1]:.0f}"
+                  f" (le dessin debordait de sa zone, il etait coupe)")
+        w, h = dimensions(copie)
         n = numero(svg.name)
         item = {
             "id": f"{groupe}-{n}",
@@ -177,12 +282,6 @@ def importer(source: Path, groupe: str, motif: str, cible: str, vignettes: str |
     (dossier / "index.json").write_text(
         json.dumps({"items": items}, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    if ecartes:
-        print(f"  ECARTE{'S' if len(ecartes) > 1 else ' '} : {'; '.join(ecartes)}")
-        print("           Ces elements ne sont QUE du texte, dans une police que cette")
-        print("           machine n'a pas -- le rendu substituerait en silence et les")
-        print("           livrerait coupes. Installer la police, ou demander au studio")
-        print("           un SVG vectorise (Texte > Vectoriser dans Illustrator).")
     print(f"{len(items):2d} {cible:12s} -> {dossier}")
     return len(items)
 
@@ -665,7 +764,11 @@ def main() -> None:
 
     importer_gabarit(source / "Gabarit_skin.svg")
     importer(source / "fonds_skin", "fond", "fond_*.svg", "backgrounds", "Vignette_fond_{n}.svg")
-    importer(source / "objets_skin", "objet", "objet_*.svg", "objects")
+    # Les objets seuls sont recadres. Un fond, lui, est dessine AUX
+    # proportions de la planche : elargir sa fenetre le deformerait, alors que
+    # ce qui deborde chez lui est un fond perdu voulu, que le rendu recouvre
+    # deja en « cover ».
+    importer(source / "objets_skin", "objet", "objet_*.svg", "objects", recadrer=True)
     if demo:
         completer(source)
     importer_mockup(source)
