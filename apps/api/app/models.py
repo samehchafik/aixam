@@ -120,10 +120,10 @@ class Moderation(str, enum.Enum):
 class Design(Base):
     """Creation d'un visiteur.
 
-    `layers` est la source de verite (schema maison, coordonnees normalisees
-    0..1). Le JPEG envoye par mail est re-rendu cote serveur a partir de ce
-    JSON : qualite constante quel que soit l'ecran, et re-render possible
-    apres le salon pour la production reelle du skin.
+    `skin` est la creation : le PNG produit une fois, a la validation du
+    visiteur, et nomme par l'empreinte de son contenu. C'est la seule forme
+    durable de son travail -- `layers` citait le catalogue par identifiant, et
+    un element renomme rendait la creation irreconstituable.
     """
 
     __tablename__ = "designs"
@@ -137,10 +137,14 @@ class Design(Base):
     )
     session_id: Mapped[str] = mapped_column(String(64), index=True)
 
-    layers: Mapped[dict] = mapped_column(JSONB, default=dict)
     status: Mapped[DesignStatus] = mapped_column(
         Enum(DesignStatus, name="design_status"), default=DesignStatus.draft
     )
+    # Le nom du PNG du visiteur : l'empreinte de son contenu. C'est ce qui
+    # identifie une creation d'une machine a l'autre -- un chemin local, lui,
+    # ne veut rien dire sur le serveur.
+    skin: Mapped[str | None] = mapped_column(String(80), index=True)
+    # Les rendus d'avant, quand ils vivaient dans les medias. Plus alimente.
     render_path: Mapped[str | None] = mapped_column(String(512))
     shared_hint: Mapped[bool] = mapped_column(Boolean, default=False)
 

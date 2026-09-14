@@ -170,8 +170,13 @@ class MailTestIn(BaseModel):
 # a-jour sans remapping. C'est ce qui rend un renvoi inoffensif.
 #
 # Ce qui ne voyage pas : `render_path` (un chemin local) et `kiosk_id` (la
-# borne n'existe pas sur le serveur). Le JPEG non plus -- `layers` est la
-# source de verite, le serveur sait re-rendre.
+# borne n'existe pas sur le serveur).
+#
+# Le PNG, lui, voyage -- a part, et une seule fois. Il est nomme par
+# l'empreinte de son contenu : le serveur annonce les empreintes qui lui
+# manquent, la borne n'envoie que celles-la, et un renvoi ne peut ni faire
+# doublon ni corrompre ce qui est deja la. Une creation ne se refabrique pas,
+# c'est donc l'image qu'il faut mettre a l'abri, pas sa recette.
 
 
 class SyncVisitorIn(BaseModel):
@@ -190,11 +195,19 @@ class SyncDesignIn(BaseModel):
     id: uuid.UUID
     visitor_id: uuid.UUID | None = None
     session_id: str = Field(max_length=64)
-    layers: dict | list = {}
+    skin: str | None = Field(default=None, max_length=80)
     status: str = Field(max_length=20)
     shared_hint: bool = False
     created_at: datetime
     updated_at: datetime
+
+
+class SyncSkinsIn(BaseModel):
+    skins: list[str] = Field(default_factory=list, max_length=500)
+
+
+class SyncSkinsOut(BaseModel):
+    missing: list[str] = Field(default_factory=list)
 
 
 class SyncEventIn(BaseModel):

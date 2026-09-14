@@ -358,6 +358,13 @@ Le nom du fichier est l'empreinte SHA-256 de son contenu : il ne dépend
 d'aucun compteur ni d'aucune horloge, ne dit rien du visiteur, et deux skins
 identiques ne font qu'un fichier.
 
+C'est aussi ce qui fait voyager les créations. Dans la remontée borne →
+serveur, c'est **l'image** qui monte, plus sa recette : le serveur annonce les
+empreintes qui lui manquent, la borne n'envoie que celles-là, et le nom annoncé
+étant l'empreinte du contenu, le serveur vérifie d'un même geste que le fichier
+est arrivé entier et qu'il est bien celui annoncé. Relancer une remontée
+interrompue ne renvoie donc rien de ce qui était déjà passé.
+
 Pour poser ce dossier ailleurs que dans le dépôt — sur le disque sauvegardé du
 serveur, par exemple — renseigner `SKINS_HOST_DIR` dans `.env` :
 

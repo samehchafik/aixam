@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import io
 import math
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -160,8 +161,70 @@ def render_url(path: str | None) -> str | None:
         except (ValueError, OSError):
             continue
         return f"{prefixe}/{relatif.as_posix()}"
-    # Chemin d'une autre epoque : on le sert depuis les medias, comme avant.
+    if chemin.is_absolute():
+        # Sous aucune des deux racines : rien ne peut le servir. Coller un
+        # prefixe produirait `/media//var/...`, une URL qui a l'air valide et
+        # repond 404 -- et sur le grand ecran, une image absente laisse
+        # paraitre la plaque verte du mockup. Mieux vaut dire qu'il n'y en a
+        # pas.
+        return None
+    # Chemin relatif d'une autre epoque : on le sert depuis les medias.
     return f"/media/{chemin.as_posix()}"
+
+
+# Un nom de skin est une empreinte : 32 caracteres hexadecimaux et `.png`.
+# Cette forme est verifiee AVANT de toucher au disque, parce que le nom arrive
+# aussi par le reseau, dans la remontee d'une borne.
+_NOM_SKIN = re.compile(r"^[0-9a-f]{32}\.png$")
+
+
+def empreinte(octets: bytes) -> str:
+    """Le nom de fichier d'un contenu : son empreinte, et rien d'autre."""
+    return f"{hashlib.sha256(octets).hexdigest()[:32]}.png"
+
+
+def skin_path(nom: str) -> Path:
+    """Chemin du PNG, ou une erreur si le nom n'est pas une empreinte.
+
+    On ne construit jamais ce chemin par concatenation naive : `nom` peut venir
+    d'une borne, et `../../etc/passwd` s'ecrirait tres bien.
+    """
+    if not _NOM_SKIN.match(nom or ""):
+        raise ValueError(f"nom de skin invalide : {nom!r}")
+    return SKINS / nom
+
+
+def store_skin(nom: str, octets: bytes) -> Path:
+    """Depose un skin recu d'une borne, apres avoir verifie son empreinte.
+
+    Le nom EST l'empreinte du contenu : les comparer, c'est verifier que le
+    fichier est arrive entier et qu'il est bien celui annonce. Un renvoi est
+    sans effet, le fichier est deja la et identique.
+    """
+    if empreinte(octets) != nom:
+        raise ValueError(f"le contenu ne correspond pas a son empreinte {nom!r}")
+    chemin = skin_path(nom)
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    if not chemin.exists():
+        chemin.write_bytes(octets)
+    return chemin
+
+
+def skin_url(skin: str | None, render_path: str | None = None) -> str | None:
+    """URL publique d'une creation : son skin, sinon son rendu d'autrefois."""
+    if skin:
+        return f"/skins/{skin}"
+    return render_url(render_path)
+
+
+def skin_present(skin: str | None, render_path: str | None = None) -> bool:
+    """Le fichier d'une creation est-il sur ce disque ?"""
+    if skin:
+        try:
+            return skin_path(skin).is_file()
+        except ValueError:
+            return False
+    return render_present(render_path)
 
 
 def render_present(path: str | None) -> bool:
@@ -232,7 +295,7 @@ def render_design(layers: dict, *, padding: float = 0.04) -> Path:
     # depend d'aucun compteur ni d'aucune horloge, donc un meme skin rendu deux
     # fois ne fait qu'un fichier ; et le nom ne dit rien du visiteur.
     SKINS.mkdir(parents=True, exist_ok=True)
-    out = SKINS / f"{hashlib.sha256(octets).hexdigest()[:32]}.png"
+    out = SKINS / empreinte(octets)
     if not out.exists():
         out.write_bytes(octets)
     return out

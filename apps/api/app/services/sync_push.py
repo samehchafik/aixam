@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Design, Event, Visitor
+from app.services.renderer import skin_path
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import PermanentSendError, SendError
 from app.services.transports import relay as relay_transport
@@ -36,7 +37,7 @@ SOURCES = (
 _CHAMPS = {
     "visitors": ("id", "first_name", "last_name", "email", "postal_code",
                  "email_verified_at", "consent_marketing", "consent_at", "created_at"),
-    "designs": ("id", "visitor_id", "session_id", "layers", "status",
+    "designs": ("id", "visitor_id", "session_id", "skin", "status",
                 "shared_hint", "created_at", "updated_at"),
     "events": ("session_id", "visitor_id", "name", "payload", "created_at"),
 }
@@ -66,15 +67,24 @@ def _serialiser(ligne, nom: str) -> dict:
     return sortie
 
 
-def _requete(db: Session, methode: str, chemin: str, json: dict | None = None) -> httpx.Response:
+def _requete(
+    db: Session,
+    methode: str,
+    chemin: str,
+    json: dict | None = None,
+    content: bytes | None = None,
+) -> httpx.Response:
     url, token = remote_url(db), remote_token(db)
     if not url or not token:
         raise PermanentSendError("Remontee non configuree (adresse et jeton requis)")
     relay_transport.check_url(url)
+    entetes = {"Authorization": f"Bearer {token}"}
+    if content is not None:
+        entetes["Content-Type"] = "image/png"
     try:
         return httpx.request(
-            methode, f"{url}{chemin}", json=json,
-            headers={"Authorization": f"Bearer {token}"},
+            methode, f"{url}{chemin}", json=json, content=content,
+            headers=entetes,
             timeout=settings.mail_relay_timeout_seconds,
         )
     except httpx.HTTPError as exc:
@@ -94,6 +104,39 @@ def _verifier(reponse: httpx.Response) -> None:
     raise SendError(f"serveur HTTP {reponse.status_code} : {detail}")
 
 
+def _envoyer_skins(db: Session, designs: list[dict]) -> int:
+    """Depose chez le serveur les PNG qu'il n'a pas encore.
+
+    Avant les lignes, jamais apres : le serveur ne doit pas se retrouver avec
+    une creation qui designe une image absente -- c'est exactement l'etat qui
+    laissait paraitre, sur le grand ecran, la planche verte du mockup.
+
+    Content-addressing oblige, ceci est rejouable sans precaution : on demande
+    ce qui manque, on n'envoie que cela, et deposer deux fois le meme fichier
+    ne fait rien.
+    """
+    noms = sorted({d["skin"] for d in designs if d.get("skin")})
+    if not noms:
+        return 0
+
+    reponse = _requete(db, "POST", "/api/sync/skins/missing", json={"skins": noms})
+    _verifier(reponse)
+    manquants = reponse.json().get("missing", [])
+
+    envoyes = 0
+    for nom in manquants:
+        try:
+            octets = skin_path(nom).read_bytes()
+        except (ValueError, OSError):
+            # Le fichier n'est plus la : sa ligne partira quand meme, le
+            # serveur saura que cette creation n'a pas d'image plutot que de
+            # tout bloquer sur un seul fichier perdu.
+            continue
+        _verifier(_requete(db, "POST", f"/api/sync/skins/{nom}", content=octets))
+        envoyes += 1
+    return envoyes
+
+
 def status(db: Session) -> dict:
     reponse = _requete(db, "GET", "/api/sync/status")
     _verifier(reponse)
@@ -108,7 +151,8 @@ def push(db: Session, *, tout: bool = False) -> dict:
     prix d'un sens unique sans marqueurs de suppression.
     """
     lot = settings.sync_batch_size
-    totaux = {"visitors": 0, "designs": 0, "events": 0, "events_ignores": 0, "envois": 0}
+    totaux = {"visitors": 0, "designs": 0, "events": 0, "events_ignores": 0,
+              "skins": 0, "envois": 0}
 
     while True:
         charge: dict[str, list[dict]] = {}
@@ -126,6 +170,9 @@ def push(db: Session, *, tout: bool = False) -> dict:
 
         if not charge:
             break
+
+        # Les images d'abord : une ligne ne doit jamais arriver avant son skin.
+        totaux["skins"] += _envoyer_skins(db, charge.get("designs", []))
 
         reponse = _requete(db, "POST", "/api/sync/push", json=charge)
         _verifier(reponse)

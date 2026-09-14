@@ -140,13 +140,13 @@ with SessionLocal() as db:
 with SessionLocal() as db:
     garde = db.scalar(select(Visitor).where(Visitor.email == EMAIL))
     ancien_id = garde.id
-    db.add(Design(visitor_id=garde.id, session_id="sess-0001", layers={}, status="draft"))
+    db.add(Design(visitor_id=garde.id, session_id="sess-0001", status="draft"))
     doublon = Visitor(first_name="Sam", last_name="C", email=EMAIL, postal_code="75011",
                       consent_marketing=True)
     db.add(doublon)
     db.commit()
     doublon_id = doublon.id
-    db.add(Design(visitor_id=doublon_id, session_id="sess-9999", layers={}, status="draft"))
+    db.add(Design(visitor_id=doublon_id, session_id="sess-9999", status="draft"))
     db.commit()
 check("doublon fabrique", compter(Visitor) == 3, compter(Visitor))
 

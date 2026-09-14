@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -36,7 +36,7 @@ from app.schemas import (
 from app.security import generate_numeric_code, hash_secret, verify_secret
 from app.services import mailer
 from app.services.assets import load_catalog
-from app.services.renderer import render_design, render_present, render_url
+from app.services.renderer import render_design, skin_present, skin_url
 from app.services.settings_store import get_setting
 
 router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
@@ -202,21 +202,27 @@ def save_design(
     db: Session = Depends(get_db),
 ) -> DesignOut:
     """Enregistre la creation, la rend en JPEG et met l'email en file."""
+    # exclude_none : l'ABSENCE d'echelle est le signal « ce fond couvre la
+    # planche ». La serialiser a None la transformerait en valeur, que le rendu
+    # lirait comme une echelle nulle.
+    #
+    # Ces calques ne sont pas conserves. Ils citent le catalogue par
+    # identifiant : le jour ou un fond change de nom, ils ne decrivent plus
+    # rien. Ce qu'on garde, c'est l'image qu'ils produisent ici.
+    calques = {"layers": [layer.model_dump(exclude_none=True) for layer in payload.layers]}
+
     design = Design(
         visitor_id=payload.visitor_id,
         kiosk_id=kiosk.id,
         session_id=payload.session_id,
-        # exclude_none : l'ABSENCE d'echelle est le signal « ce fond couvre la
-        # planche ». La serialiser a None la transformerait en valeur, que le
-        # rendu lirait comme une echelle nulle.
-        layers={"layers": [layer.model_dump(exclude_none=True) for layer in payload.layers]},
         status=DesignStatus.submitted,
     )
     db.add(design)
     db.flush()
 
     try:
-        out = render_design(design.layers)
+        out = render_design(calques)
+        design.skin = out.name
         design.render_path = str(out)
         design.status = DesignStatus.rendered
     except Exception as exc:  # le visiteur ne doit jamais rester bloque
@@ -246,7 +252,7 @@ def save_design(
         status=design.status.value,
         # Les rendus sont servis en statique depuis /media : le nom de fichier est
         # un UUID, et un <img src> ne peut de toute facon pas porter de header.
-        render_url=render_url(design.render_path),
+        render_url=skin_url(design.skin, design.render_path),
     )
 
 
@@ -266,7 +272,9 @@ def creations_recentes(
         .where(
             Design.status == DesignStatus.rendered,
             Design.moderation == Moderation.approved.value,
-            Design.render_path.isnot(None),
+            # Une creation d'avant n'a pas de skin mais un render_path ; une
+            # creation remontee d'une borne a l'inverse. Il en faut un des deux.
+            or_(Design.skin.isnot(None), Design.render_path.isnot(None)),
         )
         .order_by(Design.created_at.desc())
         .limit(limit)
@@ -276,9 +284,9 @@ def creations_recentes(
     # pas -- le mockup du studio laisserait alors paraitre, en public, sa
     # plaque « Placer le design ici ».
     return [
-        {"id": str(d.id), "render_url": render_url(d.render_path)}
+        {"id": str(d.id), "render_url": skin_url(d.skin, d.render_path)}
         for d in lignes
-        if render_present(d.render_path)
+        if skin_present(d.skin, d.render_path)
     ]
 
 

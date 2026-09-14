@@ -37,7 +37,7 @@ from app.schemas import (
 )
 from app.security import generate_relay_token, generate_token, hash_secret, token_indice
 from app.services import mailer
-from app.services.renderer import render_url
+from app.services.renderer import skin_url
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
@@ -220,7 +220,7 @@ def designs(
                 "visitor_id": str(d.visitor_id) if d.visitor_id else None,
                 "visitor_name": f"{v.first_name} {v.last_name}".strip() if v else None,
                 "visitor_email": v.email if v else None,
-                "render_url": render_url(d.render_path),
+                "render_url": skin_url(d.skin, d.render_path),
                 "moderation": d.moderation,
                 "moderated_at": d.moderated_at.isoformat() if d.moderated_at else None,
             }

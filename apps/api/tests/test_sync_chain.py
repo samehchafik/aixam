@@ -56,13 +56,16 @@ try:
                    json={"name": "Portable du stand"}, headers=admin)
     check("client cree sur le serveur", r.status_code == 201, r.text[:200])
     jeton = r.json()["token"]
+    # Lu MAINTENANT : `r` designera d'autres reponses plus bas, et le prefixe
+    # n'y figure pas.
+    prefixe = r.json()["token_prefix"]
 
     # --- Le back-office du stand, dans ce processus ---
     os.environ.update(
         DATABASE_URL=CLIENT_DB, SYNC_SERVER_ENABLED="false", MAIL_TRANSPORT="smtp",
         SYNC_URL=base, SYNC_TOKEN=jeton, DEFAULT_KIOSK_TOKEN="jeton-borne",
         ADMIN_EMAIL="admin@aixam-test.fr", ADMIN_PASSWORD="stand",
-        MEDIA_DIR=tempfile.mkdtemp(), STATIC_DIR=tempfile.mkdtemp())
+        MEDIA_DIR=str(API_DIR / "media"), STATIC_DIR=tempfile.mkdtemp())
     on_path()
     from fastapi.testclient import TestClient
     from sqlalchemy import func, select
@@ -84,7 +87,6 @@ try:
     reponse = stand.get("/api/admin/sync", headers=ladmin)
     etat, corps = reponse.json(), reponse.text
     check("l'etat annonce un jeton en place", etat["token_set"] is True)
-    prefixe = r.json()["token_prefix"]
     check("il en montre le debut", etat["token_indice"] == f"axr_{prefixe}",
           etat["token_indice"])
     check("le secret ne sort pas de l'API", jeton.split("_", 2)[2] not in corps)
@@ -101,15 +103,21 @@ try:
         ids.append(uuid.UUID(r.json()["visitor_id"]))
     check("3 visiteurs en local", len(ids) == 3)
 
+    # Par la vraie route : chaque creation produit son PNG, comme au salon.
+    empreintes = []
+    for i, vid in enumerate(ids):
+        r = stand.post("/api/kiosk/designs",
+                       json={"visitor_id": str(vid), "session_id": f"sess-{i}",
+                             "layers": [{"type": "background", "hex": f"#12345{i}"}]},
+                       headers={"X-Kiosk-Token": "jeton-borne"})
+        check(f"creation {i} rendue", r.json().get("status") == "rendered", r.text[:200])
+        empreintes.append(r.json()["render_url"].rsplit("/", 1)[-1])
+    check("3 creations en local", len(empreintes) == 3)
+    check("chaque skin est nomme par son empreinte",
+          all(len(n) == 36 and n.endswith(".png") for n in empreintes), empreintes)
+    check("trois couleurs, trois fichiers", len(set(empreintes)) == 3, empreintes)
     with SessionLocal() as db:
-        borne = db.scalar(select(Kiosk))
-        for i, vid in enumerate(ids):
-            db.add(Design(visitor_id=vid, kiosk_id=borne.id, session_id=f"sess-{i}",
-                          layers={"calques": [{"type": "background", "hex": "#123456"}]},
-                          status=DesignStatus.rendered, render_path="media/renders/local.jpg"))
-        db.commit()
         nb_events_local = db.scalar(select(func.count()).select_from(Event))
-    check("3 creations en local", True)
 
     print("\n[3] Premiere remontee")
     r = stand.post("/api/admin/sync/push", headers=ladmin)
@@ -117,6 +125,7 @@ try:
     t = r.json()["totaux"]
     check("3 visiteurs remontes", t["visitors"] == 3, t)
     check("3 creations remontees", t["designs"] == 3, t)
+    check("les 3 skins sont montes avec", t["skins"] == 3, t)
     check("les evenements suivent", t["events"] == nb_events_local, t)
 
     st = httpx.get(f"{base}/api/sync/status", headers={"Authorization": f"Bearer {jeton}"}).json()
@@ -131,12 +140,20 @@ try:
     dd = httpx.get(f"{base}/api/admin/designs", headers=admin).json()["items"]
     check("les creations sont rattachees a leur visiteur",
           all(d["visitor_id"] for d in dd), dd)
-    check("aucun chemin de rendu local n'a voyage",
-          all(d["render_url"] is None for d in dd), dd)
+    # Le coeur de la remontee : c'est l'IMAGE qui arrive, pas sa recette. Les
+    # calques citaient le catalogue par identifiant ; un fond renomme et la
+    # creation devenait irreconstituable.
+    check("l'image a voyage, pas un chemin local",
+          sorted(d["render_url"] for d in dd) == sorted(f"/skins/{n}" for n in empreintes), dd)
+    for nom in empreintes:
+        rep = httpx.get(f"{base}/skins/{nom}")
+        check(f"le serveur sert {nom[:8]}...",
+              rep.status_code == 200 and rep.content[:8] == b"\x89PNG\r\n\x1a\n", rep.status_code)
 
     print("\n[4] Renvoyer ne duplique pas")
     r = stand.post("/api/admin/sync/push", headers=ladmin)
     check("rien de neuf a envoyer", r.json()["totaux"]["visitors"] == 0, r.json())
+    check("aucun skin renvoye", r.json()["totaux"]["skins"] == 0, r.json())
     st2 = httpx.get(f"{base}/api/sync/status", headers={"Authorization": f"Bearer {jeton}"}).json()
     check("toujours 3 visiteurs cote serveur", st2["visitors"] == 3, st2)
 
@@ -150,12 +167,15 @@ try:
     print("\n[5] Une creation modifiee au stand remonte a jour")
     with SessionLocal() as db:
         d = db.scalars(select(Design)).first()
-        d.layers = {"calques": [{"type": "background", "hex": "#ff0000"}]}
+        d.shared_hint = True
         d.updated_at = datetime.now(UTC) + timedelta(seconds=1)
         db.commit()
         design_id = str(d.id)
     r = stand.post("/api/admin/sync/push", headers=ladmin)
     check("la modification part", r.json()["totaux"]["designs"] == 1, r.json())
+    # Le skin, lui, n'a pas change : il est deja chez le serveur, on ne le
+    # renvoie pas.
+    check("le skin n'est pas renvoye", r.json()["totaux"]["skins"] == 0, r.json())
     st4 = httpx.get(f"{base}/api/sync/status", headers={"Authorization": f"Bearer {jeton}"}).json()
     check("sans creer de doublon", st4["designs"] == 3, st4)
 

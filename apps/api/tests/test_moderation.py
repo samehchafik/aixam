@@ -39,7 +39,7 @@ with SessionLocal() as db:
     db.flush()
     ids = []
     for i in range(3):
-        d = Design(visitor_id=v.id, session_id=f"s-{i}", layers={}, status=DesignStatus.rendered)
+        d = Design(visitor_id=v.id, session_id=f"s-{i}", status=DesignStatus.rendered)
         db.add(d)
         db.flush()
         ids.append(str(d.id))

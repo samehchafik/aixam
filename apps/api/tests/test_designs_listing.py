@@ -55,11 +55,11 @@ with SessionLocal() as db:
         v = Visitor(first_name=prenom, last_name=nom, email=email, postal_code="75011")
         db.add(v)
         db.flush()
-        db.add(Design(visitor_id=v.id, session_id=f"sess-{rang}", layers={},
+        db.add(Design(visitor_id=v.id, session_id=f"sess-{rang}",
                       status=DesignStatus.rendered, render_path="renders/x.jpg",
                       created_at=T0 + timedelta(minutes=rang)))
     # La creation dont l'auteur a exerce son droit a l'effacement.
-    db.add(Design(visitor_id=None, session_id="sess-orpheline", layers={},
+    db.add(Design(visitor_id=None, session_id="sess-orpheline",
                   status=DesignStatus.rendered, render_path="renders/y.jpg",
                   created_at=T0 + timedelta(minutes=10)))
     db.commit()

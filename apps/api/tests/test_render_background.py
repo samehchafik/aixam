@@ -67,12 +67,14 @@ check("bord droit couvert", not proche(droite, BLANC), droite)
 print("\n[2] L'echelle d'un fond ne descend jamais sous la couverture")
 # Un fond plus petit que la planche laisserait du blanc : ce n'est plus un
 # fond. En revanche l'agrandir reste permis -- le visiteur zoome dans le motif.
-from app.services.assets import load_catalog as _c
-from app.services.renderer import MEDIA, cadrer_fond
-from PIL import Image as _I
+from app.services.renderer import cadrer_fond
 
-source = _I.open(MEDIA / next(b["image"] for b in catalogue["backgrounds"] if b["id"] == FOND))
-ratio = source.width / source.height
+# Le rapport se lit dans le catalogue, comme le fait le rendu : les elements
+# sont des SVG depuis la reprise du dossier du studio, et PIL ne sait pas les
+# ouvrir -- c'est precisement pour cela que le catalogue porte leurs
+# dimensions.
+_fond = next(b for b in catalogue["backgrounds"] if b["id"] == FOND)
+ratio = _fond["width"] / _fond["height"]
 couverture = cadrer_fond({}, ratio, W, H)["scale"]
 check("un fond sans echelle prend la couverture", couverture >= 1.0, couverture)
 check("une echelle plus petite est relevee",

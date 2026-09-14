@@ -17,7 +17,7 @@ precaution.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status as http
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -25,7 +25,9 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import current_relay_client
 from app.models import Design, Event, RelayClient, Visitor
-from app.schemas import SyncPushIn, SyncPushOut
+from app.config import settings
+from app.schemas import SyncPushIn, SyncPushOut, SyncSkinsIn, SyncSkinsOut
+from app.services.renderer import skin_present, store_skin
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -44,6 +46,42 @@ def status(
         "designs": count(Design),
         "events": count(Event),
     }
+
+
+@router.post("/skins/missing", response_model=SyncSkinsOut)
+def skins_manquants(
+    payload: SyncSkinsIn,
+    client: RelayClient = Depends(current_relay_client),
+) -> SyncSkinsOut:
+    """Parmi ces empreintes, lesquelles le serveur n'a pas ?
+
+    C'est ce qui evite de renvoyer le salon entier a chaque remontee : la borne
+    n'envoie que ce qui manque, et une liaison coupee reprend sans rien
+    reexpedier de ce qui etait deja passe.
+    """
+    return SyncSkinsOut(missing=[n for n in payload.skins if not skin_present(n)])
+
+
+@router.post("/skins/{nom}", status_code=http.HTTP_204_NO_CONTENT, response_class=Response)
+async def deposer_skin(
+    nom: str,
+    request: Request,
+    client: RelayClient = Depends(current_relay_client),
+) -> Response:
+    """Recoit un PNG et le depose sous son empreinte.
+
+    Le nom annonce EST l'empreinte du contenu : `store_skin` les compare, ce
+    qui verifie d'un meme geste que le fichier est arrive entier et qu'il est
+    bien celui annonce. Deposer deux fois le meme skin ne fait rien.
+    """
+    octets = await request.body()
+    if len(octets) > settings.relay_max_attachment_bytes:
+        raise HTTPException(http.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "skin trop lourd")
+    try:
+        store_skin(nom, octets)
+    except ValueError as exc:
+        raise HTTPException(http.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    return Response(status_code=http.HTTP_204_NO_CONTENT)
 
 
 @router.post("/push", response_model=SyncPushOut)
@@ -84,7 +122,7 @@ def push(
                 index_elements=[Design.id],
                 set_={
                     c: stmt.excluded[c]
-                    for c in ("visitor_id", "session_id", "layers", "status",
+                    for c in ("visitor_id", "session_id", "skin", "status",
                               "shared_hint", "updated_at")
                 },
             )

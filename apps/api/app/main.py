@@ -31,6 +31,14 @@ COLONNES_AJOUTEES = (
     "ALTER TABLE designs ADD COLUMN IF NOT EXISTS moderation VARCHAR(12) NOT NULL DEFAULT 'pending'",
     "ALTER TABLE designs ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMPTZ",
     "CREATE INDEX IF NOT EXISTS ix_designs_moderation ON designs (moderation)",
+    "ALTER TABLE designs ADD COLUMN IF NOT EXISTS skin VARCHAR(80)",
+    "CREATE INDEX IF NOT EXISTS ix_designs_skin ON designs (skin)",
+    # Les calques citaient le catalogue par identifiant : un fond renomme et la
+    # creation devenait irreconstituable. On ne les a jamais relus pour
+    # re-rendre, et le PNG -- produit une fois, a la validation -- est
+    # desormais ce qui voyage et ce qu'on garde. Cette recette qu'on ne peut
+    # plus suivre n'a plus lieu d'etre.
+    "ALTER TABLE designs DROP COLUMN IF EXISTS layers",
 )
 
 
