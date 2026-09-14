@@ -10,9 +10,10 @@ type Props<T extends { id: string }> = {
   /** Lignes du ruban. Les elements se rangent colonne par colonne. */
   rows: number
   /**
-   * Largeur d'une case, en px. Une fonction donne sa largeur propre a chaque
-   * colonne -- c'est ce qu'il faut pour les objets, dont les formats vont du
-   * carre au tres allonge.
+   * Largeur d'une case, en px. Une fonction donne a chaque element la sienne
+   * -- c'est ce qu'il faut pour les objets, dont les formats vont du carre au
+   * tres allonge. La colonne prend alors la largeur de sa case la plus large,
+   * et les autres s'y centrent en gardant leurs proportions.
    */
   cellWidth: number | ((item: T) => number)
   cellHeight: number
@@ -80,7 +81,17 @@ export function AssetSwiper<T extends { id: string }>({
       {colonnes.map((colonne, index) => (
         <SwiperSlide
           key={index}
-          style={{ width: typeof cellWidth === 'function' ? cellWidth(colonne[0]) : cellWidth }}
+          // La largeur de la case la PLUS LARGE de la colonne, pas celle de la
+          // premiere. Une colonne reunit des formes differentes -- le melange
+          // s'en assure --, et prendre la premiere ecrasait toutes les autres :
+          // le meme objet paraissait grand ou minuscule selon la ligne ou il
+          // etait tombe.
+          style={{
+            width:
+              typeof cellWidth === 'function'
+                ? Math.max(...colonne.map(cellWidth))
+                : cellWidth,
+          }}
         >
           <div className="asset-col" style={{ gap }}>
             {colonne.map((item) => (
