@@ -22,8 +22,17 @@ os.environ.update(
     MAIL_TRANSPORT="smtp", SMTP_HOST="",
     DEFAULT_KIOSK_TOKEN="jeton-borne",
     ADMIN_EMAIL="admin@aixam-test.fr", ADMIN_PASSWORD="x",
-    MEDIA_DIR=tempfile.mkdtemp(), STATIC_DIR=tempfile.mkdtemp(),
+    MEDIA_DIR=tempfile.mkdtemp(), SKINS_DIR=tempfile.mkdtemp(),
+    STATIC_DIR=tempfile.mkdtemp(),
 )
+
+# Les rendus existent pour de vrai : depuis que la galerie verifie le disque
+# avant de promettre une image, une base pleine et un dossier vide ne donnent
+# plus d'URL du tout.
+RENDUS = Path(os.environ["MEDIA_DIR"]) / "renders"
+RENDUS.mkdir(parents=True)
+(RENDUS / "x.jpg").write_bytes(b"jpeg")
+(RENDUS / "y.jpg").write_bytes(b"jpeg")
 on_path()
 
 from fastapi.testclient import TestClient
@@ -58,6 +67,14 @@ with SessionLocal() as db:
         db.add(Design(visitor_id=v.id, session_id=f"sess-{rang}",
                       status=DesignStatus.rendered, render_path="renders/x.jpg",
                       created_at=T0 + timedelta(minutes=rang)))
+    # Une creation d'avant les skins dont le JPEG a disparu du disque : sa
+    # ligne a survecu au menage des rendus, pas son image.
+    perdue_ligne = Design(visitor_id=None, session_id="sess-sans-image",
+                          status=DesignStatus.rendered, render_path="renders/disparu.jpg",
+                          created_at=T0 + timedelta(minutes=20))
+    db.add(perdue_ligne)
+    db.flush()
+    sans_image = perdue_ligne.id
     # La creation dont l'auteur a exerce son droit a l'effacement.
     db.add(Design(visitor_id=None, session_id="sess-orpheline",
                   status=DesignStatus.rendered, render_path="renders/y.jpg",
@@ -77,10 +94,12 @@ def noms(res):
 
 print("\n[1] Par defaut, les plus recentes d'abord")
 res = lister()
-check("les 5 creations sont la", res["total"] == 5, res["total"])
-check("l'orpheline est en tete", noms(res)[0] is None, noms(res))
+check("les 6 creations sont la", res["total"] == 6, res["total"])
+# Deux creations sans auteur, les plus recentes : celle dont l'image a disparu
+# et l'orpheline de la purge RGPD.
+check("les anonymes en tete", noms(res)[:2] == [None, None], noms(res))
 check("puis l'ordre antichronologique",
-      noms(res)[1:] == ["Chloe alvarez", "Bruno Alvarez", "Alice Zidane", "Zoe bernard"], noms(res))
+      noms(res)[2:] == ["Chloe alvarez", "Bruno Alvarez", "Alice Zidane", "Zoe bernard"], noms(res))
 
 print("\n[2] Tri par date croissante")
 check("la plus ancienne d'abord", noms(lister(sort="date_asc"))[0] == "Zoe bernard",
@@ -121,9 +140,15 @@ premiere = lister(sort="date_asc")["items"][0]
 check("une URL de rendu", premiere["render_url"] == "/media/renders/x.jpg", premiere["render_url"])
 check("un auteur et une adresse", premiere["visitor_email"] == "zoe.bernard@example.com", premiere)
 
+# Promettre l'URL d'un fichier absent donnait une vignette cassee : une carte
+# sans image et sans explication, comme celle de l'onglet « Traitees ».
+perdue = next(i for i in lister()["items"] if i["id"] == str(sans_image))
+check("pas d'URL pour un fichier absent", perdue["render_url"] is None, perdue["render_url"])
+check("la creation reste listee", perdue["status"] == "rendered")
+
 print("\n[8] Un tri inconnu est refuse, pas silencieusement ignore")
 r = c.get("/api/admin/designs", params={"sort": "'; DROP TABLE designs; --"}, headers=H)
 check("422", r.status_code == 422, r.status_code)
-check("la table est toujours la", lister()["total"] == 5)
+check("la table est toujours la", lister()["total"] == 6)
 
 sys.exit(report())

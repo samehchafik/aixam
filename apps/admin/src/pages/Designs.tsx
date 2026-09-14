@@ -40,6 +40,16 @@ const VERDICTS = [
 // devient une lamelle de 47 px, et l'animateur ne peut plus juger ce qu'il
 // valide. Moins de colonnes, donc, et moins de vignettes par page.
 const PAR_PAGE = 12
+
+// Sans image, dire pourquoi plutot que d'afficher l'etat brut de la base. Un
+// « rendered » sans fichier, c'est une creation d'avant les skins : la ligne a
+// survecu, le JPEG qu'elle designe n'est plus sur ce disque.
+const SANS_IMAGE: Record<string, string> = {
+  draft: 'Création restée en cours',
+  submitted: 'En attente de rendu',
+  failed: 'Le rendu a échoué',
+  rendered: 'Image introuvable sur ce poste',
+}
 const date = (iso: string) => new Date(iso).toLocaleString('fr-FR')
 
 export function Designs() {
@@ -180,7 +190,9 @@ export function Designs() {
                 <img src={row.render_url} alt="" loading="lazy" className="vignette-planche" />
               </UnstyledButton>
             ) : (
-              <Text c="dimmed" fz="sm" ta="center" py="lg">{row.status}</Text>
+              <Text c="dimmed" fz="sm" ta="center" py="xl" className="vignette-absente">
+                {SANS_IMAGE[row.status] ?? row.status}
+              </Text>
             )}
 
             <Stack gap={2} px="md" pt="sm">

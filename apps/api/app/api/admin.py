@@ -37,7 +37,7 @@ from app.schemas import (
 )
 from app.security import generate_relay_token, generate_token, hash_secret, token_indice
 from app.services import mailer
-from app.services.renderer import skin_url
+from app.services.renderer import skin_present, skin_url, skins_stockes
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
@@ -220,7 +220,7 @@ def designs(
                 "visitor_id": str(d.visitor_id) if d.visitor_id else None,
                 "visitor_name": f"{v.first_name} {v.last_name}".strip() if v else None,
                 "visitor_email": v.email if v else None,
-                "render_url": skin_url(d.skin, d.render_path),
+                "render_url": _vignette(d),
                 "moderation": d.moderation,
                 "moderated_at": d.moderated_at.isoformat() if d.moderated_at else None,
             }
@@ -228,6 +228,19 @@ def designs(
         ],
     }
 
+
+
+def _vignette(design) -> str | None:
+    """L'URL de l'image d'une creation, ou rien si le fichier n'est pas la.
+
+    Un chemin en base ne prouve pas un fichier : les creations d'avant les
+    skins designent des JPEG que ce disque n'a plus. Promettre l'URL quand
+    meme donnait une vignette cassee -- une carte muette, sans image et sans
+    explication. Le grand ecran ecarte deja ces lignes de la meme facon.
+    """
+    if not skin_present(design.skin, design.render_path):
+        return None
+    return skin_url(design.skin, design.render_path)
 
 
 @router.get("/designs/counts")
@@ -486,6 +499,24 @@ def delete_relay_client(client_id: uuid.UUID, db: Session = Depends(get_db)):
 # --- Remontee des donnees vers le serveur ---
 
 
+def _etat_des_images(db: Session) -> dict:
+    """Combien d'images ce poste detient, et combien lui manquent.
+
+    Depuis que la creation d'un visiteur est un PNG nomme par l'empreinte de
+    son contenu, la remontee transporte des fichiers autant que des lignes :
+    les skins partent avant les creations qui les citent. Le panneau doit donc
+    pouvoir dire si une image manque ICI -- auquel cas elle ne partira pas, et
+    la base maitre recevra une creation sans image.
+    """
+    citees = set(db.scalars(select(Design.skin).where(Design.skin.isnot(None)).distinct()))
+    presentes = skins_stockes()
+    return {
+        "fichiers": len(presentes),
+        "citees": len(citees),
+        "manquantes": len(citees - presentes),
+    }
+
+
 @router.get("/sync")
 def read_sync_config(db: Session = Depends(get_db)) -> dict:
     """Ce qu'on a en local, ou on l'envoie, et jusqu'ou on est alle."""
@@ -506,6 +537,7 @@ def read_sync_config(db: Session = Depends(get_db)) -> dict:
             "designs": count(Design),
             "events": count(Event),
         },
+        "images": _etat_des_images(db),
         "cursors": {
             nom: get_setting(db, cle, None)
             for _, _, cle, nom in sync_push.SOURCES

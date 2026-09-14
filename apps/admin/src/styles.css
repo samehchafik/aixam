@@ -11,6 +11,13 @@ body { margin: 0; }
   background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
 }
 
+/* Faute d'image, la carte n'etait qu'un titre flottant : on garde la place
+   de la vignette pour que la grille reste lisible. */
+.vignette-absente {
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
+  border-bottom: 1px dashed light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-4));
+}
+
 /* Agrandissement plein ecran : Mantine Modal fournit le cadre, il reste a
    centrer l'image sans la deformer. */
 .loupe-image { display: grid; place-items: center; min-height: 0; }

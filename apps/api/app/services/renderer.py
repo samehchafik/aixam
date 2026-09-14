@@ -217,6 +217,19 @@ def skin_url(skin: str | None, render_path: str | None = None) -> str | None:
     return render_url(render_path)
 
 
+def skins_stockes() -> set[str]:
+    """Les empreintes posees sur ce disque.
+
+    Une lecture de dossier plutot qu'un `stat` par creation : le panneau de
+    synchronisation compare cet ensemble aux empreintes citees en base, ce qui
+    dit d'un coup combien d'images manquent.
+    """
+    try:
+        return {p.name for p in SKINS.iterdir() if _NOM_SKIN.match(p.name)}
+    except OSError:
+        return set()
+
+
 def skin_present(skin: str | None, render_path: str | None = None) -> bool:
     """Le fichier d'une creation est-il sur ce disque ?"""
     if skin:
