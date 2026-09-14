@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { matriceSkin } from '../skin/projection'
 import type { Mockup } from '../api/client'
 import type { SkinShape } from '../skin/shape'
@@ -43,6 +43,12 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
   // pas.
   const [marge, setMarge] = useState<number | null>(src ? null : 0)
 
+  // Garde en reserve le rappel d'echec sans le mettre dans les dependances :
+  // c'est une fonction anonyme, recreee a chaque rendu, et l'effet repartirait
+  // en boucle -- remettant la marge a zero, donc redemandant l'image.
+  const signaler = useRef(onErreur)
+  signaler.current = onErreur
+
   useEffect(() => {
     if (!src) {
       setMarge(0)
@@ -52,8 +58,13 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
     const img = new window.Image()
     img.src = src
     img.onload = () => setMarge((img.naturalWidth - shape.width) / 2)
+    // Sans ceci, une image qui ne vient jamais laissait la marge indefiniment
+    // indeterminee, et le skin n'etait jamais pose. On previent le diaporama,
+    // qui passe a la creation suivante.
+    img.onerror = () => signaler.current?.()
     return () => {
       img.onload = null
+      img.onerror = null
     }
   }, [src, shape.width])
 
@@ -63,31 +74,35 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
     <div className="mockup" style={{ width: w, height: h, left: x, top: y }}>
       <img className="mockup-decor" src={`${mediaBase}/${mockup.decor}${v}`} alt="" />
 
-      {marge !== null && (
-        <div
-          className="mockup-zone"
-          style={{
-            // Le masque est livre recadre : on le repose a sa place.
-            WebkitMaskImage: `url(${mediaBase}/${mockup.masque}${v})`,
-            maskImage: `url(${mediaBase}/${mockup.masque}${v})`,
-            WebkitMaskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
-            maskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
-          }}
-        >
-          {(src || children) && (
-            <div
-              className="mockup-skin"
-              style={{
-                width: shape.width + marge * 2,
-                height: shape.height + marge * 2,
-                transform: matriceSkin(shape, mockup.corners, marge),
-              }}
-            >
-              {src ? <img src={src} alt="" onError={onErreur} /> : children}
-            </div>
-          )}
-        </div>
-      )}
+      {/* La zone est TOUJOURS posee. Elle etait conditionnee a la marge, donc
+          au chargement du skin : tant qu'il n'etait pas la -- le temps du
+          reseau, ou pour toujours s'il manquait -- la planche du mockup restait
+          nue et laissait paraitre, en public, sa plaque verte « Placer le
+          design ici ». Le noir doit couvrir cette plaque du premier instant, et
+          quoi qu'il arrive au skin. */}
+      <div
+        className="mockup-zone"
+        style={{
+          // Le masque est livre recadre : on le repose a sa place.
+          WebkitMaskImage: `url(${mediaBase}/${mockup.masque}${v})`,
+          maskImage: `url(${mediaBase}/${mockup.masque}${v})`,
+          WebkitMaskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
+          maskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
+        }}
+      >
+        {marge !== null && (src || children) && (
+          <div
+            className="mockup-skin"
+            style={{
+              width: shape.width + marge * 2,
+              height: shape.height + marge * 2,
+              transform: matriceSkin(shape, mockup.corners, marge),
+            }}
+          >
+            {src ? <img src={src} alt="" onError={onErreur} /> : children}
+          </div>
+        )}
+      </div>
 
       <img className="mockup-ombrage" src={`${mediaBase}/${mockup.ombrage}${v}`} alt="" />
     </div>

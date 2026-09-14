@@ -120,6 +120,32 @@ else
   ko "aucune reponse sur http://localhost:$PORT/healthz -- stack arretee ?"
 fi
 
+titre "Reverse proxy"
+# Le fichier vit dans le depot, mais nginx lit sa copie dans /etc/nginx : un
+# `git pull` ne l'installe pas. Une route ajoutee ici -- /skins, par exemple --
+# reste donc inconnue du serveur, et les images des visiteurs partent dans la
+# mauvaise location sans que rien ne le signale.
+SITES="${SITES_NGINX:-/etc/nginx/sites-enabled}"
+if [ ! -d "$SITES" ]; then
+  info "pas de nginx sur cette machine : rien a comparer"
+else
+  ECART=0
+  for modele in "$ROOT"/deploy/nginx/*.conf; do
+    [ -f "$modele" ] || continue
+    installe="$SITES/$(basename "$modele" .conf)"
+    [ -f "$installe" ] || installe="$SITES/$(basename "$modele")"
+    if [ ! -f "$installe" ]; then
+      info "$(basename "$modele") : pas installe dans $SITES"
+    elif ! diff -q "$modele" "$installe" >/dev/null 2>&1; then
+      ko "$(basename "$modele") differe de la version installee :"
+      info "  diff $modele $installe"
+      info "  sudo cp $modele $installe && sudo nginx -t && sudo systemctl reload nginx"
+      ECART=1
+    fi
+  done
+  [ $ECART -eq 1 ] || ok "les vhosts installes correspondent au depot"
+fi
+
 titre "Adresses"
 info "back-office  http://localhost:$PORT/"
 info "borne        http://localhost:$PORT/kiosk/"
