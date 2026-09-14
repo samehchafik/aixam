@@ -750,13 +750,25 @@ function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, reg
       onTouchStart={onSelect}
       onDragMove={onLive}
       onTransform={onLive}
-      onDragEnd={(e) => commit(e.target)}
+      onDragEnd={(e) => {
+        commit(e.target)
+        onLive()
+      }}
       onTransformEnd={(e) => {
         const node = e.target
         const next = scale * node.scaleX()
+        // L'echelle du geste passe dans la largeur de l'image ; le groupe
+        // revient a 1.
         node.scaleX(1)
         node.scaleY(1)
         commit(node, { scale: next })
+        // Et la doublure repart de la meme valeur. Sans cette ligne elle
+        // gardait l'echelle du geste : react-konva ne reecrit une propriete
+        // que s'il la voit changer, et pour lui scaleX vaut 1 depuis le
+        // debut -- c'est `syncGhost` qui l'avait portee a 1,3 dans son dos.
+        // Le relachement laissait donc un second exemplaire, plus grand et
+        // decale, sous le bon.
+        onLive()
       }}
     >
       <KImage image={image} width={w} height={h} offsetX={w / 2} offsetY={h / 2} />
