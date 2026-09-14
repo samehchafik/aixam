@@ -68,7 +68,9 @@ export function DisplayScreen() {
 /**
  * L'attente : les creations des visiteurs defilent, posees sur la planche de
  * bord. Tant qu'aucune n'a ete approuvee -- au debut du salon, par exemple --
- * on montre les fonds du catalogue, pour que l'ecran ne reste pas vide.
+ * ce sont les fonds du catalogue qui defilent, poses sur la meme planche : la
+ * voiture est la des la premiere minute, et l'ecran ne donne jamais
+ * l'impression d'etre en panne.
  */
 function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
   const { api } = useApp()
@@ -104,26 +106,24 @@ function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
   }, [total, intervalSeconds])
 
   const courante = creations[index % Math.max(1, creations.length)]
+  const fond = fonds[index % Math.max(1, fonds.length)]
   const mockup = catalog?.mockup
 
   return (
     <div className="display-root attract">
-      {courante && mockup && catalog ? (
+      {mockup && catalog && (
         <SkinMockup
-          key={courante.id}
+          key={courante?.id ?? fond?.id}
           mockup={mockup}
           shape={catalog.shape}
           mediaBase={api.mediaBase}
-          src={`${api.base}${courante.render_url}`}
-        />
-      ) : (
-        fonds[index % Math.max(1, fonds.length)] && (
-          <img
-            key={fonds[index % fonds.length].id}
-            src={api.thumb(fonds[index % fonds.length])}
-            alt=""
-          />
-        )
+          src={courante ? `${api.base}${courante.render_url}` : undefined}
+        >
+          {/* Aucune creation approuvee : on pose un fond du catalogue sur la
+              planche. L'ecran montre la voiture des le premier jour, au lieu
+              d'un repli qu'on prendrait pour une panne. */}
+          {!courante && fond && <img src={api.asset(fond)} alt="" />}
+        </SkinMockup>
       )}
       <div className="attract-overlay">
         <Title order={1} className="display-title">{t('display.attractTitle')}</Title>

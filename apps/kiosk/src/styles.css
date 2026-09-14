@@ -193,7 +193,8 @@ body {
   position: absolute; inset: 0;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
-.mockup-zone img { transform-origin: 0 0; }
+.mockup-skin { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.mockup-skin img { width: 100%; height: 100%; display: block; object-fit: cover; }
 /* L'ombrage repose sur le skin : il lui donne la lumiere de la photo. */
 .mockup-ombrage { pointer-events: none; }
 

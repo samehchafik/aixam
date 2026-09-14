@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { matriceSkin } from '../skin/projection'
 import type { Mockup } from '../api/client'
 import type { SkinShape } from '../skin/shape'
@@ -8,7 +8,14 @@ type Props = {
   shape: SkinShape
   mediaBase: string
   /** URL du JPEG rendu par le serveur. */
-  src: string
+  src?: string
+  /**
+   * Skin a poser quand il n'y a pas de rendu : un calque dessine en direct,
+   * aux dimensions du gabarit. Sert au debut du salon, quand aucune creation
+   * n'a encore ete approuvee -- l'ecran montre alors la voiture plutot qu'un
+   * repli qui ressemble a une panne.
+   */
+  children?: ReactNode
 }
 
 /**
@@ -23,13 +30,18 @@ type Props = {
  * compris ce que le volant et le montant de pare-brise cachent. L'ombrage
  * repose par-dessus, pour que le skin prenne la lumiere de la photo.
  */
-export function SkinMockup({ mockup, shape, mediaBase, src }: Props) {
-  const [marge, setMarge] = useState<number | null>(null)
-
+export function SkinMockup({ mockup, shape, mediaBase, src, children }: Props) {
   // Le rendu serveur entoure la planche d'un liseret. Sa largeur se lit sur
   // l'image elle-meme : inutile de la transporter dans une configuration, qui
-  // finirait par diverger du serveur.
+  // finirait par diverger du serveur. Un calque dessine en direct, lui, n'en a
+  // pas.
+  const [marge, setMarge] = useState<number | null>(src ? null : 0)
+
   useEffect(() => {
+    if (!src) {
+      setMarge(0)
+      return
+    }
     setMarge(null)
     const img = new window.Image()
     img.src = src
@@ -56,15 +68,16 @@ export function SkinMockup({ mockup, shape, mediaBase, src }: Props) {
             maskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
           }}
         >
-          <img
-            src={src}
-            alt=""
+          <div
+            className="mockup-skin"
             style={{
               width: shape.width + marge * 2,
               height: shape.height + marge * 2,
               transform: matriceSkin(shape, mockup.corners, marge),
             }}
-          />
+          >
+            {src ? <img src={src} alt="" /> : children}
+          </div>
         </div>
       )}
 
