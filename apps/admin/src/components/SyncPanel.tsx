@@ -9,6 +9,7 @@ type SyncCfg = {
   token_herite: boolean
   server_enabled: boolean
   local: { visitors: number; designs: number; events: number }
+  images: { fichiers: number; citees: number; manquantes: number }
   cursors: Record<string, string | null>
   last_push_at: string | null
 }
@@ -84,7 +85,8 @@ export function SyncPanel() {
         <Stack gap="sm" maw={560}>
           <Text c="dimmed" fz="sm">
             Ce back-office est la base maître : les remontées arrivent des back-offices des
-            stands, qui poussent vers lui. Il n'y a rien à synchroniser d'ici.
+            stands, qui poussent vers lui. Il n'y a rien à synchroniser d'ici. Les images
+            comptées ici sont les fichiers réellement reçus, pas les créations qui les citent.
           </Text>
           <Paper withBorder radius="md">
             <Table>
@@ -95,6 +97,7 @@ export function SyncPanel() {
                 <Table.Tr><Table.Td>Visiteurs</Table.Td><Table.Td>{cfg.local.visitors}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>Créations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>Événements</Table.Td><Table.Td>{cfg.local.events}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Images</Table.Td><Table.Td>{cfg.images.fichiers}</Table.Td></Table.Tr>
               </Table.Tbody>
             </Table>
           </Paper>
@@ -116,8 +119,9 @@ export function SyncPanel() {
 
   const push = async (tout: boolean) => {
     if (tout && !confirm(
-      "Tout renvoyer réexpédie l'intégralité des données. Sans danger (rien n'est dupliqué), " +
-      "mais un visiteur effacé côté serveur y réapparaîtra. Continuer ?")) return
+      "Tout renvoyer réexpédie l'intégralité des lignes. Sans danger (rien n'est dupliqué, " +
+      "et seules les images absentes de la base maître repartent), mais un visiteur effacé " +
+      "côté serveur y réapparaîtra. Continuer ?")) return
     setBusy(true)
     setMessage(tout ? 'Renvoi complet en cours...' : 'Synchronisation en cours...')
     try {
@@ -125,7 +129,9 @@ export function SyncPanel() {
         `/api/admin/sync/push${tout ? '?full=true' : ''}`, { method: 'POST' },
       )
       setMessage(r.ok
-        ? `Terminé : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} création(s), ${r.totaux!.events} événement(s) envoyés à la base maître.`
+        ? `Terminé : ${r.totaux!.visitors} visiteur(s), ${r.totaux!.designs} création(s), `
+          + `${r.totaux!.skins} image(s) et ${r.totaux!.events} `
+          + 'événement(s) envoyés à la base maître.'
         : `Échec : ${r.error}`)
       load()
     } finally {
@@ -168,7 +174,9 @@ export function SyncPanel() {
           <Text c="dimmed" fz="sm">
             Ce back-office produit, la base maître consolide. L'envoi ne part que dans ce sens,
             et il ne part que quand vous le demandez — rien n'est automatique. Synchroniser deux
-            fois ne crée pas de doublon : chaque ligne garde son identifiant.
+            fois ne crée pas de doublon : chaque ligne garde son identifiant, et chaque image
+            porte l'empreinte de son contenu. Les images partent avant les créations qui les
+            citent, et seules celles qui manquent à la base maître sont transmises.
           </Text>
 
           <TextInput
@@ -212,8 +220,22 @@ export function SyncPanel() {
               <Table.Tr><Table.Td>Visiteurs</Table.Td><Table.Td>{cfg.local.visitors}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.visitors)}</Table.Td></Table.Tr>
               <Table.Tr><Table.Td>Créations</Table.Td><Table.Td>{cfg.local.designs}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.designs)}</Table.Td></Table.Tr>
               <Table.Tr><Table.Td>Événements</Table.Td><Table.Td>{cfg.local.events}</Table.Td><Table.Td c="dimmed">{dateFr(cfg.cursors.events)}</Table.Td></Table.Tr>
+              {/* Les images n'ont pas de curseur : elles suivent les créations
+                  qui les citent, et la base maître dit lesquelles lui manquent. */}
+              <Table.Tr>
+                <Table.Td>Images</Table.Td>
+                <Table.Td>{cfg.images.citees}</Table.Td>
+                <Table.Td c="dimmed">avec les créations</Table.Td>
+              </Table.Tr>
             </Table.Tbody>
           </Table>
+
+          {cfg.images.manquantes > 0 && (
+            <Text fz="sm" c="red">
+              {cfg.images.manquantes} création(s) dont l'image n'est plus sur ce poste : elles
+              remonteront sans image, et la base maître ne pourra pas les afficher.
+            </Text>
+          )}
 
           <Group>
             <Button type="button" loading={busy} onClick={() => push(false)}>Synchroniser maintenant</Button>

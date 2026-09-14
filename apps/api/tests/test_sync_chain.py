@@ -128,6 +128,25 @@ try:
     check("les 3 skins sont montes avec", t["skins"] == 3, t)
     check("les evenements suivent", t["events"] == nb_events_local, t)
 
+    # Le panneau annonce ce qui partira : des images autant que des lignes,
+    # depuis que la creation d'un visiteur est un PNG nomme par son empreinte.
+    images = stand.get("/api/admin/sync", headers=ladmin).json()["images"]
+    check("le stand compte ses images", images["fichiers"] == 3, images)
+    check("autant que de creations qui les citent", images["citees"] == 3, images)
+    check("et aucune ne lui manque", images["manquantes"] == 0, images)
+
+    # Une image effacee du disque : la ligne partira, l'image non. Le panneau
+    # doit le dire AVANT la remontee plutot que de laisser la base maitre avec
+    # une creation sans image.
+    perdue = Path(os.environ["SKINS_DIR"]) / empreintes[0]
+    garde = perdue.read_bytes()
+    perdue.unlink()
+    images = stand.get("/api/admin/sync", headers=ladmin).json()["images"]
+    check("une image disparue est signalee", images["manquantes"] == 1, images)
+    perdue.write_bytes(garde)
+    check("et ne l'est plus une fois revenue",
+          stand.get("/api/admin/sync", headers=ladmin).json()["images"]["manquantes"] == 0)
+
     st = httpx.get(f"{base}/api/sync/status", headers={"Authorization": f"Bearer {jeton}"}).json()
     check("le serveur les detient", st["visitors"] == 3 and st["designs"] == 3, st)
 
