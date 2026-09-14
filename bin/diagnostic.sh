@@ -125,6 +125,12 @@ titre "Reverse proxy"
 # `git pull` ne l'installe pas. Une route ajoutee ici -- /skins, par exemple --
 # reste donc inconnue du serveur, et les images des visiteurs partent dans la
 # mauvaise location sans que rien ne le signale.
+#
+# On signale l'ecart, on ne propose PAS de copier. Le fichier du depot est en
+# HTTP seul : c'est certbot qui a ajoute le bloc 443 et le certificat dans la
+# copie installee. L'ecraser fait disparaitre le TLS du domaine, qui retombe
+# alors sur le certificat d'un autre site. Il faut reporter les lignes voulues,
+# pas remplacer le fichier.
 SITES="${SITES_NGINX:-/etc/nginx/sites-enabled}"
 if [ ! -d "$SITES" ]; then
   info "pas de nginx sur cette machine : rien a comparer"
@@ -139,7 +145,10 @@ else
     elif ! diff -q "$modele" "$installe" >/dev/null 2>&1; then
       ko "$(basename "$modele") differe de la version installee :"
       info "  diff $modele $installe"
-      info "  sudo cp $modele $installe && sudo nginx -t && sudo systemctl reload nginx"
+      info "  Reporter A LA MAIN les lignes voulues dans $installe,"
+      info "  puis : sudo nginx -t && sudo systemctl reload nginx"
+      info "  NE PAS copier le fichier par-dessus : il est en HTTP seul, et"
+      info "  l'ecraser supprimerait le bloc 443 que certbot y a ajoute."
       ECART=1
     fi
   done
