@@ -122,9 +122,9 @@ fi
 
 titre "Reverse proxy"
 # Le fichier vit dans le depot, mais nginx lit sa copie dans /etc/nginx : un
-# `git pull` ne l'installe pas. Une route ajoutee ici -- /skins, par exemple --
-# reste donc inconnue du serveur, et les images des visiteurs partent dans la
-# mauvaise location sans que rien ne le signale.
+# `git pull` ne l'installe pas. Une route ajoutee ici reste donc inconnue du
+# serveur, et les requetes partent dans la mauvaise location sans que rien ne
+# le signale.
 #
 # On signale l'ecart, on ne propose PAS de copier. Le fichier du depot est en
 # HTTP seul : c'est certbot qui a ajoute le bloc 443 et le certificat dans la

@@ -343,11 +343,10 @@ monte — c'est arrivé, et les créations d'un salon ont paru perdues.
 | Chemin | Nature | Sauvegarde |
 | --- | --- | --- |
 | `apps/api/media/backgrounds`, `objects`, `base`, `mockup` | catalogue, versionné, monté en lecture seule | le dépôt |
-| `users/skins` | **les skins des visiteurs**, PNG nommés par empreinte | **à sauvegarder** |
-| `apps/api/media/renders` | rendus des salons passés, plus alimentés | à archiver |
+| `apps/api/media/renders` | **les créations des visiteurs**, PNG nommés par empreinte | **à sauvegarder** |
 | volume `pgdata` | base : visiteurs, créations, file d'emails | `pg_dump` |
 
-`users/skins/` est la mémoire du salon. L'image d'une création **ne se
+`apps/api/media/renders/` est la mémoire du salon. L'image d'une création **ne se
 refabrique pas** : ses calques citent des éléments du catalogue par
 identifiant, et il suffit qu'un fond soit renommé pour qu'elle devienne
 irreconstituable. C'est pourquoi le PNG est produit une fois pour toutes à la
@@ -366,10 +365,10 @@ est arrivé entier et qu'il est bien celui annoncé. Relancer une remontée
 interrompue ne renvoie donc rien de ce qui était déjà passé.
 
 Pour poser ce dossier ailleurs que dans le dépôt — sur le disque sauvegardé du
-serveur, par exemple — renseigner `SKINS_HOST_DIR` dans `.env` :
+serveur, par exemple — renseigner `RENDERS_HOST_DIR` dans `.env` :
 
 ```
-SKINS_HOST_DIR=/var/lib/aixam/skins
+RENDERS_HOST_DIR=/var/lib/aixam/renders
 ```
 
 Le symptôme d'une image restée en arrière n'aide pas — un `ModuleNotFoundError`
@@ -475,7 +474,7 @@ en un seul `location` ; la borne en demande deux, pour une seule raison.
 de la borne la remonte donc à la racine de son domaine :
 
 ```nginx
-location ~ ^/(api|ws|media|skins|healthz) { proxy_pass http://127.0.0.1:8080; }
+location ~ ^/(api|ws|media|healthz) { proxy_pass http://127.0.0.1:8080; }
 location /                          { proxy_pass http://127.0.0.1:8080/kiosk/; }
 ```
 

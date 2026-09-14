@@ -24,13 +24,28 @@ from _harness import API_DIR, check, on_path, report, reset_database
 PORT = int(os.environ.get("TEST_SYNC_PORT", "8097"))
 SERVER_DB = reset_database("aixam_test_sync_serveur")
 CLIENT_DB = reset_database("aixam_test_sync_stand")
+def _media_de_test() -> str:
+    """Un dossier media a nous, qui emprunte le catalogue du depot.
+
+    Le rendu d'un skin a besoin du vrai catalogue ; ses creations, elles, n'ont
+    rien a faire dans apps/api/media/renders -- c'est la ou vivent celles des
+    visiteurs. On lie donc le catalogue et on garde un dossier de rendus vide.
+    """
+    racine = Path(tempfile.mkdtemp(prefix="aixam-media-"))
+    for dossier in ("backgrounds", "objects", "base", "mockup"):
+        source = API_DIR / "media" / dossier
+        if source.is_dir():
+            (racine / dossier).symlink_to(source)
+    (racine / "renders").mkdir()
+    return str(racine)
+
+
 VENV_UVICORN = API_DIR.parent.parent / ".venv" / "bin" / "uvicorn"
 
 server_env = {**os.environ,
     "DATABASE_URL": SERVER_DB, "SYNC_SERVER_ENABLED": "true", "MAIL_TRANSPORT": "smtp",
     "SMTP_HOST": "", "ADMIN_EMAIL": "admin@aixam-test.fr", "ADMIN_PASSWORD": "serveur",
     "MEDIA_DIR": tempfile.mkdtemp(), "STATIC_DIR": tempfile.mkdtemp(),
-    "SKINS_DIR": tempfile.mkdtemp(prefix="aixam-skins-"),
     "PYTHONPATH": str(API_DIR)}
 server = subprocess.Popen(
     [str(VENV_UVICORN), "app.main:app", "--port", str(PORT), "--log-level", "warning"],
@@ -65,7 +80,7 @@ try:
         DATABASE_URL=CLIENT_DB, SYNC_SERVER_ENABLED="false", MAIL_TRANSPORT="smtp",
         SYNC_URL=base, SYNC_TOKEN=jeton, DEFAULT_KIOSK_TOKEN="jeton-borne",
         ADMIN_EMAIL="admin@aixam-test.fr", ADMIN_PASSWORD="stand",
-        MEDIA_DIR=str(API_DIR / "media"), STATIC_DIR=tempfile.mkdtemp())
+        MEDIA_DIR=_media_de_test(), STATIC_DIR=tempfile.mkdtemp())
     on_path()
     from fastapi.testclient import TestClient
     from sqlalchemy import func, select
@@ -138,7 +153,7 @@ try:
     # Une image effacee du disque : la ligne partira, l'image non. Le panneau
     # doit le dire AVANT la remontee plutot que de laisser la base maitre avec
     # une creation sans image.
-    perdue = Path(os.environ["SKINS_DIR"]) / empreintes[0]
+    perdue = Path(os.environ["MEDIA_DIR"]) / "renders" / empreintes[0]
     garde = perdue.read_bytes()
     perdue.unlink()
     images = stand.get("/api/admin/sync", headers=ladmin).json()["images"]
@@ -163,9 +178,9 @@ try:
     # calques citaient le catalogue par identifiant ; un fond renomme et la
     # creation devenait irreconstituable.
     check("l'image a voyage, pas un chemin local",
-          sorted(d["render_url"] for d in dd) == sorted(f"/skins/{n}" for n in empreintes), dd)
+          sorted(d["render_url"] for d in dd) == sorted(f"/media/renders/{n}" for n in empreintes), dd)
     for nom in empreintes:
-        rep = httpx.get(f"{base}/skins/{nom}")
+        rep = httpx.get(f"{base}/media/renders/{nom}")
         check(f"le serveur sert {nom[:8]}...",
               rep.status_code == 200 and rep.content[:8] == b"\x89PNG\r\n\x1a\n", rep.status_code)
 

@@ -90,11 +90,6 @@ class Settings(BaseSettings):
     cors_origins: str = ""
 
     media_dir: str = "media"
-    # Ou se deposent les skins des visiteurs. Un dossier a part, sur le disque
-    # de la machine et jamais dans un volume docker : c'est la seule forme
-    # durable d'une creation, une image ne se refabrique pas. Le nom du fichier
-    # est l'empreinte de son contenu.
-    skins_dir: str = "skins"
     # Ou l'API depose le releve des ecrans. Vide : a la racine du projet, a
     # cote du lanceur qui s'en sert.
     materiel_file: str = ""

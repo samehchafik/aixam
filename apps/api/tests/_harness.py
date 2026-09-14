@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -58,8 +57,4 @@ def report() -> int:
 
 def on_path() -> None:
     sys.path.insert(0, str(API_DIR))
-    # Les tests rendent de vrais skins. Sans ce reglage ils se deposeraient
-    # dans apps/api/skins, a cote du code : un deuxieme emplacement de skins
-    # selon la facon de lancer l'API, donc un dossier oublie a la sauvegarde le
-    # jour ou quelqu'un lance uvicorn a la main depuis apps/api.
-    os.environ.setdefault("SKINS_DIR", tempfile.mkdtemp(prefix="aixam-skins-"))
+

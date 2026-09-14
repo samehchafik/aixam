@@ -55,17 +55,14 @@ services:
       - ./apps/api/media/objects:/app/media/objects:ro
       - ./apps/api/media/base:/app/media/base:ro
       - ./apps/api/media/mockup:/app/media/mockup:ro
-      # Les skins des visiteurs. C'est la memoire du salon : l'image d'une
+      # Les creations des visiteurs. C'est la memoire du salon : l'image d'une
       # creation ne se refabrique pas, ses calques citent des elements du
       # catalogue qui auront change de nom. Un dossier du disque, jamais un
       # volume -- un volume ne se voit pas, `down --volumes` l'efface, et le
       # renommer laisse son contenu sur la machine sans que rien ne le monte.
-      # SKINS_HOST_DIR dans .env pour le poser ailleurs, /var/lib/aixam/skins
-      # par exemple, sur le disque sauvegarde du serveur.
-      - ${SKINS_HOST_DIR:-./users/skins}:/app/skins
-      # Les rendus des salons passes, du temps ou ils vivaient dans les medias.
-      # On n'y ecrit plus ; ils restent lisibles.
-      - ./apps/api/media/renders:/app/media/renders
+      # RENDERS_HOST_DIR dans .env pour le poser ailleurs, /var/lib/aixam par
+      # exemple, sur le disque sauvegarde du serveur.
+      - ${RENDERS_HOST_DIR:-./apps/api/media/renders}:/app/media/renders
       - ./apps/api/static:/app/static:ro
 
   # Worker d'envoi des emails (file outbox). Separe de l'API pour qu'une panne
@@ -92,17 +89,14 @@ services:
       - ./apps/api/media/objects:/app/media/objects:ro
       - ./apps/api/media/base:/app/media/base:ro
       - ./apps/api/media/mockup:/app/media/mockup:ro
-      # Les skins des visiteurs. C'est la memoire du salon : l'image d'une
+      # Les creations des visiteurs. C'est la memoire du salon : l'image d'une
       # creation ne se refabrique pas, ses calques citent des elements du
       # catalogue qui auront change de nom. Un dossier du disque, jamais un
       # volume -- un volume ne se voit pas, `down --volumes` l'efface, et le
       # renommer laisse son contenu sur la machine sans que rien ne le monte.
-      # SKINS_HOST_DIR dans .env pour le poser ailleurs, /var/lib/aixam/skins
-      # par exemple, sur le disque sauvegarde du serveur.
-      - ${SKINS_HOST_DIR:-./users/skins}:/app/skins
-      # Les rendus des salons passes, du temps ou ils vivaient dans les medias.
-      # On n'y ecrit plus ; ils restent lisibles.
-      - ./apps/api/media/renders:/app/media/renders
+      # RENDERS_HOST_DIR dans .env pour le poser ailleurs, /var/lib/aixam par
+      # exemple, sur le disque sauvegarde du serveur.
+      - ${RENDERS_HOST_DIR:-./apps/api/media/renders}:/app/media/renders
 
 volumes:
   pgdata:

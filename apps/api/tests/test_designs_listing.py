@@ -22,7 +22,7 @@ os.environ.update(
     MAIL_TRANSPORT="smtp", SMTP_HOST="",
     DEFAULT_KIOSK_TOKEN="jeton-borne",
     ADMIN_EMAIL="admin@aixam-test.fr", ADMIN_PASSWORD="x",
-    MEDIA_DIR=tempfile.mkdtemp(), SKINS_DIR=tempfile.mkdtemp(),
+    MEDIA_DIR=tempfile.mkdtemp(),
     STATIC_DIR=tempfile.mkdtemp(),
 )
 

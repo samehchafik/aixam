@@ -780,19 +780,18 @@ def main() -> None:
     ecrire_note("backgrounds", "Fonds de skin", "fonds")
     ecrire_note("objects", "Objets de skin", "objets")
 
-    # On ne touche NI a users/skins NI a media/renders. Ce script refait le
-    # catalogue ; les creations des visiteurs ne lui appartiennent pas.
+    # On ne touche PAS a media/renders. Ce script refait le catalogue ; les
+    # creations des visiteurs ne lui appartiennent pas.
     #
     # Il effacait les rendus, du temps ou une creation se refabriquait depuis
     # ses calques -- un rendu perime n'etait alors qu'un cache. Ce n'est plus
     # vrai : les calques ont disparu, l'image est la seule forme durable du
     # travail d'un visiteur. Reimporter le catalogue detruirait le salon.
-    restants = MEDIA / "renders"
-    anciens = len(list(restants.glob("*.jpg"))) if restants.is_dir() else 0
-    skins = RACINE / "users" / "skins"
-    faits = len(list(skins.glob("*.png"))) if skins.is_dir() else 0
-    if anciens or faits:
-        print(f"creations intactes : {faits} skin(s), {anciens} rendu(s) d'avant")
+    creations = MEDIA / "renders"
+    if creations.is_dir():
+        nb = len(list(creations.glob("*.png"))) + len(list(creations.glob("*.jpg")))
+        if nb:
+            print(f"creations intactes : {nb}")
 
 
 if __name__ == "__main__":

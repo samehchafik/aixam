@@ -32,11 +32,12 @@ from app.services.assets import load_catalog
 from app.services.shape import build_mask
 
 MEDIA = Path(settings.media_dir)
-# Les skins des visiteurs. Hors de MEDIA, et hors de tout volume docker : le
-# catalogue se refabrique depuis le depot, une creation non.
-SKINS = Path(settings.skins_dir)
-# Les JPEG d'avant, quand les rendus vivaient dans les medias. On n'y ecrit
-# plus, mais les creations des salons passes s'y trouvent encore.
+# Les creations des visiteurs, toutes au meme endroit : les PNG d'aujourd'hui
+# et les JPEG des salons passes. Un dossier monte depuis le disque de la
+# machine, jamais un volume -- le catalogue se refabrique depuis le depot, une
+# creation non. Elles ont eu un temps leur propre dossier et leur propre racine
+# d'URL ; cela n'apportait rien que ce montage ne donnait deja, et obligeait a
+# declarer une route de plus dans le reverse proxy.
 RENDERS = MEDIA / "renders"
 
 BACKDROP = (24, 22, 40)  # fond du JPEG autour de la planche
@@ -143,9 +144,10 @@ def _paste_sprite(canvas: Image.Image, sprite: Image.Image, layer: dict, width: 
 def render_url(path: str | None) -> str | None:
     """URL publique d'un rendu, quel que soit MEDIA_DIR.
 
-    Deux racines sont servies : `/skins` pour les creations des visiteurs,
-    `/media` pour le catalogue et les rendus des salons passes. L'URL est le
-    chemin RELATIF a l'une ou l'autre. Coller le chemin stocke marchait tant
+    `/media` est monte sur MEDIA_DIR : l'URL est donc le chemin RELATIF a ce
+    dossier. Coller le chemin stocke marchait tant que MEDIA_DIR restait
+    relatif (le cas du conteneur) et produisait `//Users/...` des qu'on lui
+    donnait un chemin absolu. Coller le chemin stocke marchait tant
     que ces dossiers restaient relatifs (le cas du conteneur) et produisait
     `//Users/...` des qu'on leur donnait un chemin absolu.
     """
@@ -155,12 +157,10 @@ def render_url(path: str | None) -> str | None:
     # Compare en absolu : le chemin stocke peut etre absolu la ou la racine est
     # relative, ou l'inverse. Les comparer tels quels produisait `//Users/...`.
     absolu = chemin if chemin.is_absolute() else Path.cwd() / chemin
-    for racine, prefixe in ((SKINS, "/skins"), (MEDIA, "/media")):
-        try:
-            relatif = absolu.resolve().relative_to(racine.resolve())
-        except (ValueError, OSError):
-            continue
-        return f"{prefixe}/{relatif.as_posix()}"
+    try:
+        return f"/media/{absolu.resolve().relative_to(MEDIA.resolve()).as_posix()}"
+    except (ValueError, OSError):
+        pass
     if chemin.is_absolute():
         # Sous aucune des deux racines : rien ne peut le servir. Coller un
         # prefixe produirait `/media//var/...`, une URL qui a l'air valide et
@@ -191,7 +191,7 @@ def skin_path(nom: str) -> Path:
     """
     if not _NOM_SKIN.match(nom or ""):
         raise ValueError(f"nom de skin invalide : {nom!r}")
-    return SKINS / nom
+    return RENDERS / nom
 
 
 def store_skin(nom: str, octets: bytes) -> Path:
@@ -213,7 +213,7 @@ def store_skin(nom: str, octets: bytes) -> Path:
 def skin_url(skin: str | None, render_path: str | None = None) -> str | None:
     """URL publique d'une creation : son skin, sinon son rendu d'autrefois."""
     if skin:
-        return f"/skins/{skin}"
+        return f"/media/renders/{skin}"
     return render_url(render_path)
 
 
@@ -225,7 +225,7 @@ def skins_stockes() -> set[str]:
     dit d'un coup combien d'images manquent.
     """
     try:
-        return {p.name for p in SKINS.iterdir() if _NOM_SKIN.match(p.name)}
+        return {p.name for p in RENDERS.iterdir() if _NOM_SKIN.match(p.name)}
     except OSError:
         return set()
 
@@ -255,7 +255,7 @@ def render_present(path: str | None) -> bool:
     # relatif au dossier de travail -- comme MEDIA lui-meme. Il s'utilise donc
     # tel quel. On essaie malgre tout MEDIA / path, au cas ou une ligne ancienne
     # porterait un chemin relatif au dossier des medias.
-    return Path(path).is_file() or (MEDIA / path).is_file() or (SKINS / path).is_file()
+    return Path(path).is_file() or (MEDIA / path).is_file()
 
 
 def render_design(layers: dict, *, padding: float = 0.04) -> Path:
@@ -307,8 +307,8 @@ def render_design(layers: dict, *, padding: float = 0.04) -> Path:
     # Le nom est l'empreinte du contenu. Deux consequences voulues : il ne
     # depend d'aucun compteur ni d'aucune horloge, donc un meme skin rendu deux
     # fois ne fait qu'un fichier ; et le nom ne dit rien du visiteur.
-    SKINS.mkdir(parents=True, exist_ok=True)
-    out = SKINS / empreinte(octets)
+    RENDERS.mkdir(parents=True, exist_ok=True)
+    out = RENDERS / empreinte(octets)
     if not out.exists():
         out.write_bytes(octets)
     return out

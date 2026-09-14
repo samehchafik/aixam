@@ -19,7 +19,7 @@ from app.services import materiel
 
 STATIC = Path(settings.static_dir)
 MEDIA = Path(settings.media_dir)
-SKINS = Path(settings.skins_dir)
+RENDERS = MEDIA / "renders"
 
 
 # Colonnes ajoutees apres coup. `create_all` ne sait que creer des tables : il
@@ -128,16 +128,16 @@ class FichiersCaches(StaticFiles):
 
 
 MEDIA.mkdir(parents=True, exist_ok=True)
-# Les skins des visiteurs, a part des medias : dossier propre sur le disque de
-# la machine, que ni un volume ni un `git pull` ne peut emporter.
-SKINS.mkdir(parents=True, exist_ok=True)
+RENDERS.mkdir(parents=True, exist_ok=True)
 
-# Un skin est nomme par l'empreinte de son contenu : ce nom ne designera jamais
-# une autre image. Il se garde donc sans limite et sans jamais redemander.
+# Le nom d'une creation ne designera jamais une autre image : les PNG portent
+# l'empreinte de leur contenu, les JPEG d'avant un identifiant unique. Elles se
+# gardent donc sans limite et sans jamais redemander. Monte AVANT /media : la
+# route la plus precise doit gagner.
 app.mount(
-    "/skins",
-    FichiersCaches(directory=SKINS, cache="public, max-age=31536000, immutable"),
-    name="skins",
+    "/media/renders",
+    FichiersCaches(directory=RENDERS, cache="public, max-age=31536000, immutable"),
+    name="renders",
 )
 # Le catalogue, lui, change sous le meme nom : fond_3.svg d'aujourd'hui n'est
 # pas celui d'hier. `no-cache` ne dit pas « ne garde rien », il dit « redemande
