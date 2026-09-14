@@ -7,19 +7,19 @@
       }
 
       .e, .f {
-        fill: #000000;
+        fill: #fff;
       }
 
       .g {
-        fill: #a59327;
+        fill: #c5ba78;
       }
 
       .h {
-        fill: #dda5d3;
+        fill: #c91cab;
       }
 
       .i {
-        fill: #5eb094;
+        fill: #298566;
       }
     </style>
   </defs>

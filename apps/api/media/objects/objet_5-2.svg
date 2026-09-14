@@ -3,7 +3,7 @@
   <defs>
     <style>
       .d {
-        fill: #ffffff;
+        fill: #00d066;
         font-family: FontAwesome5Pro-Solid, 'Font Awesome 5 Pro';
         font-size: 385.81px;
       }

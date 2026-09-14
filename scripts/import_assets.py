@@ -408,10 +408,15 @@ def tourner_teinte(couleur: str, degres: float) -> str:
     if len(v) == 3:
         v = "".join(c * 2 for c in v)
     r, g, b = (int(v[i : i + 2], 16) / 255 for i in (0, 2, 4))
-    h, s_, l = colorsys.rgb_to_hls(r, g, b)
-    if s_ < 0.08:
+    # colorsys rend (teinte, LUMINOSITE, saturation) -- dans cet ordre. Les
+    # lire comme (teinte, saturation, luminosite) echangeait les deux
+    # dernieres : la luminosite recevait la saturation, si bien qu'une couleur
+    # franche ressortait BLANCHE, quelle que soit la teinte demandee. Les deux
+    # variantes d'un meme objet devenaient alors identiques.
+    teinte, luminosite, saturation = colorsys.rgb_to_hls(r, g, b)
+    if saturation < 0.08:
         return couleur
-    r, g, b = colorsys.hls_to_rgb((h + degres / 360) % 1.0, l, s_)
+    r, g, b = colorsys.hls_to_rgb((teinte + degres / 360) % 1.0, luminosite, saturation)
     return "#{:02x}{:02x}{:02x}".format(*(round(c * 255) for c in (r, g, b)))
 
 

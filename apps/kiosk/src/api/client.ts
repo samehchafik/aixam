@@ -37,6 +37,12 @@ export type CatalogItem = {
   height: number
   /** Texte au survol, par langue. */
   label: Partial<Record<string, string>>
+  /**
+   * Empreinte du contenu du fichier, collee a l'URL par `asset` / `thumb`.
+   * Un element modifie prend ainsi une autre URL, qu'aucun cache ne detient.
+   */
+  version?: string
+  thumbVersion?: string
 }
 
 /** Le decor du diaporama : la planche de bord photographiee, et ou y poser un skin. */
@@ -50,6 +56,8 @@ export type Mockup = {
   maskOrigin: [number, number]
   /** Les quatre coins de la planche dans la photo, dans l'ordre hg, hd, bd, bg. */
   corners: [number, number][]
+  /** Empreinte du decor, collee aux URL des trois images. */
+  version?: string
 }
 
 export type Catalog = {
@@ -121,14 +129,22 @@ export class ApiClient {
     return `${this.config.apiBaseUrl}/media`
   }
 
-  /** URL absolue d'un element de catalogue, tel qu'il sera pose sur la planche. */
+  /**
+   * URL absolue d'un element de catalogue, tel qu'il sera pose sur la planche.
+   *
+   * L'empreinte du contenu voyage dans l'URL. Un element change sous le meme
+   * nom -- fond_3.svg d'aujourd'hui n'est pas celui d'hier --, et un
+   * navigateur qui en detient une copie n'a aucune raison de la redemander :
+   * il montrait l'ancien dessin longtemps apres le deploiement. Un contenu
+   * different est desormais une autre URL, qu'aucun cache ne detient.
+   */
   asset(item: CatalogItem) {
-    return `${this.mediaBase}/${item.image}`
+    return `${this.mediaBase}/${item.image}${item.version ? `?v=${item.version}` : ''}`
   }
 
   /** URL absolue de sa vignette, telle qu'elle parait dans le panier. */
   thumb(item: CatalogItem) {
-    return `${this.mediaBase}/${item.thumb}`
+    return `${this.mediaBase}/${item.thumb}${item.thumbVersion ? `?v=${item.thumbVersion}` : ''}`
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

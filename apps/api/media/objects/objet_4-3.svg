@@ -3,15 +3,15 @@
   <defs>
     <style>
       .d {
-        fill: #ffffff;
+        fill: #0083d1;
       }
 
       .e {
-        fill: #ffffff;
+        fill: #63c4ff;
       }
 
       .f, .g, .h, .i {
-        fill: #e6f0f6;
+        fill: #0897ed;
       }
 
       .g, .j {
@@ -19,20 +19,20 @@
       }
 
       .g, .h, .i {
-        stroke: #e6f0f6;
+        stroke: #0897ed;
       }
 
       .k {
-        fill: #ffffff;
+        fill: #caff78;
       }
 
       .l {
-        fill: #ffffff;
+        fill: #b8ebff;
       }
 
       .m, .j {
-        fill: #ffffff;
-        stroke: #ffffff;
+        fill: #009dff;
+        stroke: #80cfff;
       }
 
       .m, .i {
@@ -44,7 +44,7 @@
       }
 
       .n {
-        fill: #b8d9ed;
+        fill: #42aded;
       }
     </style>
   </defs>

@@ -33,6 +33,10 @@ type Props = {
  * repose par-dessus, pour que le skin prenne la lumiere de la photo.
  */
 export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }: Props) {
+  // Meme raison que pour le catalogue : ces trois images changent sous le meme
+  // nom quand le studio livre un nouveau mockup, et un cache les garderait.
+  const v = mockup.version ? `?v=${mockup.version}` : ''
+
   // Le rendu serveur entoure la planche d'un liseret. Sa largeur se lit sur
   // l'image elle-meme : inutile de la transporter dans une configuration, qui
   // finirait par diverger du serveur. Un calque dessine en direct, lui, n'en a
@@ -57,15 +61,15 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
 
   return (
     <div className="mockup" style={{ width: w, height: h, left: x, top: y }}>
-      <img className="mockup-decor" src={`${mediaBase}/${mockup.decor}`} alt="" />
+      <img className="mockup-decor" src={`${mediaBase}/${mockup.decor}${v}`} alt="" />
 
       {marge !== null && (
         <div
           className="mockup-zone"
           style={{
             // Le masque est livre recadre : on le repose a sa place.
-            WebkitMaskImage: `url(${mediaBase}/${mockup.masque})`,
-            maskImage: `url(${mediaBase}/${mockup.masque})`,
+            WebkitMaskImage: `url(${mediaBase}/${mockup.masque}${v})`,
+            maskImage: `url(${mediaBase}/${mockup.masque}${v})`,
             WebkitMaskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
             maskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
           }}
@@ -85,7 +89,7 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
         </div>
       )}
 
-      <img className="mockup-ombrage" src={`${mediaBase}/${mockup.ombrage}`} alt="" />
+      <img className="mockup-ombrage" src={`${mediaBase}/${mockup.ombrage}${v}`} alt="" />
     </div>
   )
 }

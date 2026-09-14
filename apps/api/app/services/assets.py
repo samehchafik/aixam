@@ -17,7 +17,9 @@ edite l'index sans redeploiement : le catalogue est relu a chaque bootstrap.
 
 from __future__ import annotations
 
+import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict
 
@@ -43,6 +45,40 @@ class CatalogItem(TypedDict):
     width: float
     height: float
     label: dict[str, str]
+    #: Empreinte du contenu, collee a l'URL par le front pour qu'un element
+    #: modifie ne puisse pas etre servi depuis un cache.
+    version: str
+    thumbVersion: str
+
+
+@lru_cache(maxsize=256)
+def _empreinte(chemin: str, signature: tuple[int, int]) -> str:
+    """Empreinte courte du contenu d'un fichier du catalogue.
+
+    `signature` (taille, date) ne sert qu'a invalider ce cache : elle est dans
+    la cle, pas dans le calcul. Deux deploiements qui ne changent pas un
+    fichier lui laissent donc la meme empreinte, et le navigateur garde ce
+    qu'il a.
+    """
+    del signature
+    return hashlib.sha256(Path(chemin).read_bytes()).hexdigest()[:10]
+
+
+def _version(chemin: Path) -> str:
+    """Jeton a coller a l'URL d'un element, pour que son URL change avec lui.
+
+    Un element du catalogue change sous le MEME nom : fond_3.svg d'aujourd'hui
+    n'est pas celui d'hier. Un navigateur qui en detient une copie n'a alors
+    aucune raison de la redemander, et montre l'ancien dessin longtemps apres
+    le deploiement -- c'est ce qui a laisse « pa » a l'ecran des jours apres sa
+    correction. Une URL qui porte l'empreinte du contenu supprime la question :
+    un fichier different est une autre URL, qu'aucun cache ne detient.
+    """
+    try:
+        etat = chemin.stat()
+    except OSError:
+        return "0"
+    return _empreinte(str(chemin), (etat.st_size, etat.st_mtime_ns))
 
 
 def _read_json(path: Path, default: dict) -> dict:
@@ -60,12 +96,17 @@ def _load_index(folder: str) -> list[CatalogItem]:
         vignette = raw.get("thumb")
         if vignette and not (MEDIA / folder / vignette).is_file():
             vignette = None
+        nom_vignette = vignette or raw["file"]
         items.append(
             {
                 "id": raw["id"],
                 "file": raw["file"],
                 "image": f"{folder}/{raw['file']}",
-                "thumb": f"{folder}/{vignette}" if vignette else f"{folder}/{raw['file']}",
+                "thumb": f"{folder}/{nom_vignette}",
+                # Le chemin reste nu : le rendu serveur le lit sur le disque.
+                # C'est le front qui colle la version a l'URL.
+                "version": _version(MEDIA / folder / raw["file"]),
+                "thumbVersion": _version(MEDIA / folder / nom_vignette),
                 "width": float(raw.get("width") or 1),
                 "height": float(raw.get("height") or 1),
                 "label": raw.get("label", {}),
@@ -85,7 +126,12 @@ def _mockup() -> dict | None:
         return None
     return {
         **brut,
-        **{cle: f"mockup/{brut[cle]}" for cle in ("decor", "masque", "ombrage") if cle in brut},
+        **{
+            cle: f"mockup/{brut[cle]}"
+            for cle in ("decor", "masque", "ombrage")
+            if cle in brut
+        },
+        "version": _version(MEDIA / "mockup" / brut.get("decor", "")),
     }
 
 

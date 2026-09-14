@@ -7,7 +7,7 @@
       }
 
       .d, .e, .f {
-        fill: #ffffff;
+        fill: #d9ffb8;
       }
 
       .e, .g, .h, .i, .j, .k {
@@ -19,11 +19,11 @@
       }
 
       .p {
-        fill: #c4f6aa;
+        fill: #c1f6a6;
       }
 
       .q, .l {
-        fill: #fdfda4;
+        fill: #fdfdeb;
       }
 
       .q, .r {
@@ -31,39 +31,39 @@
       }
 
       .s {
-        fill: #ffffff;
+        fill: #ffffd9;
       }
 
       .g {
-        fill: #e6e61c;
+        fill: #e6e6b3;
       }
 
       .t {
-        fill: #ffffff;
+        fill: #2c8500;
       }
 
       .r, .h, .u {
-        fill: #000000;
+        fill: #fff;
       }
 
       .m {
-        fill: #ffffff;
+        fill: #ffffcf;
       }
 
       .n {
-        fill: #fcfc43;
+        fill: #fcfcf2;
       }
 
       .v {
-        fill: #ffffff;
+        fill: #55ff00;
       }
 
       .w {
-        fill: #ffffff;
+        fill: #43c900;
       }
 
       .i, .x, .o {
-        fill: #629832;
+        fill: #7eb34f;
       }
 
       .x {
@@ -71,15 +71,15 @@
       }
 
       .y {
-        fill: #ffffff;
+        fill: #46d200;
       }
 
       .j {
-        fill: #ffffff;
+        fill: #fffff5;
       }
 
       .k {
-        fill: #ffffff;
+        fill: #b4ff73;
       }
     </style>
   </defs>
