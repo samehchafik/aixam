@@ -5,7 +5,11 @@ __pycache__/
 *.pyc
 .venv/
 apps/api/static/
-apps/api/media/renders/
+# Les rendus sont des donnees du salon, pas du code : ils ne sont pas
+# versionnes. Le DOSSIER, lui, doit exister des le clone -- docker le monte a
+# un chemin fixe, et le creerait sinon en root.
+apps/api/media/renders/*
+!apps/api/media/renders/.gitkeep
 apps/kiosk/src-tauri/target/
 .DS_Store
 tsconfig.tsbuildinfo

@@ -3,7 +3,7 @@
 #
 #   bin/stop.sh               arrete les conteneurs, garde les donnees
 #   bin/stop.sh --local       arrete l'api et le worker lances sans docker
-#   bin/stop.sh --volumes     supprime aussi la base et les medias (DESTRUCTIF)
+#   bin/stop.sh --volumes     supprime aussi la base (DESTRUCTIF)
 #
 # Pas de --admin ni --front ici : une seule stack sert les deux SPA, il n'y a
 # rien a arreter separement. Les flags sont acceptes pour ne pas punir
@@ -74,9 +74,12 @@ docker info >/dev/null 2>&1 || die "le demon docker ne tourne pas -- rien a arre
 cd "$ROOT"
 
 if [ $VOLUMES -eq 1 ]; then
-  # Les volumes portent la base (visiteurs, creations, file d'emails) et les
-  # rendus. Une frappe de trop ici efface un salon : on demande.
-  warn "--volumes efface la base (visiteurs, creations, emails en file) et les medias rendus."
+  # Le seul volume nomme restant porte la base : visiteurs, creations, file
+  # d'emails. Une frappe de trop ici efface un salon : on demande. Les images
+  # rendues, elles, sont a un chemin fixe du depot et survivent -- mais sans
+  # la base elles n'ont plus de creation a qui appartenir.
+  warn "--volumes efface la base : visiteurs, creations, emails en file."
+  warn "        Les images rendues restent dans apps/api/media/renders."
   printf "Taper 'oui' pour confirmer : "
   read -r answer
   [ "$answer" = "oui" ] || die "annule"

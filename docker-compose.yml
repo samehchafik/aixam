@@ -54,9 +54,14 @@ services:
       - ./apps/api/media/backgrounds:/app/media/backgrounds:ro
       - ./apps/api/media/objects:/app/media/objects:ro
       - ./apps/api/media/base:/app/media/base:ro
-      # Les rendus, eux, sont produits a l'execution : ils restent dans un
-      # volume, pour survivre au remplacement du conteneur.
-      - renders:/app/media/renders
+      - ./apps/api/media/mockup:/app/media/mockup:ro
+      # Les rendus sont la memoire du salon : l'image d'une creation ne se
+      # refabrique pas, ses calques citent des elements du catalogue qui auront
+      # change de nom. Ils etaient dans un volume nomme -- invisible sur le
+      # disque, efface par `down --volumes`, et perdu le jour ou le volume a
+      # ete renomme. Ils vivent maintenant a un chemin fixe, qu'on voit, qu'on
+      # sauvegarde et que docker ne peut plus emporter.
+      - ./apps/api/media/renders:/app/media/renders
       - ./apps/api/static:/app/static:ro
 
   # Worker d'envoi des emails (file outbox). Separe de l'API pour qu'une panne
@@ -82,13 +87,17 @@ services:
       - ./apps/api/media/backgrounds:/app/media/backgrounds:ro
       - ./apps/api/media/objects:/app/media/objects:ro
       - ./apps/api/media/base:/app/media/base:ro
-      # Les rendus, eux, sont produits a l'execution : ils restent dans un
-      # volume, pour survivre au remplacement du conteneur.
-      - renders:/app/media/renders
+      - ./apps/api/media/mockup:/app/media/mockup:ro
+      # Les rendus sont la memoire du salon : l'image d'une creation ne se
+      # refabrique pas, ses calques citent des elements du catalogue qui auront
+      # change de nom. Ils etaient dans un volume nomme -- invisible sur le
+      # disque, efface par `down --volumes`, et perdu le jour ou le volume a
+      # ete renomme. Ils vivent maintenant a un chemin fixe, qu'on voit, qu'on
+      # sauvegarde et que docker ne peut plus emporter.
+      - ./apps/api/media/renders:/app/media/renders
 
 volumes:
   pgdata:
-  renders:
 
 # Sous-reseau fige. Sans lui, docker choisit une plage libre a la creation du
 # reseau et la passerelle change d'une machine a l'autre, voire d'un `compose

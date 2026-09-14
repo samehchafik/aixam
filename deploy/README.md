@@ -333,6 +333,25 @@ avertissement, et le correctif que vous venez de tirer reste sans effet.
 Seuls `media/` et `apps/api/static/` sont montés : un changement de front seul
 se contente de `./bin/build.sh --all` puis d'un rechargement du navigateur.
 
+### Où vivent les fichiers
+
+Les chemins sont fixes, et identiques avec ou sans Docker. C'est voulu : un
+volume nommé est invisible sur le disque, il s'efface avec `down --volumes`, et
+le jour où on le renomme son contenu reste sur la machine sans que rien ne le
+monte — c'est arrivé, et les créations d'un salon ont paru perdues.
+
+| Chemin | Nature | Sauvegarde |
+| --- | --- | --- |
+| `apps/api/media/backgrounds`, `objects`, `base`, `mockup` | catalogue, versionné, monté en lecture seule | le dépôt |
+| `apps/api/media/renders` | images des créations, produites au salon | **à sauvegarder** |
+| volume `pgdata` | base : visiteurs, créations, file d'emails | `pg_dump` |
+
+`renders/` est la mémoire du salon. L'image d'une création **ne se refabrique
+pas** : ses calques citent des éléments du catalogue par identifiant, et il
+suffit qu'un fond soit renommé pour qu'elle devienne irreconstituable. C'est
+pourquoi le PNG est produit une fois pour toutes à la validation du visiteur,
+puis jamais recalculé. Perdre ce dossier, c'est perdre les créations.
+
 Le symptôme d'une image restée en arrière n'aide pas — un `ModuleNotFoundError`
 sur un fichier pourtant présent dans le dépôt, ou un correctif sans effet.
 `bin/start.sh` et `bin/restart.sh` préviennent désormais quand du code Python

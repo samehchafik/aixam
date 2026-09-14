@@ -172,6 +172,23 @@ else
     warn "        Reconstruire : ./bin/build.sh --api-image"
   fi
 
+  # Les rendus ont vecu dans des volumes nommes avant d'avoir un chemin fixe.
+  # Passer au montage laisse ces volumes intacts sur le disque, mais invisibles
+  # pour le conteneur : sans un mot, les creations du salon precedent auraient
+  # l'air perdues. On regarde, et on donne la commande de recuperation.
+  PROJET="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')}"
+  for ancien in renders media; do
+    VOL="${PROJET}_${ancien}"
+    docker volume inspect "$VOL" >/dev/null 2>&1 || continue
+    RESTES="$(docker run --rm -v "$VOL":/vieux alpine \
+              sh -c 'ls /vieux/renders /vieux 2>/dev/null | grep -c "\.jpg$" || true' 2>/dev/null | tail -1)"
+    [ "${RESTES:-0}" -gt 0 ] 2>/dev/null || continue
+    warn "$RESTES rendus dorment encore dans le volume $VOL, que plus rien ne monte."
+    warn "        Les recuperer avant de le supprimer :"
+    warn "        docker run --rm -v $VOL:/vieux -v \"\$PWD/apps/api/media/renders\":/neuf \\"
+    warn "          alpine sh -c 'cp -n /vieux/renders/*.jpg /vieux/*.jpg /neuf/ 2>/dev/null; true'"
+  done
+
   say "demarrage : $SERVICES"
   ( cd "$ROOT" && docker compose up -d )
 fi
