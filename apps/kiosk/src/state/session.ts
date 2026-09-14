@@ -10,6 +10,16 @@ export type Step = 'attract' | 'register' | 'verify' | 'editor' | 'done'
  * planche. On fixe donc leur hauteur, et la largeur suit leur format.
  */
 const OBJECT_HEIGHT = 0.55
+/**
+ * Largeur maximale d'un objet, en fraction de la planche.
+ *
+ * Poser a hauteur constante suffit tant que les objets ont des proportions
+ * voisines. Un objet cinq fois plus large que haut devenait alors enorme : sa
+ * hauteur etait juste, son etendue non. L'encoche laisse deux couloirs
+ * d'environ 40 % de la planche ; un cinquieme, c'est la moitie d'un couloir,
+ * donc deux objets peuvent encore s'y poser cote a cote.
+ */
+const OBJECT_WIDTH = 0.2
 
 type State = {
   step: Step
@@ -129,13 +139,19 @@ function spawnX(
   return meilleur
 }
 
-/** Echelle de pose (fraction de la LARGEUR de planche) pour une hauteur donnee. */
+/**
+ * Echelle de pose, en fraction de la LARGEUR de planche.
+ *
+ * Deux bornes, la plus contraignante l'emporte : une hauteur de pose, qui
+ * donne aux objets un poids visuel comparable, et une largeur maximale, qui
+ * retient ceux que leurs proportions feraient deborder.
+ */
 function objectScale(catalog: Catalog | null, assetId: string | undefined): number {
   const item = catalog?.objects.find((o) => o.id === assetId)
   if (!catalog || !item || !item.height) return 0.12
   const format = item.width / item.height
   const planche = catalog.shape.height / catalog.shape.width
-  return OBJECT_HEIGHT * planche * format
+  return Math.min(OBJECT_HEIGHT * planche * format, OBJECT_WIDTH)
 }
 
 const objectDefaults = (

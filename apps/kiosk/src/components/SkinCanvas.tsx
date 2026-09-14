@@ -399,8 +399,23 @@ export function SkinCanvas({
     redimensionnable: () => !fondSelectionne,
   })
 
-  const renderLayers = (attenue: boolean, only: Layer['type']) =>
-    ordered
+  /**
+   * Chaque calque est dessine deux fois : une copie decoupee par la planche,
+   * nette, et une copie attenuee qui montre ce qui deborde. Laquelle des deux
+   * porte le geste depend du type.
+   *
+   * Pour un OBJET, c'est la copie NON decoupee. Konva decoupe aussi la zone
+   * sensible : tant que le geste vivait sur la copie decoupee, la partie d'un
+   * objet qui debordait de la planche n'etait plus attrapable -- un objet
+   * pousse dehors pour degager la vue sur le fond devenait impossible a
+   * rattraper, et il n'y avait plus qu'a tout recommencer.
+   *
+   * Pour un FOND, elle reste la copie decoupee : le fond ne s'attrape pas par
+   * son dessin mais par `bgHit`, qui couvre deja toute la zone de debordement.
+   */
+  const renderLayers = (attenue: boolean, only: Layer['type']) => {
+    const reel = only === 'object' ? attenue : !attenue
+    return ordered
       .filter(({ layer }) => layer.type === only)
       .map(({ layer, index }) => (
         <LayerNode
@@ -409,13 +424,13 @@ export function SkinCanvas({
           src={layer.assetId ? (urls.get(layer.assetId) ?? null) : null}
           skinWidth={skinWidth}
           skinHeight={skinHeight}
-          interactive={interactive && !attenue}
+          interactive={interactive && reel}
           onLive={syncLive}
           register={(node) => {
-            const carte = attenue ? ghostNodes.current : nodes.current
+            const carte = reel ? nodes.current : ghostNodes.current
             if (node) carte.set(index, node)
             else carte.delete(index)
-            if (attenue) return
+            if (!reel) return
             // L'image peut arriver apres la selection : on rattache ici aussi.
             syncTransformer()
             syncFrame()
@@ -424,6 +439,7 @@ export function SkinCanvas({
           onChange={(patch) => onChange?.(index, patch)}
         />
       ))
+  }
 
   return (
     <div className="skin-stack" style={{ width: stageW, height: stageH }}>
@@ -516,11 +532,16 @@ export function SkinCanvas({
             />
           )}
 
-          <Group x={origin.x} y={origin.y} opacity={0.32} listening={false}>
+          {/* Copie non decoupee : c'est elle qui ecoute, sur toute l'etendue de
+              l'objet. Dessinee en premier, donc sous la copie nette. */}
+          <Group x={origin.x} y={origin.y} opacity={0.32}>
             {renderLayers(true, 'object')}
           </Group>
 
-          <Group x={origin.x} y={origin.y} clipFunc={clip}>
+          {/* Copie nette, decoupee par la planche : purement decorative. Elle
+              recouvre la precedente sans intercepter les gestes, qui la
+              traversent. */}
+          <Group x={origin.x} y={origin.y} clipFunc={clip} listening={false}>
             {renderLayers(false, 'object')}
           </Group>
 
