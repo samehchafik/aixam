@@ -20,10 +20,18 @@ from datetime import datetime
 _WINDOWS = {
     "extension": "ps1",
     "entete": """# Genere par le back-office AIXAM le {date}.
-# Un Chrome plein ecran par moniteur, place par ses coordonnees reelles.
+# Un Chrome plein ecran par moniteur, pose sur l'ecran releve.
 #
-# Regenerer depuis Reglages > Ecrans apres tout changement de disposition :
-# debrancher un ecran ou en intervertir deux change les coordonnees.
+# Sous Windows, `--kiosk` ne respecte pas `--window-position` : Chrome passe en
+# plein ecran a la creation de la fenetre, souvent sur l'ecran principal, avant
+# que la position soit appliquee. Et l'echelle d'affichage (125 %, 150 %) fait
+# diverger les pixels physiques du releve des pixels logiques que Chrome lit.
+# Ce script ne demande donc pas a Chrome de se placer : il ouvre la fenetre,
+# l'attend, puis la pose lui-meme sur le rectangle exact du moniteur, retrouve
+# par son nom de peripherique.
+#
+# Regenerer depuis Reglages > Ecrans si un ecran change de nom (un moniteur
+# debranche puis rebranche sur une autre prise peut changer de numero).
 #
 #   powershell -ExecutionPolicy Bypass -File {fichier}
 param([string]$ApiHost = "{hote}")
@@ -48,15 +56,74 @@ $commun = @(
   "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows",
   "--disable-renderer-backgrounding"
 )
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class AixamWin {{
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr z, int x, int y, int w, int hh, uint f);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [StructLayout(LayoutKind.Sequential)] public struct RECT {{ public int L, T, R, B; }}
+}}
+"@
+# Meme repere que le releve (pixels physiques) : sans cela Windows convertit
+# nos coordonnees a l'echelle du bureau, et la fenetre tombe a cote.
+[AixamWin]::SetProcessDPIAware() | Out-Null
+
+function Ouvrir-Fenetre {{
+  param($Profil, $Chemin, $Peripherique, $X, $Y, $Largeur, $Hauteur)
+
+  # L'ecran d'aujourd'hui, retrouve par son nom : le releve ne sert que de
+  # secours si le nom a change depuis.
+  $ecran = [System.Windows.Forms.Screen]::AllScreens | Where-Object {{ $_.DeviceName -eq $Peripherique }}
+  if ($ecran) {{
+    $X = $ecran.Bounds.X; $Y = $ecran.Bounds.Y
+    $Largeur = $ecran.Bounds.Width; $Hauteur = $ecran.Bounds.Height
+  }} else {{
+    Write-Warning "$Peripherique introuvable : on prend les coordonnees du releve ($X,$Y). Regenerer le script."
+  }}
+
+  # Le chemin du profil est cite : LOCALAPPDATA peut contenir une espace.
+  $p = Start-Process $chrome -PassThru -ArgumentList ($commun + @(
+    "--user-data-dir=`"$env:LOCALAPPDATA\\aixam-kiosk\\$Profil`"",
+    "--window-position=$X,$Y", "--window-size=$Largeur,$Hauteur",
+    "--app=$ApiHost$Chemin"))
+
+  # Le profil est dedie, donc ce processus est bien celui qui porte la fenetre
+  # (avec un profil partage, Chrome delegue a l'instance existante et sort).
+  $h = [IntPtr]::Zero
+  for ($i = 0; $i -lt 75 -and $h -eq [IntPtr]::Zero; $i++) {{
+    Start-Sleep -Milliseconds 200
+    $p.Refresh()
+    $h = $p.MainWindowHandle
+  }}
+  if ($h -eq [IntPtr]::Zero) {{ throw "Chrome n'a pas ouvert de fenetre pour $Profil" }}
+
+  # On pose, on relit, on repose : Chrome finit parfois son plein ecran apres
+  # coup et se recale sur l'ecran principal.
+  $r = New-Object AixamWin+RECT
+  for ($i = 0; $i -lt 10; $i++) {{
+    [AixamWin]::SetWindowPos($h, [IntPtr]::Zero, $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
+    Start-Sleep -Milliseconds 300
+    [AixamWin]::GetWindowRect($h, [ref]$r) | Out-Null
+    if ($r.L -eq $X -and $r.T -eq $Y) {{
+      Write-Host "$Profil : sur $Peripherique en $X,$Y"
+      return
+    }}
+  }}
+  Write-Warning "$Profil n'est pas sur $Peripherique (fenetre en $($r.L),$($r.T), attendue en $X,$Y)"
+}}
 """,
     "fenetre": """
 # {libelle} — {peripherique} ({largeur}x{hauteur} en {x},{y})
-Start-Process $chrome -ArgumentList ($commun + @(
-  "--user-data-dir=$env:LOCALAPPDATA\\aixam-kiosk\\{profil}",
-  "--window-position={x},{y}",
-  "--app=$ApiHost{chemin}"))
+Ouvrir-Fenetre -Profil "{profil}" -Chemin "{chemin}" -Peripherique "{peripherique}" `
+  -X {x} -Y {y} -Largeur {largeur} -Hauteur {hauteur}
 """,
-    "pied": "",
+    "pied": """
+Write-Host "Fenetres ouvertes."
+""",
 }
 
 _SHELL_ENTETE = """#!/usr/bin/env bash
