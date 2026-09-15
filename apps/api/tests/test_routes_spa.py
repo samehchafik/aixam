@@ -64,4 +64,23 @@ check("c'est bien celui de la borne", "BORNE" in r.text, r.text[:40])
 r = c.get(f"/{relatif}")
 check("a la racine, ce chemin ne rend PAS le script de la borne", "BORNE" not in r.text)
 
+print("\n[4] /full sert le meme back-office")
+# La vue complete de l'admin s'ouvre par l'adresse : /full#/creations. Le diese
+# ne quitte jamais le navigateur, donc le serveur ne voit que /full -- il doit
+# rendre le back-office comme a la racine. Le bundle de l'admin est compile en
+# chemins ABSOLUS (pas de `base: './'` dans sa configuration) : ses scripts se
+# resolvent donc en /assets/... depuis /full comme depuis /, et la barre finale
+# n'a pas l'importance qu'elle a pour la borne.
+for adresse in ("/full", "/full/"):
+    check(f"{adresse} sert le back-office", "BACK-OFFICE" in c.get(adresse).text)
+# Ce qui rend /full sans danger ne se voit pas ici mais dans la configuration
+# de compilation : sans `base`, Vite emet des chemins absolus. Le jour ou l'on
+# y mettrait `base: './'` comme pour la borne, /full/ servirait son index.html
+# a la place des scripts et le back-office resterait blanc, sans erreur.
+config = Path(__file__).resolve().parents[2] / "admin" / "vite.config.ts"
+check("l'admin est compile en chemins absolus (pas de `base`)",
+      not config.is_file() or "base:" not in config.read_text(),
+      "ajouter `base` a apps/admin/vite.config.ts casserait /full/")
+
+
 sys.exit(report())

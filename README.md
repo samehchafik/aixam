@@ -86,8 +86,15 @@ En docker, **un seul port** — `API_PORT`, 8080 par défaut — et deux chemins
 | | Adresse |
 |---|---|
 | Back-office | `http://localhost:8080` |
+| Back-office, vue complète | `http://localhost:8080/full` |
 | Borne | `http://localhost:8080/kiosk/` |
 | Grand écran | `http://localhost:8080/kiosk/#/display` |
+
+Le back-office s'ouvre **simplifié** : Visiteurs et Créations, les deux seuls
+gestes de l'animateur pendant le salon. Le tableau de bord, les emails et les
+réglages sont à `/full` — `…/full#/creations` garde le mode d'un écran à
+l'autre, et l'adresse se met en favori. Ce n'est pas une permission : qui a le
+mot de passe garde l'API entière, c'est seulement un écran plus court.
 
 Les ports séparés n'existent qu'en développement vite, sans docker : **5173**
 pour la borne, **5174** pour le back-office (qui proxifie `/api` vers le 8080).
