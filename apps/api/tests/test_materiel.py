@@ -91,9 +91,17 @@ for systeme, extension, marqueur in (
     produit = construire_lanceur(LanceurIn(hote="http://x", systeme=systeme, ecrans=ECRANS))
     check(f"{systeme} : le bon nom de fichier", nom_fichier(systeme).endswith(extension), nom_fichier(systeme))
     check(f"{systeme} : la bonne facon de trouver le navigateur", marqueur in produit)
-    check(f"{systeme} : une fenetre par ecran", produit.count("--window-position") == 2)
-    check(f"{systeme} : les coordonnees reelles",
-          "--window-position=0,0" in produit and "--window-position=1920,0" in produit)
+    if systeme == "Windows":
+        # Sous Windows la fenetre est posee par le script, pas par Chrome :
+        # un appel par ecran, avec le releve en secours.
+        check(f"{systeme} : une fenetre par ecran", produit.count("Ouvrir-Fenetre -Profil") == 2)
+        check(f"{systeme} : les coordonnees reelles",
+              "-X 0 -Y 0 -Largeur 1920 -Hauteur 1080" in produit
+              and "-X 1920 -Y 0 -Largeur 3840 -Hauteur 2160" in produit)
+    else:
+        check(f"{systeme} : une fenetre par ecran", produit.count("--window-position") == 2)
+        check(f"{systeme} : les coordonnees reelles",
+              "--window-position=0,0" in produit and "--window-position=1920,0" in produit)
     check(f"{systeme} : un profil par fenetre",
           "tactile" in produit and "grand-ecran" in produit)
     # Sans cela Chrome s'enregistre aupres de GCM et noie le journal du stand
@@ -127,14 +135,19 @@ script = construire_lanceur(LanceurIn(hote="http://localhost:8080", systeme="Win
     EcranLanceurIn(peripherique=r"\\.\DISPLAY2", libelle="Grand ecran", x=1920, y=0,
                    largeur=3840, hauteur=2160, chemin="/kiosk/#/display", profil="grand-ecran"),
 ]))
-check("une fenetre par ecran", script.count("Start-Process") == 2, script.count("Start-Process"))
-# Ce sont les coordonnees qui placent la fenetre : le lanteur livre les
-# devinait, c'est precisement ce qu'on remplace.
-check("la position du premier", '--window-position=0,0' in script)
-check("celle du second", '--window-position=1920,0' in script)
-check("chaque fenetre a son profil",
-      "aixam-kiosk\\tactile" in script and "aixam-kiosk\\grand-ecran" in script)
-check("les adresses ouvertes", '--app=$ApiHost/kiosk/"' in script and '--app=$ApiHost/kiosk/#/display"' in script)
+check("une fenetre par ecran", script.count("Ouvrir-Fenetre -Profil") == 2, script.count("Ouvrir-Fenetre -Profil"))
+# `--kiosk` ignore `--window-position` sous Windows, et l'echelle d'affichage
+# fausse les pixels : c'est le script qui pose la fenetre, par l'API Windows,
+# sur l'ecran retrouve par son nom. Le releve ne sert que de secours.
+check("l'ecran est retrouve par son nom", "[System.Windows.Forms.Screen]::AllScreens" in script)
+check("le premier ecran nomme", '-Peripherique "\\\\.\\DISPLAY1"' in script)
+check("le second ecran nomme", '-Peripherique "\\\\.\\DISPLAY2"' in script)
+check("le releve en secours", "-X 1920 -Y 0 -Largeur 3840 -Hauteur 2160" in script)
+check("meme repere que le releve : pixels physiques", "SetProcessDPIAware()" in script)
+check("la fenetre est posee puis relue", "SetWindowPos(" in script and "GetWindowRect(" in script)
+check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in script
+      and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
+check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
 check("mode kiosque", '"--kiosk"' in script)
 check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:8080")' in script)
 
