@@ -126,12 +126,26 @@ $dejaLa = (Test-Path $reglages) -and $(
 )
 Etat $dejaLa "Docker Desktop : demarre seul, sans ouvrir sa fenetre" {
   if (-not (Test-Path $reglages)) { throw "Docker Desktop jamais lance : l'ouvrir une fois, puis relancer ce script." }
+  Copy-Item $reglages "$reglages.avant-aixam" -Force
   $j = Get-Content $reglages -Raw | ConvertFrom-Json
   foreach ($c in $voulu.Keys) {
     if (-not $j.PSObject.Properties.Name.Contains($c)) { $j | Add-Member -NotePropertyName $c -NotePropertyValue $false }
     $j.$c = $voulu[$c]
   }
-  $j | ConvertTo-Json -Depth 20 | Set-Content $reglages -Encoding UTF8
+  # Surtout pas Set-Content -Encoding UTF8 : sous PowerShell 5.1 il ajoute un
+  # BOM, et Docker refuse alors de lire ses propres reglages (« invalid
+  # character 'i' »). Son backend plante au demarrage, il repart sur des
+  # reglages par defaut -- AutoStart compris -- et la borne revient d'un
+  # redemarrage sans API, sans que rien n'explique pourquoi.
+  [System.IO.File]::WriteAllText($reglages, ($j | ConvertTo-Json -Depth 20),
+                                 (New-Object System.Text.UTF8Encoding($false)))
+  # On relit ce qu'on vient d'ecrire. Un fichier de reglages casse ne se voit
+  # qu'au demarrage suivant, et coute une heure a relier a sa cause.
+  try { Get-Content $reglages -Raw | ConvertFrom-Json | Out-Null }
+  catch {
+    Copy-Item "$reglages.avant-aixam" $reglages -Force
+    throw "reglages Docker illisibles apres ecriture : sauvegarde restauree."
+  }
 }
 
 $docker = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
