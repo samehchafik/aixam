@@ -84,10 +84,12 @@ $WM_HOTKEY = 0x0312
 $WM_TIMER = 0x0113
 
 if ($FichierPid) { Set-Content -Path $FichierPid -Value $PID }
-if (-not [RaccourciWin]::RegisterHotKey([IntPtr]::Zero, 1, $modificateurs, $vk)) {
-  throw "$Modif+$Touche est deja pris par un autre programme."
-}
-Write-Host "$Modif+$Touche ferme la borne (veilleur pid $PID)"
+# Le raccourci peut etre refuse -- deja pris par un autre programme dans cette
+# session. Ce n'est pas une raison de mourir : le maintien des fenetres au
+# premier plan, lui, doit continuer. On le dit, et on veille quand meme.
+$raccourci = [RaccourciWin]::RegisterHotKey([IntPtr]::Zero, 1, $modificateurs, $vk)
+if ($raccourci) { Write-Host "$(Get-Date -Format HH:mm:ss) $Modif+$Touche ferme la borne (veilleur pid $PID)" }
+else { Write-Warning "$Modif+$Touche est deja pris par un autre programme : pas de raccourci, mais les fenetres restent au premier plan (veilleur pid $PID)" }
 # Un minuteur de fil, sans fenetre : WM_TIMER arrive dans la meme boucle que
 # le raccourci.
 [RaccourciWin]::SetTimer([IntPtr]::Zero, [UIntPtr]::Zero, 1000, [IntPtr]::Zero) | Out-Null
@@ -135,5 +137,5 @@ while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
     break
   }
 }
-[RaccourciWin]::UnregisterHotKey([IntPtr]::Zero, 1) | Out-Null
+if ($raccourci) { [RaccourciWin]::UnregisterHotKey([IntPtr]::Zero, 1) | Out-Null }
 if ($FichierPid) { Remove-Item $FichierPid -ErrorAction SilentlyContinue }
