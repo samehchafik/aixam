@@ -53,13 +53,21 @@ if [ "$PLATEFORME" = "windows" ]; then
   # ce qui lit notre sortie attend leur fermeture -- c'est-a-dire la fin du
   # serveur. Sans redirection il passe par ShellExecute, qui ne legue rien ;
   # c'est alors un cmd /c, dans sa console cachee, qui ecrit le journal.
+  #
+  # Meme ShellExecute legue les handles heritables, et un tube « powershell |
+  # tr » pour lire le pid en est un : tr attendrait la fin du serveur. Le pid
+  # passe donc par un fichier, et PowerShell ne recoit que le peripherique nul
+  # -- il n'y a plus rien a heriter qui puisse retenir qui que ce soit.
   lancer_detache() {   # $1 journal, $2 dossier de travail, $3... commande ; pid sur stdout
     local journal; journal="$(cygpath -m "$1")"
     local dossier; dossier="$(cygpath -m "$2")"
     local exe; exe="$(cygpath -m "$3")"; shift 3
+    local fpid; fpid="$(mktemp)"
     powershell -NoProfile -Command "\$p = Start-Process -FilePath 'cmd.exe' \
       -ArgumentList '/c \"\"$exe\" $* >> \"$journal\" 2>&1\"' \
-      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru; \$p.Id" | tr -d '\r'
+      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru; \
+      Set-Content -Path '$(cygpath -m "$fpid")' -Value \$p.Id" < /dev/null > /dev/null 2>&1
+    tr -d '\r\n' < "$fpid"; rm -f "$fpid"
   }
   vivant() { tasklist /FI "PID eq $1" /NH 2>/dev/null | grep -q " $1 "; }
   tuer()   { taskkill /PID "$1" /T /F >/dev/null 2>&1; }
