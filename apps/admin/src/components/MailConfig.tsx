@@ -15,12 +15,22 @@ export type MailCfg = {
   brevo_configured: boolean
   relay_url: string
   relay_token_set: boolean
+  relay_token_indice: string
+  relay_token_source: 'reglages' | 'env' | null
   relay_server_enabled: boolean
   relay_default_daily_quota: number
   mail_reply_to: string
   from_domain: string
   smtp_domain: string
   domains_aligned: boolean
+}
+
+// D'ou vient le jeton qui sert vraiment. Un jeton enregistre ici l'emporte sur
+// celui du .env : sans le dire, coller le bon jeton dans le fichier et
+// redemarrer semble sans effet, et le poste continue de presenter l'ancien.
+const SOURCES: Record<string, string> = {
+  reglages: 'enregistré ici — il l’emporte sur celui du .env',
+  env: 'venu du .env de ce poste',
 }
 
 const TRANSPORTS = [
@@ -168,6 +178,12 @@ export function MailConfig({ onLoaded }: { onLoaded?: (cfg: MailCfg) => void }) 
                   value={token}
                   onChange={(e) => setToken(e.currentTarget.value)}
                 />
+                {cfg.relay_token_set && (
+                  <Text fz="xs" c="dimmed" mt={-8}>
+                    Jeton en service : {cfg.relay_token_indice}…{' '}
+                    {SOURCES[cfg.relay_token_source ?? ''] ?? ''}
+                  </Text>
+                )}
               </>
             )}
 

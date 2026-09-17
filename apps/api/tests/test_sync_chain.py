@@ -105,7 +105,10 @@ try:
     check("il en montre le debut", etat["token_indice"] == f"axr_{prefixe}",
           etat["token_indice"])
     check("le secret ne sort pas de l'API", jeton.split("_", 2)[2] not in corps)
-    check("un jeton propre n'est pas dit herite", etat["token_herite"] is False)
+    # D'ou vient le jeton qui sert : un jeton enregistre dans les reglages
+    # l'emporte sur celui du .env sans le dire, et c'est exactement ce qui fait
+    # croire qu'un poste refuse un jeton qui marche ailleurs.
+    check("l'origine du jeton est nommee", etat["token_source"] == "env", etat["token_source"])
 
     print("\n[2] Trois visiteurs passent sur la borne")
     ids = []

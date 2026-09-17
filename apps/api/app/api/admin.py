@@ -410,6 +410,7 @@ def delete_visitor(visitor_id: uuid.UUID, db: Session = Depends(get_db)):
 @router.get("/mail")
 def read_mail_config(db: Session = Depends(get_db)) -> dict:
     """L'etat de la configuration d'envoi. Ne rend jamais de secret."""
+    jeton_relais = relay_transport.relay_token(db)
     return {
         "transport": mailer.current_transport(db),
         "transports": list(mailer.TRANSPORTS),
@@ -432,7 +433,16 @@ def read_mail_config(db: Session = Depends(get_db)) -> dict:
         ),
         "brevo_configured": bool(settings.brevo_api_key),
         "relay_url": relay_transport.relay_url(db),
-        "relay_token_set": bool(relay_transport.relay_token(db)),
+        "relay_token_set": bool(jeton_relais),
+        "relay_token_indice": token_indice(jeton_relais),
+        # Un jeton enregistre ici l'emporte sur celui du .env, sans rien dire.
+        # Coller un nouveau jeton dans .env et redemarrer ne change alors RIEN,
+        # et le poste continue de presenter l'ancien : c'est exactement la
+        # panne « le meme jeton marche ailleurs, pas ici ».
+        "relay_token_source": (
+            "reglages" if get_setting(db, "mail_relay_token", None) else
+            "env" if settings.mail_relay_token else None
+        ),
         "relay_server_enabled": settings.relay_server_enabled,
         "relay_default_daily_quota": settings.relay_default_daily_quota,
     }
@@ -571,12 +581,17 @@ def read_sync_config(db: Session = Depends(get_db)) -> dict:
     # synchronisation, on emprunte celui du relais d'e-mails. Le champ parait
     # alors vide alors qu'une liaison existe -- d'ou le drapeau.
     jeton = sync_push.remote_token(db)
-    propre = get_setting(db, "sync_token", settings.sync_token)
+    en_base = get_setting(db, "sync_token", None)
     return {
         "url": sync_push.remote_url(db),
         "token_set": bool(jeton),
         "token_indice": token_indice(jeton),
-        "token_herite": bool(jeton) and not propre,
+        # D'ou vient celui qui sert : un jeton enregistre dans les reglages
+        # l'emporte sur celui du .env, silencieusement.
+        "token_source": (
+            "reglages" if en_base else "env" if settings.sync_token
+            else "relais" if jeton else None
+        ),
         "server_enabled": settings.sync_server_enabled,
         "local": {
             "visitors": count(Visitor),

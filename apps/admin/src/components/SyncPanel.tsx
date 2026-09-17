@@ -6,7 +6,7 @@ type SyncCfg = {
   url: string
   token_set: boolean
   token_indice: string
-  token_herite: boolean
+  token_source: 'reglages' | 'env' | 'relais' | null
   server_enabled: boolean
   local: { visitors: number; designs: number; events: number }
   images: { fichiers: number; citees: number; manquantes: number }
@@ -20,6 +20,15 @@ const dateFr = (iso: string | null) => (iso ? new Date(iso).toLocaleString('fr-F
 // qu'on sait sans reseau (adresse et jeton en place) de ce que seule la base
 // maitre peut confirmer.
 type Etat = 'absente' | 'inconnue' | 'verification' | 'ok' | 'injoignable'
+
+// D'ou vient le jeton qui sert. Un jeton enregistre dans les reglages
+// l'emporte sur celui du .env : sans le dire, coller le bon jeton dans le
+// fichier et redemarrer semble sans effet.
+const SOURCES: Record<string, string> = {
+  reglages: 'enregistré ici',
+  env: 'venu du .env de ce poste',
+  relais: 'celui du relais d’e-mails, aucun jeton propre à la synchronisation',
+}
 
 const ETATS: Record<Etat, { couleur: string; texte: string }> = {
   absente: { couleur: 'gray', texte: 'Aucune liaison' },
@@ -163,7 +172,7 @@ export function SyncPanel() {
             </Group>
             <Text fz="xs" c="dimmed" mt={6}>
               {cfg.token_set
-                ? <>Jeton {cfg.token_indice}...{cfg.token_herite && ' — celui du relais d\u2019e-mails, aucun jeton propre à la synchronisation'}</>
+                ? <>Jeton {cfg.token_indice}... — {SOURCES[cfg.token_source ?? ''] ?? 'origine inconnue'}</>
                 : 'Aucun jeton enregistré.'}
             </Text>
             {detail && (
