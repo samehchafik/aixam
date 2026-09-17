@@ -13,6 +13,7 @@ import platform
 import subprocess
 import sys
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -84,6 +85,22 @@ materiel.ecrire({"releve_le": "2026-09-17T10:00:00+00:00", "systeme": "Windows",
 check("un releve valide, lui, remplace le precedent",
       len(materiel.lire()["ecrans"]) == 2)
 materiel.chemin_fichier().unlink()
+
+print("\n[3 quater] Ce que l'agent pousse a la meme forme que ce que l'API releve")
+# L'agent Windows (scripts/agent-ecrans.ps1) annonce les ecrans par
+# POST /api/kiosk/materiel. Si les deux formes divergeaient, le back-office
+# afficherait des ecrans sans coordonnees, et le lanceur poserait ses fenetres
+# n'importe ou.
+from app.schemas import MaterielIn  # noqa: E402
+POUSSE = MaterielIn(systeme="Windows", ecrans=[{
+    "peripherique": r"\\.\DISPLAY1", "modele": "", "x": 0, "y": 0,
+    "largeur": 1920, "hauteur": 1080, "principal": True}])
+check("memes champs qu'un ecran releve",
+      set(POUSSE.ecrans[0].model_dump()) == set(asdict(materiel.Ecran(
+          peripherique="x", modele="", x=0, y=0, largeur=1, hauteur=1, principal=True))),
+      set(POUSSE.ecrans[0].model_dump()))
+check("un ecran sans moniteur se dit indisponible",
+      MaterielIn(systeme="Windows").ecrans == [])
 
 print("\n[3 bis] Ou se pose materiels.json")
 # Le conteneur copie le code a plat sous /app : compter quatre parents y

@@ -120,11 +120,19 @@ cd apps/admin && npm run dev                          # http://localhost:5174
 3. Récupérer le token de la borne dans **Réglages → Bornes** du back-office.
 4. Renseigner `apiBaseUrl` et `kioskToken` dans le `config.json` de la borne
    (à côté de l'exécutable Tauri, ou dans `apps/kiosk/public/config.json`).
-5. Sous Windows avec docker, relever les ecrans depuis l'hote :
-   `powershell -ExecutionPolicy Bypass -File scripts\relever-ecrans.ps1`.
-   L'API tourne dans un conteneur Linux et ne voit aucun moniteur ; le releve
-   se depose dans `.run/materiel/`, que le conteneur monte. Sans docker
-   (`bin/start.sh --local`), l'API s'en charge seule.
+5. Sous Windows avec docker, lancer l'agent des ecrans dans la session
+   ouverte : il annonce les moniteurs a l'API et les reannonce a chaque
+   changement d'affichage. A poser en tache planifiee a l'ouverture de
+   session, a cote de celle du navigateur :
+
+   ```
+   schtasks /create /tn aixam-ecrans /sc onlogon /ru <compte> /it /f /tr ^
+     "powershell -NoProfile -ExecutionPolicy Bypass -File C:\aixam\scripts\agent-ecrans.ps1"
+   ```
+
+   L'API tourne dans un conteneur Linux et ne voit aucun moniteur ; l'agent
+   est son seul moyen de les connaitre. Sans docker (`bin/start.sh --local`),
+   elle les releve elle-meme et l'agent est inutile.
 6. **Reglages → Ecrans** : affecter les moniteurs et engendrer le lanceur,
    ou a defaut lancer `scripts/launch-kiosk.ps1` (Windows) ou
    `scripts/launch-kiosk.sh` avec des coordonnees ecrites a la main.

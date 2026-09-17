@@ -121,11 +121,12 @@ export function Ecrans() {
 
         {releve.indisponible ? (
           <Alert color="orange" variant="light" title="Aucun relevé">
-            {releve.indisponible} Deux façons d'y remédier, selon comment tourne l'API sur le PC
-            du stand. En conteneur, c'est Windows qui relève ses écrans, une fois pour toutes :
-            <Code>powershell -ExecutionPolicy Bypass -File scripts\relever-ecrans.ps1</Code>, puis
-            « Relever à nouveau » ici. Sans docker (<Code>bin/start.sh --local</Code>), l'API voit
-            les moniteurs elle-même et ce bouton suffit.
+            {releve.indisponible} En conteneur, l'API ne voit aucun moniteur : c'est l'agent
+            lancé dans la session ouverte du PC du stand qui les lui annonce, et les réannonce à
+            chaque écran débranché ou déplacé —{' '}
+            <Code>powershell -ExecutionPolicy Bypass -File scripts\agent-ecrans.ps1</Code>. Sans
+            docker (<Code>bin/start.sh --local</Code>), l'API les relève elle-même et « Relever à
+            nouveau » suffit.
           </Alert>
         ) : (
           <Paper withBorder radius="md">

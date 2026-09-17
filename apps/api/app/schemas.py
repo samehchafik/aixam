@@ -250,6 +250,25 @@ class ModerationIn(BaseModel):
 
 
 # --- Lancement des ecrans kiosque ---
+class EcranReleveIn(BaseModel):
+    """Un moniteur, tel que la machine du stand le voit a cet instant."""
+
+    peripherique: str = Field(max_length=64)
+    modele: str = Field(default="", max_length=120)
+    x: int
+    y: int
+    largeur: int
+    hauteur: int
+    principal: bool = False
+
+
+class MaterielIn(BaseModel):
+    """Le releve pousse par l'agent, a chaque changement d'affichage."""
+
+    systeme: Literal["Windows", "Darwin", "Linux"] = "Windows"
+    ecrans: list[EcranReleveIn] = []
+
+
 class EcranLanceurIn(BaseModel):
     """Un ecran et ce qu'on veut y afficher."""
 

@@ -28,13 +28,14 @@ from app.schemas import (
     DesignIn,
     DesignOut,
     EventIn,
+    MaterielIn,
     RegisterIn,
     RegisterOut,
     VerifyIn,
     VerifyOut,
 )
 from app.security import generate_numeric_code, hash_secret, verify_secret
-from app.services import mailer
+from app.services import mailer, materiel
 from app.services.assets import load_catalog
 from app.services.renderer import render_design, skin_present, skin_url
 from app.services.settings_store import get_setting
@@ -44,6 +45,31 @@ router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
 
 def _log(db: Session, kiosk: Kiosk, name: str, **kwargs) -> None:
     db.add(Event(kiosk_id=kiosk.id, name=name, **kwargs))
+
+
+@router.post("/materiel")
+def materiel_pousse(
+    payload: MaterielIn,
+    kiosk: Kiosk = Depends(current_kiosk),
+    db: Session = Depends(get_db),
+) -> dict:
+    """La machine du stand annonce ses ecrans, et les reannonce quand ils changent.
+
+    Un releve ecrit une fois pour toutes serait une photo : debrancher un
+    moniteur et le rebrancher sur une autre prise la rendrait fausse sans que
+    rien ne le signale. C'est donc la machine qui pilote les ecrans qui pousse,
+    et elle repousse des que Windows change de disposition.
+    """
+    releve = {
+        "releve_le": datetime.now(UTC).isoformat(),
+        "systeme": payload.systeme,
+        "ecrans": [e.model_dump() for e in payload.ecrans],
+        "indisponible": None if payload.ecrans else "Aucun ecran detecte.",
+    }
+    materiel.ecrire(releve)
+    _log(db, kiosk, "materiel_releve", payload={"ecrans": len(payload.ecrans)})
+    db.commit()
+    return releve
 
 
 @router.get("/bootstrap")
