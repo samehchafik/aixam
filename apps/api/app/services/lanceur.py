@@ -104,30 +104,45 @@ function Ouvrir-Fenetre {{
     Write-Warning "$Peripherique introuvable : on prend les coordonnees du releve ($X,$Y). Regenerer le script."
   }}
 
-  # Le chemin du profil est cite : LOCALAPPDATA peut contenir une espace.
-  $p = Start-Process $chrome -PassThru -ArgumentList ($commun + @(
-    "--user-data-dir=`"$env:LOCALAPPDATA\\aixam-kiosk\\$Profil`"",
-    "--window-position=$X,$Y", "--window-size=$Largeur,$Hauteur",
-    "--app=$ApiHost$Chemin"))
+  # Un Chrome deja lance avec ce profil -- relance du script, fenetre fermee a
+  # la main et rouverte -- recevrait la commande par delegation, et le processus
+  # qu'on vient de creer sortirait sans fenetre : MainWindowHandle rend alors
+  # $null, que « -eq [IntPtr]::Zero » ne voit pas, et SetWindowPos echoue sur un
+  # handle vide. On reprend donc l'instance existante et on la repositionne.
+  # Le processus navigateur est celui SANS --type= : les autres sont ses
+  # rendus et ses utilitaires, qui portent le meme --user-data-dir.
+  $dossier = "$env:LOCALAPPDATA\\aixam-kiosk\\$Profil"
+  $existant = Get-CimInstance Win32_Process -Filter "Name = 'chrome.exe'" |
+    Where-Object {{ $_.CommandLine -like "*--user-data-dir=`"$dossier`"*" -and $_.CommandLine -notlike "*--type=*" }} |
+    Select-Object -First 1
+  if ($existant) {{
+    Write-Host "$Profil : Chrome deja lance (pid $($existant.ProcessId)), repositionne"
+    $p = Get-Process -Id $existant.ProcessId
+  }} else {{
+    # Le chemin du profil est cite : LOCALAPPDATA peut contenir une espace.
+    $p = Start-Process $chrome -PassThru -ArgumentList ($commun + @(
+      "--user-data-dir=`"$dossier`"",
+      "--window-position=$X,$Y", "--window-size=$Largeur,$Hauteur",
+      "--app=$ApiHost$Chemin"))
+  }}
 
-  # Le profil est dedie, donc ce processus est bien celui qui porte la fenetre
-  # (avec un profil partage, Chrome delegue a l'instance existante et sort).
   $h = [IntPtr]::Zero
   for ($i = 0; $i -lt 75 -and $h -eq [IntPtr]::Zero; $i++) {{
     Start-Sleep -Milliseconds 200
-    $p.Refresh()
-    $h = $p.MainWindowHandle
+    try {{ $p.Refresh(); $h = $p.MainWindowHandle }} catch {{ $h = $null }}
+    if (-not $h) {{ $h = [IntPtr]::Zero }}
   }}
   if ($h -eq [IntPtr]::Zero) {{ throw "Chrome n'a pas ouvert de fenetre pour $Profil" }}
 
   # On pose, on relit, on repose : Chrome finit parfois son plein ecran apres
-  # coup et se recale sur l'ecran principal.
+  # coup et se recale sur l'ecran principal. Le succes n'est annonce que sur
+  # une lecture reussie : un rectangle jamais rempli vaut 0,0, ce qui coincide
+  # avec la position attendue du premier ecran.
   $r = New-Object AixamWin+RECT
   for ($i = 0; $i -lt 10; $i++) {{
     [AixamWin]::SetWindowPos($h, [IntPtr]::Zero, $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
     Start-Sleep -Milliseconds 300
-    [AixamWin]::GetWindowRect($h, [ref]$r) | Out-Null
-    if ($r.L -eq $X -and $r.T -eq $Y) {{
+    if ([AixamWin]::GetWindowRect($h, [ref]$r) -and $r.L -eq $X -and $r.T -eq $Y) {{
       Write-Host "$Profil : sur $Peripherique en $X,$Y"
       return
     }}

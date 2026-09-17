@@ -190,6 +190,17 @@ check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kios
 check("mode kiosque", '"--kiosk"' in script)
 check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:8080"' in script)
 
+print("\n[4 ter] Un Chrome deja lance est repris, pas double")
+# Relancer le script pendant que Chrome tourne : la nouvelle instance delegue a
+# l'ancienne et sort sans fenetre. MainWindowHandle rend $null, que
+# « -eq [IntPtr]::Zero » ne voit pas, et SetWindowPos echouait sur un handle
+# vide -- tout en annonçant un succes, le rectangle jamais rempli valant 0,0.
+script = construire_lanceur(LanceurIn(systeme="Windows", ecrans=ECRANS))
+check("cherche un chrome du meme profil", "Win32_Process" in script and "--user-data-dir=" in script)
+check("sans confondre le navigateur et ses rendus", "-notlike \"*--type=*\"" in script)
+check("un handle vide est vide", "if (-not $h)" in script)
+check("le succes exige une lecture reussie", "GetWindowRect($h, [ref]$r) -and" in script)
+
 print("\n[4 bis] Le lanceur attend l'API avant d'ouvrir quoi que ce soit")
 # Au demarrage de la borne, l'API et le lanceur sont deux taches planifiees :
 # rien ne garantit l'ordre. Sans attente, Chrome s'ouvre en plein ecran sur une
