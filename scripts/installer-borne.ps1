@@ -1,4 +1,4 @@
-<#
+﻿<#
 Prepare un PC Windows pour tenir le role de borne, et le dit quand c'est deja fait.
 
 Ce que ce script existe pour eviter : une borne reglee a la main un mois plus

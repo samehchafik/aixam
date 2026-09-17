@@ -1,4 +1,4 @@
-# Annonce a l'API les ecrans de CETTE machine, et les reannonce quand ils changent.
+﻿# Annonce a l'API les ecrans de CETTE machine, et les reannonce quand ils changent.
 #
 # Pourquoi un agent plutot qu'un releve : l'API tourne en conteneur Linux sur
 # le stand et ne voit aucun moniteur. Un fichier ecrit une fois pour toutes

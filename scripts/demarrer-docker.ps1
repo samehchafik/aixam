@@ -1,4 +1,4 @@
-# Demarre docker dans WSL2 et expose l'API sur le reseau.
+﻿# Demarre docker dans WSL2 et expose l'API sur le reseau.
 #
 # Lance par la tache aixam-docker a l'ouverture de session. Deux choses :
 #

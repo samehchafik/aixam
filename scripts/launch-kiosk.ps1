@@ -1,4 +1,4 @@
-# Lancement de la borne en Chromium kiosque (Windows).
+﻿# Lancement de la borne en Chromium kiosque (Windows).
 #   $env:HOST="http://192.168.1.10:8080"; .\scripts\launch-kiosk.ps1
 param(
   [string]$ApiHost = $(if ($env:HOST) { $env:HOST } else { "http://localhost:8080" }),
