@@ -27,6 +27,21 @@ param(
 
 $script:Manques = 0
 
+function Tache($nom, $exe, $arguments, $delai) {
+  # Register-ScheduledTask plutot que schtasks : « C:\Program Files\... » passe
+  # sans bataille de guillemets, la ou schtasks refuse l'argument.
+  $action = New-ScheduledTaskAction -Execute $exe -Argument $arguments
+  $declencheur = New-ScheduledTaskTrigger -AtLogOn -User $Compte
+  if ($delai) { $declencheur.Delay = $delai }
+  $qui = New-ScheduledTaskPrincipal -UserId $Compte -LogonType Interactive
+  # Une borne tourne sur secteur et ne doit jamais etre arretee par les
+  # reglages d'economie d'energie de Windows.
+  $comment = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+  Register-ScheduledTask -TaskName $nom -Action $action -Trigger $declencheur `
+    -Principal $qui -Settings $comment -Force | Out-Null
+}
+
 function Etat($fait, $quoi, $comment) {
   # Aucune valeur de retour : PowerShell imprimerait « True » sous chaque ligne.
   if ($fait) { Write-Host "  OK     $quoi" -ForegroundColor Green; return }
@@ -94,15 +109,41 @@ Etat ((Test-Path $bashrc) -and ((Get-Content $bashrc -Raw) -eq (Get-Content $mod
        Set-Content (Join-Path $env:USERPROFILE ".bash_profile") '[ -f ~/.bashrc ] && . ~/.bashrc'
      }
 
-Write-Host "`n[5] Taches de la session ouverte" -ForegroundColor White
+Write-Host "`n[5] Docker au demarrage" -ForegroundColor White
+# Docker Desktop est une application de bureau : rien ne repart sans une
+# session ouverte, et son propre reglage « AutoStart » peut etre a false sans
+# que l'entree de demarrage disparaisse -- la borne revient alors d'un
+# redemarrage avec l'API eteinte et personne pour s'en apercevoir.
+$reglages = Join-Path $env:APPDATA "Docker\settings-store.json"
+Etat ((Test-Path $reglages) -and ((Get-Content $reglages -Raw) -match '"AutoStart"\s*:\s*true')) `
+     "Docker Desktop : AutoStart" {
+       if (-not (Test-Path $reglages)) { throw "Docker Desktop jamais lance : l'ouvrir une fois, puis relancer ce script." }
+       (Get-Content $reglages -Raw) -replace '"AutoStart"\s*:\s*false', '"AutoStart": true' |
+         Set-Content $reglages -NoNewline
+     }
+
+$docker = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+Etat ([bool](Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue)) `
+     "tache aixam-docker, a l'ouverture de session" {
+       if (-not (Test-Path $docker)) { throw "Docker Desktop absent : winget install --id Docker.DockerDesktop -e" }
+       # Ceinture et bretelles : le reglage d'AutoStart se perd a une mise a
+       # jour de Docker Desktop, la tache non. Lancer deux fois est sans effet,
+       # l'application n'admet qu'une instance. Trente secondes de delai : au
+       # demarrage, WSL2 et le reseau ne sont pas encore prets.
+       Tache "aixam-docker" $docker "-Autostart" "PT30S"
+     }
+
+Write-Host "`n[6] Taches de la session ouverte" -ForegroundColor White
 # Ni l'agent des ecrans ni le navigateur ne peuvent etre lances par SSH : une
 # session reseau ne voit qu'un ecran virtuel 1024x768. Une tache /it, elle,
 # s'execute dans la session de l'utilisateur, donc sur les vrais moniteurs.
 $agent = Join-Path $Racine "scripts\agent-ecrans.ps1"
-Etat ([bool](schtasks /query /tn aixam-ecrans 2>$null)) `
+Etat ([bool](Get-ScheduledTask -TaskName aixam-ecrans -ErrorAction SilentlyContinue)) `
      "tache aixam-ecrans, a l'ouverture de session" {
-       schtasks /create /tn aixam-ecrans /f /sc onlogon /ru $Compte /it `
-         /tr "powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File $agent" | Out-Null
+       # Apres Docker : l'agent pousse son releve a l'API, autant qu'elle
+       # ecoute. S'il pousse trop tot, il retentera cinq secondes plus tard.
+       Tache "aixam-ecrans" "powershell.exe" `
+         "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$agent`"" "PT1M"
      }
 
 Write-Host "`n--- Reste a faire a la main ---" -ForegroundColor White
