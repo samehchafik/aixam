@@ -145,7 +145,11 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    trente secondes — **à condition d'avoir été lancée dans la session ouverte**,
    par la tâche `aixam-api`. Démarrée depuis SSH, elle ne verrait qu'un écran
    virtuel de 1024×768 : une ouverture de session réseau n'a pas de moniteur.
-   `bin/start.sh --local` le signale — brancher ou déplacer un moniteur se voit dans
+   `bin/start.sh --local` le signale. Pour redémarrer l'API sur la borne,
+   après un `git pull` qui touche `apps/api` par exemple : `bin/stop.sh
+   --local` (en SSH, ça va) puis `schtasks /run /tn aixam-api` (depuis la
+   borne). Même logique pour les fenêtres : `demarrage\start.bat`, ou la
+   tâche `aixam-borne` — brancher ou déplacer un moniteur se voit dans
    **Réglages → Écrans** sans rien relancer. (Seule une API en conteneur, qui
    ne voit aucun moniteur, a besoin de `scripts/agent-ecrans.ps1`.)
 6. **Réglages → Écrans** : affecter les moniteurs et engendrer le lanceur,
