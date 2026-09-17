@@ -227,6 +227,24 @@ Etat ($tacheApi -and ($tacheApi.Actions.Arguments -like "*start.sh*")) `
        $racineBash = "/" + ($Racine -replace ":", "" -replace "\\", "/")
        Tache "aixam-api" $bash "-lc `"cd '$racineBash' && bin/start.sh --all --local`"" "PT10S"
      }
+# Le lanceur du navigateur : engendre depuis Reglages > Ecrans, depose dans
+# demarrage/. Tant qu'il n'existe pas, on ne peut pas poser la tache -- et le
+# dire vaut mieux que de la creer vide.
+$lanceur = Join-Path $Racine "demarrage\launch-kiosk-genere.ps1"
+if (Test-Path $lanceur) {
+  $tacheBorne = Get-ScheduledTask -TaskName aixam-borne -ErrorAction SilentlyContinue
+  Etat ($tacheBorne -and ($tacheBorne.Actions.Arguments -like "*launch-kiosk-genere*")) `
+       "tache aixam-borne : les deux fenetres Chrome a l'ouverture de session" {
+         # Apres l'API : les fenetres s'ouvrent sur une borne qui repond deja.
+         Tache "aixam-borne" "powershell.exe" `
+           "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$lanceur`"" "PT40S"
+       }
+} else {
+  Write-Host "  MANQUE lanceur du navigateur : demarrage\launch-kiosk-genere.ps1" -ForegroundColor Yellow
+  Write-Host "         L'engendrer depuis le back-office : Reglages > Ecrans > Generer le script."
+  $script:Manques++
+}
+
 foreach ($ancienne in "aixam-docker", "aixam-ecrans") {
   Etat (-not (Get-ScheduledTask -TaskName $ancienne -ErrorAction SilentlyContinue)) "plus de tache $ancienne" {
     Unregister-ScheduledTask -TaskName $ancienne -Confirm:$false
