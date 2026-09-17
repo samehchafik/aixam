@@ -118,8 +118,14 @@ if [ $SANS_DOCKER -eq 1 ]; then
   # Sans conteneur : l'API et le worker tournent depuis .venv, lances DEPUIS
   # apps/api -- c'est de la que les chemins relatifs `static` et `media` du
   # .env prennent leur sens.
-  VENV="$ROOT/.venv/bin"
-  [ -x "$VENV/uvicorn" ] || die "$VENV/uvicorn introuvable -- creer l'environnement : python3 -m venv .venv && .venv/bin/pip install -r apps/api/requirements.txt"
+  VENV="$ROOT/.venv/$VENV_BIN"
+  [ -x "$VENV/uvicorn" ] || [ -x "$VENV/uvicorn.exe" ] \
+    || die "$VENV/uvicorn introuvable -- creer l'environnement : python -m venv .venv && .venv/$VENV_BIN/pip install -r apps/api/requirements.txt"
+
+  # Sur le stand, le back-office de l'equipe se consulte depuis un portable :
+  # l'API ecoute sur ce que dit API_BIND, pas sur la boucle locale seule.
+  BIND="$(grep -E '^API_BIND=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '\r' || true)"
+  BIND="${BIND:-0.0.0.0}"
 
   mkdir -p "$ROOT/.run"
   demarrer() {   # $1 = nom du processus, $2... = commande
@@ -144,7 +150,7 @@ if [ $SANS_DOCKER -eq 1 ]; then
   say "demarrage sans docker : api, worker"
   # L'API d'abord : c'est elle qui cree les tables au demarrage. Le worker
   # sait patienter, mais autant lui epargner l'attente.
-  demarrer api "$VENV/uvicorn" app.main:app --host 127.0.0.1 --port "$PORT"
+  demarrer api "$VENV/uvicorn" app.main:app --host "$BIND" --port "$PORT"
   demarrer worker "$VENV/python" -m app.workers.outbox
 else
   # Ou tourne la base est decide par .env (COMPOSE_PROFILES), pas par ce

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -66,11 +67,23 @@ async def lifespan(_: FastAPI):
     bootstrap()
     # Le releve des ecrans, pour le back-office local du stand. Sans effet
     # ailleurs -- sur le serveur Linux il ecrit simplement « indisponible ».
+    # Puis on le refait a intervalle regulier : un moniteur debranche ou
+    # rebranche sur une autre prise change les coordonnees, et le lanceur
+    # les place par coordonnees. Le releve ne coute rien, la page Ecrans
+    # reste vraie sans que personne ne clique.
+    async def veille_ecrans():
+        while True:
+            try:
+                materiel.ecrire()
+            except Exception as exc:  # noqa: BLE001 -- accessoire : jamais au prix du service
+                print(f"releve des ecrans non ecrit : {exc}")
+            await asyncio.sleep(30)
+
+    veille = asyncio.create_task(veille_ecrans())
     try:
-        materiel.ecrire()
-    except Exception as exc:  # noqa: BLE001 -- accessoire : jamais au prix du demarrage
-        print(f"releve des ecrans non ecrit : {exc}")
-    yield
+        yield
+    finally:
+        veille.cancel()
 
 
 app = FastAPI(title="AIXAM x BIG - Animation EASY", version="0.1.0", lifespan=lifespan)

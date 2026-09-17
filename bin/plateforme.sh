@@ -23,7 +23,8 @@
 #    Docker Hub public. Un registre prive depuis Windows demande de definir
 #    DOCKER_CONFIG soi-meme : s'il est deja pose, on n'y touche pas.
 #
-# Sur macOS et Linux, ce fichier ne fait que definir PLATEFORME et hote().
+# Sur macOS et Linux, ce fichier ne fait que definir PLATEFORME, VENV_BIN et
+# hote().
 
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*) PLATEFORME=windows ;;
@@ -33,29 +34,16 @@ esac
 
 if [ "$PLATEFORME" = "windows" ]; then
   # Avant tout appel a un binaire Windows : MSYS reecrit les arguments qui
-  # ressemblent a des chemins Unix, et « /mnt/c/aixam/bin/start.sh » arrivait a
-  # wsl.exe en « C:/Program Files/Git/mnt/c/aixam/bin/start.sh ».
+  # ressemblent a des chemins Unix (« -w /app » arrivait a docker en
+  # « C:/Program Files/Git/app »).
   export MSYS2_ARG_CONV_EXCL='*'
 
-  # Sur la borne, docker ne tourne pas sous Windows mais dans WSL2 : Docker
-  # Desktop est une application de bureau qui s'affiche quand elle le decide
-  # -- ecran d'accueil, invitation a creer un compte -- devant les visiteurs,
-  # et un clic y suffit a arreter un conteneur. Docker Engine dans WSL est un
-  # service Linux : aucune fenetre, jamais.
-  #
-  # Les scripts se relancent donc d'eux-memes dans la distribution, sur le
-  # MEME dossier, vu la-bas sous /mnt/c. Rien a retenir cote appelant :
-  # `bin/start.sh --all` en SSH marche comme avant.
-  if [ -z "${AIXAM_DANS_WSL:-}" ] && command -v wsl.exe >/dev/null 2>&1; then
-    DISTRO="${AIXAM_WSL_DISTRO:-Ubuntu-24.04}"
-    if wsl.exe -d "$DISTRO" -u root -e true >/dev/null 2>&1; then
-      RACINE_WSL="/mnt$(printf '%s' "$ROOT" | sed 's|^/\([a-z]\)/|/\1/|')"
-      exec wsl.exe -d "$DISTRO" -u root -e env AIXAM_DANS_WSL=1 \
-        bash "$RACINE_WSL/bin/$(basename "$0")" "$@"
-    fi
-  fi
+  # Un venv cree par le Python de Windows range ses executables dans
+  # Scripts/, pas dans bin/ : c'est ce que bin/start.sh --local doit chercher.
+  VENV_BIN="Scripts"
 
-  # Faute de WSL, on retombe sur Docker Desktop, avec ce qu'il impose.
+  # Docker sous Windows, si l'on y tient, impose deux precautions -- voir
+  # l'en-tete. Sur la borne, on n'y tient pas : l'API tourne en local.
   hote() { cygpath -m "$1"; }
 
   if [ -z "${DOCKER_CONFIG:-}" ]; then
@@ -67,5 +55,6 @@ if [ "$PLATEFORME" = "windows" ]; then
     export PATH
   fi
 else
+  VENV_BIN="bin"
   hote() { printf '%s' "$1"; }
 fi

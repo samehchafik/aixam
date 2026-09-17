@@ -109,74 +109,74 @@ Etat ((Test-Path $bashrc) -and ((Get-Content $bashrc -Raw) -eq (Get-Content $mod
        Set-Content (Join-Path $env:USERPROFILE ".bash_profile") '[ -f ~/.bashrc ] && . ~/.bashrc'
      }
 
-Write-Host "`n[5] Docker, dans WSL2" -ForegroundColor White
-# Pourquoi pas Docker Desktop : c'est une application de bureau, qui s'affiche
-# quand elle le decide -- ecran d'accueil, invitation a creer un compte, mise a
-# jour -- devant les visiteurs, et ou un clic arrete un conteneur. Meme reglee
-# pour demarrer reduite, elle finit par ouvrir une fenetre. Docker Engine dans
-# WSL2 est un service Linux : aucune interface, jamais.
-$distro = $env:AIXAM_WSL_DISTRO; if (-not $distro) { $distro = "Ubuntu-24.04" }
+Write-Host "`n[5] L'application, en local" -ForegroundColor White
+# Pourquoi ni Docker Desktop ni WSL : sur la borne, l'API tourne en local. Une
+# application de bureau s'affiche quand elle le decide devant les visiteurs,
+# et une machine virtuelle impose des ponts reseau pour servir un site --
+# trois couches pour deux processus et une base. En local, chaque piece est
+# visible dans le gestionnaire des taches, et l'API voit les moniteurs
+# elle-meme : plus d'agent des ecrans.
+foreach ($paquet in @(
+  @{ id = "Python.Python.3.12";      quoi = "Python 3.12";         test = { Get-Command py, python3.12, python -ErrorAction SilentlyContinue | Where-Object { $_.Source -notlike "*WindowsApps*" } } },
+  @{ id = "OpenJS.NodeJS.LTS";       quoi = "Node.js (compile les fronts)"; test = { Get-Command npm -ErrorAction SilentlyContinue } },
+  @{ id = "tschoonj.GTKForWindows";  quoi = "runtime GTK (cairo, pour le rendu des SVG)"; test = { Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\libcairo-2.dll" } },
+  @{ id = "PostgreSQL.PostgreSQL.16"; quoi = "PostgreSQL 16"; test = { Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue } }
+)) {
+  $id = $paquet.id
+  Etat ([bool](& $paquet.test)) $paquet.quoi { winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements | Out-Null }
+}
 
-Etat ((wsl.exe -l -q 2>$null) -replace "`0", "" -contains $distro) `
-     "distribution $distro installee" {
-       wsl.exe --install -d $distro --no-launch
-       wsl.exe -d $distro -u root -e true
+$pg = Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue
+Etat ($pg -and $pg.StartType -eq "Automatic" -and $pg.Status -eq "Running") `
+     "PostgreSQL demarre, au demarrage de Windows" { Set-Service postgresql-x64-16 -StartupType Automatic; Start-Service postgresql-x64-16 }
+
+# Le runtime GTK n'est cherche que dans PATH : sans cette ligne, cairosvg ne
+# trouve pas libcairo-2.dll et le rendu des creations echoue.
+$gtk = "C:\Program Files\GTK3-Runtime Win64\bin"
+Etat (([Environment]::GetEnvironmentVariable("Path", "Machine") -split ";") -contains $gtk) `
+     "runtime GTK dans le PATH" {
+       [Environment]::SetEnvironmentVariable("Path", ([Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + $gtk), "Machine")
      }
 
-# systemd, parce que c'est lui qui relancera dockerd a chaque demarrage de la
-# distribution, sans que personne n'ait rien a lancer.
-Etat ((wsl.exe -d $distro -u root -e sh -c "grep -q systemd=true /etc/wsl.conf 2>/dev/null && echo oui") -match "oui") `
-     "systemd actif dans $distro" {
-       wsl.exe -d $distro -u root -e sh -c "printf '[boot]\nsystemd=true\n\n[user]\ndefault=root\n' > /etc/wsl.conf"
-       wsl.exe --shutdown
-     }
+$venv = Join-Path $Racine ".venv\Scripts\uvicorn.exe"
+Etat (Test-Path $venv) "environnement Python de l'API (.venv)" {
+  $py = Get-Command py -ErrorAction SilentlyContinue
+  if ($py) { & py -3.12 -m venv (Join-Path $Racine ".venv") } else { & python -m venv (Join-Path $Racine ".venv") }
+  & (Join-Path $Racine ".venv\Scripts\pip.exe") install -q -r (Join-Path $Racine "apps\api\requirements.txt")
+}
 
-Etat ((wsl.exe -d $distro -u root -e sh -c "command -v docker >/dev/null && systemctl is-enabled docker 2>/dev/null") -match "enabled") `
-     "docker installe et lance au demarrage de $distro" {
-       wsl.exe -d $distro -u root -e sh -c "export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y -qq docker.io docker-compose-v2 curl && systemctl enable --now docker"
+# L'API et le worker : un seul lanceur, bin/start.sh --local, dans la session
+# ouverte -- c'est de la que l'API voit les ecrans. Et le vestige de l'epoque
+# docker ne doit plus rien lancer.
+$bash = "C:\Program Files\Git\bin\bash.exe"
+$tacheApi = Get-ScheduledTask -TaskName aixam-api -ErrorAction SilentlyContinue
+Etat ($tacheApi -and ($tacheApi.Actions.Arguments -like "*start.sh*")) `
+     "tache aixam-api : API et worker a l'ouverture de session" {
+       $racineBash = "/" + ($Racine -replace ":", "" -replace "\\", "/")
+       Tache "aixam-api" $bash "-lc `"cd '$racineBash' && bin/start.sh --all --local`"" "PT10S"
      }
+foreach ($ancienne in "aixam-docker", "aixam-ecrans") {
+  Etat (-not (Get-ScheduledTask -TaskName $ancienne -ErrorAction SilentlyContinue)) "plus de tache $ancienne" {
+    Unregister-ScheduledTask -TaskName $ancienne -Confirm:$false
+  }
+}
+Etat (-not ((netsh interface portproxy show v4tov4) -match "8080")) "plus de redirection de port" {
+  netsh interface portproxy delete v4tov4 listenaddress=0.0.0.0 listenport=8080 | Out-Null
+}
+Etat ([bool](Get-NetFirewallRule -Name aixam-api-8080 -ErrorAction SilentlyContinue)) "pare-feu : port 8080 ouvert" {
+  New-NetFirewallRule -Name aixam-api-8080 -DisplayName "AIXAM API 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Any | Out-Null
+}
 
-# Une tache suffit a tout relancer : demarrer la distribution demarre systemd,
-# qui demarre dockerd, qui relance les conteneurs. Le script pose ensuite la
-# redirection de port qui expose l'API sur le reseau -- voir son en-tete.
-$demarreur = Join-Path $Racine "scripts\demarrer-docker.ps1"
-$tacheDocker = Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue
-Etat ($tacheDocker -and ($tacheDocker.Actions.Arguments -like "*demarrer-docker.ps1*")) `
-     "tache aixam-docker : docker dans WSL et API exposee, a l'ouverture de session" {
-       Tache "aixam-docker" "powershell.exe" `
-         "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$demarreur`"" "PT15S"
-     }
-
-# Docker Desktop, s'il reste installe, ne doit surtout pas se lancer a cote :
-# deux moteurs se disputeraient le port 8080, et sa fenetre reviendrait.
 $reglages = Join-Path $env:APPDATA "Docker\settings-store.json"
 if (Test-Path $reglages) {
   $j = Get-Content $reglages -Raw | ConvertFrom-Json
   $lancee = (Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue).PSObject.Properties.Name -contains "Docker Desktop"
   Etat ((-not $j.AutoStart) -and (-not $lancee)) "Docker Desktop ne demarre plus" {
-    Copy-Item $reglages "$reglages.avant-aixam" -Force
     $j.AutoStart = $false
-    # Jamais Set-Content -Encoding UTF8 : il ajoute un BOM sous PowerShell 5.1,
-    # Docker refuse alors de lire ses reglages et repart sur ses valeurs par
-    # defaut, AutoStart compris.
-    [System.IO.File]::WriteAllText($reglages, ($j | ConvertTo-Json -Depth 20),
-                                   (New-Object System.Text.UTF8Encoding($false)))
+    [System.IO.File]::WriteAllText($reglages, ($j | ConvertTo-Json -Depth 20), (New-Object System.Text.UTF8Encoding($false)))
     Remove-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Docker Desktop" -ErrorAction SilentlyContinue
   }
 }
-
-Write-Host "`n[6] Taches de la session ouverte" -ForegroundColor White
-# Ni l'agent des ecrans ni le navigateur ne peuvent etre lances par SSH : une
-# session reseau ne voit qu'un ecran virtuel 1024x768. Une tache /it, elle,
-# s'execute dans la session de l'utilisateur, donc sur les vrais moniteurs.
-$agent = Join-Path $Racine "scripts\agent-ecrans.ps1"
-Etat ([bool](Get-ScheduledTask -TaskName aixam-ecrans -ErrorAction SilentlyContinue)) `
-     "tache aixam-ecrans, a l'ouverture de session" {
-       # Apres Docker : l'agent pousse son releve a l'API, autant qu'elle
-       # ecoute. S'il pousse trop tot, il retentera cinq secondes plus tard.
-       Tache "aixam-ecrans" "powershell.exe" `
-         "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$agent`"" "PT1M"
-     }
 
 Write-Host "`n--- Reste a faire a la main ---" -ForegroundColor White
 Write-Host @"
@@ -184,8 +184,8 @@ Write-Host @"
     HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device
     \DevicePasswordLessBuildVersion. Sans elle, une coupure de courant laisse
     la borne sur l'ecran de connexion.
-  - Rien a faire pour docker : il tourne dans WSL2, en service, et la tache
-    aixam-docker demarre la distribution a l'ouverture de session.
+  - Dans .env : COMPOSE_PROFILES vide, POSTGRES_HOST=localhost, BUILD_MODE=local,
+    et le role/base PostgreSQL crees (voir README, « Installation sur le salon »).
   - AnyDesk : mot de passe d'acces non surveille, sinon chaque prise en main
     demande un clic sur place.
   - Reservation DHCP de l'adresse de la borne dans la box.

@@ -127,29 +127,24 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    mot de passe AnyDesk, réservation DHCP — il le rappelle à la fin.
 
 1. Copier le dépôt et renseigner `.env` (envoi des emails, mots de passe —
-   voir **Envoi des emails** ci-dessous). Sous Windows, docker vient de
-   l'étape 0 : il tourne dans **WSL2**, pas dans Docker Desktop. Une
-   application de bureau s'affiche quand elle le décide — écran d'accueil,
-   invitation à créer un compte — devant les visiteurs, et un clic y suffit
-   à arrêter un conteneur. Les scripts `bin/*.sh` s'en occupent seuls : ils
-   se relancent dans la distribution, sur le même dossier vu sous `/mnt/c`.
+   voir **Envoi des emails** ci-dessous). Sur la borne Windows, **pas de
+   docker** : l'API et le worker tournent en local (`bin/start.sh --all
+   --local`), sur un PostgreSQL installé par l'étape 0. Dans `.env` :
+   `COMPOSE_PROFILES=` (vide), `POSTGRES_HOST=localhost`, `BUILD_MODE=local`.
+   Puis le rôle et la base, une fois, avec le mot de passe de `.env` :
+   `psql -U postgres -c "CREATE ROLE aixam LOGIN PASSWORD '…'" -c "CREATE DATABASE aixam OWNER aixam"`.
+   Pourquoi pas docker ici : une application de bureau s'affiche quand elle
+   le décide devant les visiteurs, et une machine virtuelle impose des ponts
+   réseau — trois couches pour deux processus et une base. En local, l'API
+   voit aussi les moniteurs elle-même.
 2. `make up`.
 3. Récupérer le token de la borne dans **Réglages → Bornes** du back-office.
 4. Renseigner `apiBaseUrl` et `kioskToken` dans le `config.json` de la borne
    (à côté de l'exécutable Tauri, ou dans `apps/kiosk/public/config.json`).
-5. Sous Windows avec docker, lancer l'agent des ecrans dans la session
-   ouverte : il annonce les moniteurs a l'API et les reannonce a chaque
-   changement d'affichage. A poser en tache planifiee a l'ouverture de
-   session, a cote de celle du navigateur :
-
-   ```
-   schtasks /create /tn aixam-ecrans /sc onlogon /ru <compte> /it /f /tr ^
-     "powershell -NoProfile -ExecutionPolicy Bypass -File C:\aixam\scripts\agent-ecrans.ps1"
-   ```
-
-   L'API tourne dans un conteneur Linux et ne voit aucun moniteur ; l'agent
-   est son seul moyen de les connaitre. Sans docker (`bin/start.sh --local`),
-   elle les releve elle-meme et l'agent est inutile.
+5. Les écrans : l'API les relève elle-même au démarrage puis toutes les
+   trente secondes — brancher ou déplacer un moniteur se voit dans
+   **Réglages → Écrans** sans rien relancer. (Seule une API en conteneur, qui
+   ne voit aucun moniteur, a besoin de `scripts/agent-ecrans.ps1`.)
 6. **Reglages → Ecrans** : affecter les moniteurs et engendrer le lanceur,
    ou a defaut lancer `scripts/launch-kiosk.ps1` (Windows) ou
    `scripts/launch-kiosk.sh` avec des coordonnees ecrites a la main.
