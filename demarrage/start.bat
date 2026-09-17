@@ -25,8 +25,9 @@ call "%~dp0stop-clavier.bat"
 
 call :dire "== Ctrl+Q fermera la borne, et le topmost sera maintenu"
 rem Son journal a lui : lance sans fenetre, un veilleur qui meurt a la premiere
-rem ligne ne laisserait sinon aucune trace.
-start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%RACINE%\scripts\arret-clavier.ps1' -FichierPid '%RACINE%\.run\arret-clavier.pid' *>> '%RACINE%\.run\arret-clavier.log'"
+rem ligne ne laisserait sinon aucune trace. En UTF-8 : la redirection *>> de
+rem PowerShell ecrit en UTF-16, illisible a cote des lignes de ce .bat.
+start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%RACINE%\scripts\arret-clavier.ps1' -FichierPid '%RACINE%\.run\arret-clavier.pid' *>&1 | Out-File -FilePath '%RACINE%\.run\arret-clavier.log' -Append -Encoding utf8"
 
 call :dire "== attente de l'API sur %HOTE%"
 set /a ESSAIS=0
