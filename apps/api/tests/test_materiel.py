@@ -200,7 +200,7 @@ check("un refus de SetWindowPos est dit", "GetLastError()" in script)
 # chaque tour, jamais memorisee -- Chrome la refait parfois en passant en
 # plein ecran, et un MainWindowHandle pris trop tot pointait sur une morte.
 check("la fenetre est retrouvee par sa classe, pas memorisee",
-      "EnumWindows(" in script and '"Chrome_WidgetWin_1"' in script and "MainWindowHandle" not in script)
+      "EnumWindows(" in script and '"Chrome_WidgetWin_1"' in script and "$p.MainWindowHandle" not in script)
 check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in script
       and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
@@ -215,7 +215,8 @@ print("\n[4 ter] Un Chrome deja lance est repris, pas double")
 script = construire_lanceur(LanceurIn(systeme="Windows", ecrans=ECRANS))
 check("cherche un chrome du meme profil", "Win32_Process" in script and "--user-data-dir=" in script)
 check("sans confondre le navigateur et ses rendus", "-notlike \"*--type=*\"" in script)
-check("un handle vide est vide", "if (-not $h)" in script)
+check("aucune fenetre trouvee est dit, pas ignore",
+      "$trouvees.Count -gt 0" in script and "throw \"Chrome n'a pas ouvert de fenetre" in script)
 check("le succes exige une lecture reussie", "GetWindowRect($h, [ref]$r) -and" in script)
 
 print("\n[4 bis] Le lanceur attend l'API avant d'ouvrir quoi que ce soit")
