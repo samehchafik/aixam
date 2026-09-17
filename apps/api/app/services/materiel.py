@@ -265,19 +265,34 @@ def chemin_fichier() -> Path:
     return (racine or Path.cwd()) / "materiels.json"
 
 
+def _fichier_lu(fichier: Path) -> dict | None:
+    """Le contenu du fichier, ou rien. Ne releve pas : lire() s'en charge."""
+    try:
+        return json.loads(fichier.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def ecrire(releve: dict | None = None) -> Path:
-    """Ecrit le releve. Appele au demarrage, et a la demande depuis l'admin."""
+    """Ecrit le releve. Appele au demarrage, et a la demande depuis l'admin.
+
+    Un releve impossible n'efface jamais un releve valide. Sur le stand l'API
+    tourne en conteneur Linux, qui ne voit aucun moniteur : c'est Windows qui
+    remplit le fichier (scripts/relever-ecrans.ps1), et le demarrage de l'API
+    ne doit pas passer derriere pour y ecrire « aucun ecran detecte ».
+    """
+    releve = relever() if releve is None else releve
     fichier = chemin_fichier()
+    if releve.get("indisponible") and not releve.get("ecrans"):
+        ancien = _fichier_lu(fichier)
+        if ancien and ancien.get("ecrans"):
+            return fichier
     fichier.parent.mkdir(parents=True, exist_ok=True)
-    fichier.write_text(json.dumps(releve or relever(), indent=2, ensure_ascii=False) + "\n",
+    fichier.write_text(json.dumps(releve, indent=2, ensure_ascii=False) + "\n",
                        encoding="utf-8")
     return fichier
 
 
 def lire() -> dict:
     """Le dernier releve. Un fichier absent ou illisible n'est pas une panne."""
-    fichier = chemin_fichier()
-    try:
-        return json.loads(fichier.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return relever()
+    return _fichier_lu(chemin_fichier()) or relever()

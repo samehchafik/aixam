@@ -63,6 +63,28 @@ chemin.unlink()
 check("fichier absent : on releve a nouveau plutot que d'echouer",
       materiel.lire()["systeme"] == platform.system())
 
+print("\n[3 ter] Un releve impossible n'efface pas un releve valide")
+# Sur le stand, l'API tourne en conteneur Linux : elle ne voit aucun moniteur,
+# et c'est Windows qui remplit le fichier. Si le demarrage de l'API passait
+# derriere pour y ecrire « aucun ecran detecte », le back-office perdrait le
+# releve a chaque redemarrage, sans que personne ne comprenne pourquoi.
+DEPUIS_WINDOWS = {
+    "releve_le": "2026-09-17T08:00:00+00:00", "systeme": "Windows", "indisponible": None,
+    "ecrans": [{"peripherique": r"\\.\DISPLAY1", "modele": "", "x": 0, "y": 0,
+                "largeur": 1920, "hauteur": 1080, "principal": True}],
+}
+materiel.ecrire(DEPUIS_WINDOWS)
+materiel.ecrire({"releve_le": "2026-09-17T09:00:00+00:00", "systeme": "Linux", "ecrans": [],
+                 "indisponible": "Aucun environnement graphique"})
+check("le releve de la machine hote survit au demarrage du conteneur",
+      materiel.lire()["systeme"] == "Windows", materiel.lire()["systeme"])
+check("et ses ecrans avec", len(materiel.lire()["ecrans"]) == 1)
+materiel.ecrire({"releve_le": "2026-09-17T10:00:00+00:00", "systeme": "Windows",
+                 "ecrans": DEPUIS_WINDOWS["ecrans"] * 2, "indisponible": None})
+check("un releve valide, lui, remplace le precedent",
+      len(materiel.lire()["ecrans"]) == 2)
+materiel.chemin_fichier().unlink()
+
 print("\n[3 bis] Ou se pose materiels.json")
 # Le conteneur copie le code a plat sous /app : compter quatre parents y
 # levait IndexError, et l'API ne demarrait plus du tout.

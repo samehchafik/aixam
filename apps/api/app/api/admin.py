@@ -646,9 +646,11 @@ def materiel_releve(rescan: bool = False) -> dict:
     l'affiche -- celle de l'animateur, et personne ne s'en apercevrait.
     """
     if rescan:
-        releve = materiel.relever()
-        materiel.ecrire(releve)
-        return releve
+        # ecrire() garde le releve precedent si celui-ci est vide -- sous
+        # docker, relever() ne voit rien. On rend donc le fichier, pas la
+        # tentative, sans quoi l'ecran afficherait « aucun releve » alors que
+        # le releve de la machine hote est toujours la.
+        materiel.ecrire(materiel.relever())
     return materiel.lire()
 
 

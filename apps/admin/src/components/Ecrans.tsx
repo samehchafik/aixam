@@ -121,8 +121,11 @@ export function Ecrans() {
 
         {releve.indisponible ? (
           <Alert color="orange" variant="light" title="Aucun relevé">
-            {releve.indisponible} Ouvrez ce back-office <b>sur le PC du stand</b>, en mode local
-            (<Code>bin/start.sh --local</Code>), pour que les moniteurs soient détectés.
+            {releve.indisponible} Deux façons d'y remédier, selon comment tourne l'API sur le PC
+            du stand. En conteneur, c'est Windows qui relève ses écrans, une fois pour toutes :
+            <Code>powershell -ExecutionPolicy Bypass -File scripts\relever-ecrans.ps1</Code>, puis
+            « Relever à nouveau » ici. Sans docker (<Code>bin/start.sh --local</Code>), l'API voit
+            les moniteurs elle-même et ce bouton suffit.
           </Alert>
         ) : (
           <Paper withBorder radius="md">

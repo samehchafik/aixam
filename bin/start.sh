@@ -190,6 +190,10 @@ else
     warn "          alpine sh -c 'cp -n /vieux/renders/*.jpg /vieux/*.jpg /neuf/ 2>/dev/null; true'"
   done
 
+  # Docker monte ce dossier dans l'API ; s'il n'existe pas, docker le cree
+  # lui-meme, et sous Windows pas toujours avec les droits du compte.
+  mkdir -p "$ROOT/.run/materiel"
+
   say "demarrage : $SERVICES"
   ( cd "$ROOT" && docker compose up -d )
 fi
