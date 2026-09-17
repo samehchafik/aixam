@@ -32,6 +32,11 @@ case "$(uname -s)" in
 esac
 
 if [ "$PLATEFORME" = "windows" ]; then
+  # Avant tout appel a un binaire Windows : MSYS reecrit les arguments qui
+  # ressemblent a des chemins Unix, et « /mnt/c/aixam/bin/start.sh » arrivait a
+  # wsl.exe en « C:/Program Files/Git/mnt/c/aixam/bin/start.sh ».
+  export MSYS2_ARG_CONV_EXCL='*'
+
   # Sur la borne, docker ne tourne pas sous Windows mais dans WSL2 : Docker
   # Desktop est une application de bureau qui s'affiche quand elle le decide
   # -- ecran d'accueil, invitation a creer un compte -- devant les visiteurs,
@@ -51,7 +56,6 @@ if [ "$PLATEFORME" = "windows" ]; then
   fi
 
   # Faute de WSL, on retombe sur Docker Desktop, avec ce qu'il impose.
-  export MSYS2_ARG_CONV_EXCL='*'
   hote() { cygpath -m "$1"; }
 
   if [ -z "${DOCKER_CONFIG:-}" ]; then
