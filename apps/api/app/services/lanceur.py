@@ -85,6 +85,8 @@ public static class AixamWin {{
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr z, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("kernel32.dll")] public static extern uint GetLastError();
+  public static readonly IntPtr TOPMOST = new IntPtr(-1);
   [StructLayout(LayoutKind.Sequential)] public struct RECT {{ public int L, T, R, B; }}
 }}
 "@
@@ -141,14 +143,15 @@ function Ouvrir-Fenetre {{
   # coup et se recale sur l'ecran principal. Le succes n'est annonce que sur
   # une lecture reussie : un rectangle jamais rempli vaut 0,0, ce qui coincide
   # avec la position attendue du premier ecran.
-  # HWND_TOP, pas HWND_TOPMOST : une fenetre « toujours au premier plan »
-  # passerait aussi devant tout ce qu'on voudrait voir -- et rien ne la
-  # fermerait plus au clavier. La barre des taches se traite autrement, en
-  # pied de script : par le focus.
+  # HWND_TOPMOST : la barre des taches est elle-meme « toujours au premier
+  # plan », une fenetre ordinaire ne passe jamais devant. Ctrl+Q reste le
+  # geste qui ferme tout (scripts/arret-clavier.ps1), topmost ou non.
   $script:Fenetres[$Peripherique] = $h
   $r = New-Object AixamWin+RECT
   for ($i = 0; $i -lt 10; $i++) {{
-    [AixamWin]::SetWindowPos($h, [IntPtr]::Zero, $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
+    if (-not [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, $X, $Y, $Largeur, $Hauteur, 0x0040)) {{
+      Write-Warning "SetWindowPos refuse pour $Profil (erreur Windows $([AixamWin]::GetLastError()))"
+    }}
     Start-Sleep -Milliseconds 300
     if ([AixamWin]::GetWindowRect($h, [ref]$r) -and $r.L -eq $X -and $r.T -eq $Y) {{
       Write-Host "$Profil : sur $Peripherique en $X,$Y"
@@ -164,18 +167,25 @@ Ouvrir-Fenetre -Profil "{profil}" -Chemin "{chemin}" -Peripherique "{peripheriqu
   -X {x} -Y {y} -Largeur {largeur} -Hauteur {hauteur}
 """,
     "pied": """
-# La barre des taches vit sur l'ecran principal, et Windows ne la fait passer
-# derriere qu'une fenetre plein ecran qui a le FOCUS. Or le focus va a la
-# derniere fenetre ouverte -- le grand ecran --, et la barre restait visible
-# sous le tactile. On rend donc le focus a la fenetre de l'ecran principal,
-# quel que soit l'ordre d'ouverture.
+# Chrome finit sa transition plein ecran APRES qu'on l'a pose, et refait sa
+# fenetre au passage : le topmost pose une seconde plus tot ne tenait pas, et
+# la borne redemarree se retrouvait sous la barre des taches. On le reaffirme
+# donc pendant vingt secondes, sans toucher a la position ni au focus
+# (SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE), puis on rend le focus au
+# tactile : Windows ne cache la barre que sous une fenetre plein ecran active.
 $principal = [System.Windows.Forms.Screen]::PrimaryScreen.DeviceName
-if ($script:Fenetres.ContainsKey($principal)) {{
+$fin = (Get-Date).AddSeconds(20)
+while ((Get-Date) -lt $fin) {{
+  foreach ($h in $script:Fenetres.Values) {{
+    [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
+  }}
   Start-Sleep -Milliseconds 500
+}}
+if ($script:Fenetres.ContainsKey($principal)) {{
   [AixamWin]::SetForegroundWindow($script:Fenetres[$principal]) | Out-Null
   Write-Host "focus a la fenetre de l'ecran principal ($principal)"
 }}
-Write-Host "Fenetres ouvertes."
+Write-Host "Fenetres ouvertes, toujours au premier plan."
 """,
 }
 

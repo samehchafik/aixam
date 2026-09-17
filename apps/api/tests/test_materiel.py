@@ -184,16 +184,18 @@ check("le second ecran nomme", '-Peripherique "\\\\.\\DISPLAY2"' in script)
 check("le releve en secours", "-X 1920 -Y 0 -Largeur 3840 -Hauteur 2160" in script)
 check("meme repere que le releve : pixels physiques", "SetProcessDPIAware()" in script)
 check("la fenetre est posee puis relue", "SetWindowPos(" in script and "GetWindowRect(" in script)
-# La barre des taches ne passe derriere qu'une fenetre plein ecran qui a le
-# focus, et le focus va a la derniere ouverte -- le grand ecran. Le script le
-# rend a la fenetre de l'ecran principal. Pas de HWND_TOPMOST : une fenetre
-# « toujours au premier plan » passerait aussi devant tout ce qu'on voudrait
-# voir, et rien ne la fermerait plus au clavier.
-check("pas de fenetre toujours au premier plan", "[IntPtr](-1)" not in script)
+# La barre des taches est « toujours au premier plan » : seule une fenetre
+# HWND_TOPMOST passe devant. Et Chrome refait sa fenetre en finissant son
+# plein ecran, apres qu'on l'a posee : un topmost pose une seule fois ne tenait
+# pas au redemarrage. Il est reaffirme pendant vingt secondes, sans toucher a
+# la position ni au focus, puis le focus revient au tactile.
+check("toujours au premier plan", "[AixamWin]::TOPMOST" in script and "new IntPtr(-1)" in script)
+check("reaffirme apres l'ouverture, sans bouger ni activer",
+      "SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013)" in script
+      and script.rindex("Ouvrir-Fenetre -Profil") < script.index("0x0013"))
 check("le focus revient a l'ecran principal",
       "PrimaryScreen.DeviceName" in script and "SetForegroundWindow(" in script)
-check("apres l'ouverture de toutes les fenetres",
-      script.rindex("Ouvrir-Fenetre -Profil") < script.index("SetForegroundWindow($script:Fenetres"))
+check("un refus de SetWindowPos est dit", "GetLastError()" in script)
 check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in script
       and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
