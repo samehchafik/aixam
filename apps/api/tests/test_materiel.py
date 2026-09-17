@@ -195,9 +195,9 @@ check("reaffirme apres l'ouverture, sans bouger ni activer",
       and script.rindex("Ouvrir-Fenetre -Profil") < script.index("0x0013"))
 check("le focus revient a l'ecran principal, avec le droit de le prendre",
       "PrimaryScreen.DeviceName" in script and "keybd_event(0x12" in script and "Activer(" in script)
-# Au demarrage, la barre des taches est creee apres nos fenetres et s'insere
-# au-dessus d'elles dans la bande des topmost : l'attribut seul ne remonte pas
-# une fenetre qui l'a deja, HWND_TOP la remet en tete de sa bande.
+# Dans la bande des topmost, la derniere fenetre activee est dessus -- au
+# demarrage, la barre des taches, la avant nous. L'attribut seul ne remonte
+# pas une fenetre qui l'a deja, HWND_TOP la remet en tete de sa bande.
 check("remontee en tete de la bande topmost", "SetWindowPos($h, [AixamWin]::TOP, 0, 0, 0, 0, 0x0013)" in script)
 check("un refus de SetWindowPos est dit", "GetLastError()" in script)
 # Comme « ahk_exe chrome.exe » : la fenetre est retrouvee par sa classe a

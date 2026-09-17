@@ -216,8 +216,9 @@ while ((Get-Date) -lt $fin) {{
   # Chrome vient de refaire est prise aussi.
   Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object {{ [void]$tous.Add([uint32]$_.Id) }}
   foreach ($h in [AixamWin]::FenetresChrome($tous)) {{
-    # L'attribut, puis la remontee en tete de la bande des topmost : une
-    # barre des taches creee apres nous s'y etait inseree au-dessus.
+    # L'attribut, puis la remontee en tete de la bande des topmost : c'est la
+    # derniere fenetre ACTIVEE qui y est dessus, et au demarrage c'est la
+    # barre des taches, la avant nous.
     [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
     [AixamWin]::SetWindowPos($h, [AixamWin]::TOP, 0, 0, 0, 0, 0x0013) | Out-Null
   }}

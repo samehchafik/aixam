@@ -96,10 +96,12 @@ while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
     Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object { [void]$pids.Add([uint32]$_.Id) }
     $fenetres = [RaccourciWin]::FenetresChrome($pids)
     foreach ($h in $fenetres) {
-      # Au demarrage, la barre des taches est creee APRES nos fenetres et
-      # s'insere au-dessus d'elles dans la bande des « toujours au premier
-      # plan » : reaffirmer l'attribut ne remonte pas une fenetre qui l'a deja.
-      # HWND_TOPMOST pose l'attribut, HWND_TOP la remonte en tete de sa bande.
+      # Dans la bande des « toujours au premier plan », c'est la derniere
+      # fenetre ACTIVEE qui est dessus. Au demarrage c'est le bureau et sa
+      # barre, deja la quand Chrome arrive ; a la main, Chrome herite du focus
+      # de la console qui le lance et passe devant. Reaffirmer l'attribut ne
+      # remonte pas une fenetre qui l'a deja : HWND_TOPMOST pose l'attribut,
+      # HWND_TOP la remonte en tete de sa bande.
       # SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE : seul l'ordre change.
       [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
       [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOP, 0, 0, 0, 0, 0x0013) | Out-Null
