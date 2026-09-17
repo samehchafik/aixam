@@ -110,6 +110,25 @@ Etat ((Test-Path $bashrc) -and ((Get-Content $bashrc -Raw) -eq (Get-Content $mod
      }
 
 Write-Host "`n[5] L'application, en local" -ForegroundColor White
+# Le Controle intelligent des applications (Smart App Control) de Windows 11
+# bloque tout binaire qu'il ne connait pas : les DLL de PostgreSQL ne se
+# chargent pas, initdb echoue, et l'installeur EDB s'arrete sur « Failed to
+# initialise the database cluster » sans jamais nommer la cause. Il ne se
+# desactive qu'a la main, et pour de bon -- le reactiver demande de
+# reinstaller Windows. Sur une borne qui fait tourner des logiciels non
+# signes, c'est le prix.
+$sac = (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" -ErrorAction SilentlyContinue).VerifiedAndReputablePolicyState
+if ($sac -in 1, 2) {
+  Write-Host "  MANQUE Controle intelligent des applications : ACTIF, il bloque PostgreSQL" -ForegroundColor Red
+  Write-Host @"
+         Le desactiver, a la main : Securite Windows > Controle des applications et
+         du navigateur > Parametres du controle intelligent des applications >
+         Desactive. Puis relancer ce script.
+"@
+  $script:Manques++
+  if (-not $Verifier) { throw "Controle intelligent des applications actif : rien ne sert de continuer." }
+}
+
 # Pourquoi ni Docker Desktop ni WSL : sur la borne, l'API tourne en local. Une
 # application de bureau s'affiche quand elle le decide devant les visiteurs,
 # et une machine virtuelle impose des ponts reseau pour servir un site --
@@ -147,6 +166,27 @@ foreach ($paquet in @(
   Etat ([bool](& $paquet.test)) $paquet.quoi {
     winget install --id $id -e --accept-package-agreements --accept-source-agreements @options | Out-Null
   }
+}
+
+# L'installeur EDB pose les binaires puis initialise la base ; si cette seconde
+# etape a echoue (voir Smart App Control ci-dessus), il ne reste ni base ni
+# service. On refait alors ce qu'il aurait fait, avec ses propres outils.
+$pgBin = "C:\Program Files\PostgreSQL\16\bin"; $pgData = "C:\Program Files\PostgreSQL\16\data"
+Etat ([bool](Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue)) "base PostgreSQL initialisee, service enregistre" {
+  if (-not (Test-Path "$pgBin\initdb.exe")) { throw "PostgreSQL absent de $pgBin : l'installation a echoue plus haut." }
+  if ((Test-Path $pgData) -and (Get-ChildItem $pgData -Force | Select-Object -First 1)) {
+    Move-Item $pgData "$pgData.echec-$(Get-Date -Format HHmmss)"
+  }
+  New-Item -ItemType Directory -Force -Path $pgData | Out-Null
+  $pw = Join-Path $env:TEMP "aixam-pgpw.txt"
+  [System.IO.File]::WriteAllText($pw, $mdpBase, (New-Object System.Text.UTF8Encoding($false)))
+  try {
+    & "$pgBin\initdb.exe" -D $pgData -U postgres --pwfile=$pw -E UTF8 --locale=C -A scram-sha-256 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "initdb a echoue (code $LASTEXITCODE)" }
+  } finally { Remove-Item $pw -ErrorAction SilentlyContinue }
+  # Le service tourne sous NetworkService : il lui faut le controle du dossier.
+  icacls $pgData /grant "*S-1-5-20:(OI)(CI)F" /T /Q | Out-Null
+  & "$pgBin\pg_ctl.exe" register -N postgresql-x64-16 -U "NT AUTHORITY\NetworkService" -D $pgData -S auto -w | Out-Null
 }
 
 $pg = Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue
