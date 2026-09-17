@@ -161,7 +161,11 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    été fermée. **Ctrl+Q** ferme tout Chrome : Chrome sous Windows n'a pas
    ce raccourci, c'est `scripts/arret-clavier.ps1`, lancé par `start.bat`,
    qui l'enregistre auprès de Windows — il marche quelle que soit la fenêtre
-   qui a le focus, y compris au-dessus de la barre des tâches.
+   qui a le focus. Le même veilleur réaffirme chaque seconde le « toujours
+   au premier plan » des fenêtres — Chrome n'a aucune option pour ça et le
+   perd en refaisant sa fenêtre —, et l'installeur met la barre des tâches
+   en masquage automatique : deux ceintures pour qu'elle ne passe jamais
+   devant l'animation.
    `demarrage\stop.bat` fait pareil depuis un shell. À défaut de lanceur
    engendré, `scripts/launch-kiosk.ps1` avec des coordonnées écrites à la
    main.

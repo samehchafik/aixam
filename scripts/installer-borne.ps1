@@ -100,6 +100,22 @@ Etat $veille "ecran, disque et session sans mise en veille" {
   powercfg /change disk-timeout-ac 0;    powercfg /change hibernate-timeout-ac 0
 }
 
+Write-Host "`n[3 bis] Barre des taches" -ForegroundColor White
+# En masquage automatique : qu'une fenetre de la borne s'arrete a la zone de
+# travail ou perde son « toujours au premier plan », il n'y a plus de barre
+# devant l'animation. Elle ne se montre que si un doigt s'attarde en bas de
+# l'ecran. Octet 8 de StuckRects3 : 3 = masquee, 2 = visible. Pris en compte a
+# la prochaine ouverture de session -- relancer explorer.exe depuis ici ne le
+# relancerait pas dans la bonne session.
+$sr = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3"
+$reglage = (Get-ItemProperty $sr -ErrorAction SilentlyContinue).Settings
+Etat ($reglage -and (($reglage[8] -band 1) -eq 1)) "barre des taches en masquage automatique" {
+  if (-not $reglage) { throw "StuckRects3 absent : ouvrir une session graphique une fois." }
+  $reglage[8] = $reglage[8] -bor 1
+  Set-ItemProperty $sr -Name Settings -Value $reglage
+  Write-Host "         (effectif a la prochaine ouverture de session)"
+}
+
 Write-Host "`n[4] Shell de travail" -ForegroundColor White
 $bashrc = Join-Path $env:USERPROFILE ".bashrc"
 $modele = Join-Path $PSScriptRoot "win\bashrc-borne"
