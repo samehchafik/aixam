@@ -220,12 +220,19 @@ Etat (Test-Path $venv) "environnement Python de l'API (.venv)" {
 # L'API et le worker : un seul lanceur, bin/start.sh --local, dans la session
 # ouverte -- c'est de la que l'API voit les ecrans. Et le vestige de l'epoque
 # docker ne doit plus rien lancer.
+# Le Planificateur cree une console pour tout programme console qu'il lance,
+# et elle reste ouverte tant qu'un processus s'y rattache : l'API, lancee de
+# la, gardait une fenetre noire au milieu de l'ecran principal, par-dessus la
+# borne. En passant par powershell -WindowStyle Hidden, la console existe
+# toujours -- les journaux et l'heritage des processus n'y changent rien --
+# mais personne ne la voit.
 $bash = "C:\Program Files\Git\bin\bash.exe"
 $tacheApi = Get-ScheduledTask -TaskName aixam-api -ErrorAction SilentlyContinue
-Etat ($tacheApi -and ($tacheApi.Actions.Arguments -like "*start.sh*")) `
-     "tache aixam-api : API et worker a l'ouverture de session" {
+Etat ($tacheApi -and ($tacheApi.Actions.Arguments -like "*WindowStyle Hidden*start.sh*")) `
+     "tache aixam-api : API et worker a l'ouverture de session, sans fenetre" {
        $racineBash = "/" + ($Racine -replace ":", "" -replace "\\", "/")
-       Tache "aixam-api" $bash "-lc `"cd '$racineBash' && bin/start.sh --all --local`"" "PT10S"
+       Tache "aixam-api" "powershell.exe" `
+         "-NoProfile -WindowStyle Hidden -Command `"& '$bash' -lc 'cd $racineBash && bin/start.sh --all --local'`"" "PT10S"
      }
 # Le navigateur : demarrage\start.bat ferme tout Chrome, attend l'API, puis
 # lance le script engendre depuis Reglages > Ecrans. Tant que ce dernier
@@ -234,10 +241,11 @@ $lanceur = Join-Path $Racine "demarrage\launch-kiosk-genere.ps1"
 $demarrage = Join-Path $Racine "demarrage\start.bat"
 if (Test-Path $lanceur) {
   $tacheBorne = Get-ScheduledTask -TaskName aixam-borne -ErrorAction SilentlyContinue
-  Etat ($tacheBorne -and ($tacheBorne.Actions.Arguments -like "*start.bat*")) `
-       "tache aixam-borne : demarrage\start.bat a l'ouverture de session" {
+  Etat ($tacheBorne -and ($tacheBorne.Actions.Arguments -like "*WindowStyle Hidden*start.bat*")) `
+       "tache aixam-borne : demarrage\start.bat a l'ouverture de session, sans fenetre" {
          # Le delai n'est qu'un confort : start.bat attend lui-meme l'API.
-         Tache "aixam-borne" "cmd.exe" "/c `"$demarrage`"" "PT20S"
+         Tache "aixam-borne" "powershell.exe" `
+           "-NoProfile -WindowStyle Hidden -Command `"& cmd.exe /c '$demarrage'`"" "PT20S"
        }
 } else {
   Write-Host "  MANQUE lanceur du navigateur : demarrage\launch-kiosk-genere.ps1" -ForegroundColor Yellow
