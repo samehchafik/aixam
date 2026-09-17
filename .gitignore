@@ -2,7 +2,8 @@
 # Le lanceur engendre depuis Reglages > Ecrans porte des valeurs d'INSTALLATION
 # -- les ecrans de CETTE borne, leurs coordonnees -- pas du code. Il se
 # regenere, il ne se versionne pas.
-demarrage/
+demarrage/*
+!demarrage/start.bat
 # Les copies de travail d'un .env portent les memes secrets que lui : une
 # sauvegarde avant manipulation ne doit pas se retrouver a portee de `git add`.
 .env.*

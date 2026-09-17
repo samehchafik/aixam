@@ -148,9 +148,14 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    `bin/start.sh --local` le signale — brancher ou déplacer un moniteur se voit dans
    **Réglages → Écrans** sans rien relancer. (Seule une API en conteneur, qui
    ne voit aucun moniteur, a besoin de `scripts/agent-ecrans.ps1`.)
-6. **Reglages → Ecrans** : affecter les moniteurs et engendrer le lanceur,
-   ou a defaut lancer `scripts/launch-kiosk.ps1` (Windows) ou
-   `scripts/launch-kiosk.sh` avec des coordonnees ecrites a la main.
+6. **Réglages → Écrans** : affecter les moniteurs et engendrer le lanceur,
+   à déposer dans `demarrage/launch-kiosk-genere.ps1` (ou
+   `scripts/regenerer_lanceur.py`, qui fait pareil sans navigateur). Puis
+   **`demarrage\start.bat`** : il ferme tout Chrome, attend que l'API réponde,
+   et ouvre les deux fenêtres — c'est lui que la tâche `aixam-borne` lance à
+   l'ouverture de session, et lui qu'on relance à la main si une fenêtre a
+   été fermée. À défaut, `scripts/launch-kiosk.ps1` avec des coordonnées
+   écrites à la main.
 
 `config.json` est lu **à l'exécution**, jamais compilé dans le bundle : changer
 de host ne demande aucun rebuild.

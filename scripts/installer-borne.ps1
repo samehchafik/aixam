@@ -227,17 +227,17 @@ Etat ($tacheApi -and ($tacheApi.Actions.Arguments -like "*start.sh*")) `
        $racineBash = "/" + ($Racine -replace ":", "" -replace "\\", "/")
        Tache "aixam-api" $bash "-lc `"cd '$racineBash' && bin/start.sh --all --local`"" "PT10S"
      }
-# Le lanceur du navigateur : engendre depuis Reglages > Ecrans, depose dans
-# demarrage/. Tant qu'il n'existe pas, on ne peut pas poser la tache -- et le
-# dire vaut mieux que de la creer vide.
+# Le navigateur : demarrage\start.bat ferme tout Chrome, attend l'API, puis
+# lance le script engendre depuis Reglages > Ecrans. Tant que ce dernier
+# n'existe pas, on ne pose pas la tache -- le dire vaut mieux que la creer vide.
 $lanceur = Join-Path $Racine "demarrage\launch-kiosk-genere.ps1"
+$demarrage = Join-Path $Racine "demarrage\start.bat"
 if (Test-Path $lanceur) {
   $tacheBorne = Get-ScheduledTask -TaskName aixam-borne -ErrorAction SilentlyContinue
-  Etat ($tacheBorne -and ($tacheBorne.Actions.Arguments -like "*launch-kiosk-genere*")) `
-       "tache aixam-borne : les deux fenetres Chrome a l'ouverture de session" {
-         # Apres l'API : les fenetres s'ouvrent sur une borne qui repond deja.
-         Tache "aixam-borne" "powershell.exe" `
-           "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$lanceur`"" "PT40S"
+  Etat ($tacheBorne -and ($tacheBorne.Actions.Arguments -like "*start.bat*")) `
+       "tache aixam-borne : demarrage\start.bat a l'ouverture de session" {
+         # Le delai n'est qu'un confort : start.bat attend lui-meme l'API.
+         Tache "aixam-borne" "cmd.exe" "/c `"$demarrage`"" "PT20S"
        }
 } else {
   Write-Host "  MANQUE lanceur du navigateur : demarrage\launch-kiosk-genere.ps1" -ForegroundColor Yellow
