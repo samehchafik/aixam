@@ -10,6 +10,7 @@ Windows -- elle est signalee comme telle plutot que simulee.
 
 import os
 import platform
+import re
 import subprocess
 import sys
 import tempfile
@@ -210,6 +211,18 @@ check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in scrip
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
 check("mode kiosque", '"--kiosk"' in script)
 check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:8080"' in script)
+
+print("\n[4 rendu] Le script engendre ne contient plus aucune trace du gabarit")
+# Le pied du gabarit n'est pas formate : des accolades doublees y restaient
+# telles quelles, et « while (...) {{ ... }} » est en PowerShell un bloc
+# contenant un bloc jamais execute. La boucle de remontee des fenetres et le
+# focus n'ont jamais tourne, et la boucle a vide recrachait son propre code
+# dans le journal -- 369 000 lignes avant qu'on comprenne.
+for systeme in ("Windows", "Darwin", "Linux"):
+    script = construire_lanceur(LanceurIn(systeme=systeme, hote="http://localhost:8080", ecrans=ECRANS))
+    check(f"{systeme} : pas d'accolades doublees", "{{" not in script and "}}" not in script)
+    check(f"{systeme} : pas de champ non rendu",
+          not re.search(r"\{(hote|date|fichier|profil|chemin|peripherique|x|y|largeur|hauteur|libelle|candidats)\}", script))
 
 print("\n[4 ter] Un Chrome deja lance est repris, pas double")
 # Relancer le script pendant que Chrome tourne : la nouvelle instance delegue a

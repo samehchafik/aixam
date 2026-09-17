@@ -47,7 +47,8 @@ if not exist "%~dp0launch-kiosk-genere.ps1" (
   call :dire "lanceur absent : le generer depuis Reglages > Ecrans, ou scripts\regenerer_lanceur.py"
   exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0launch-kiosk-genere.ps1' 2>&1 | Tee-Object -FilePath '%JOURNAL%' -Append"
+rem Pas Tee-Object : il ecrit en UTF-16, illisible avec les lignes du .bat.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0launch-kiosk-genere.ps1' 2>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
 exit /b 0
 
 :dire

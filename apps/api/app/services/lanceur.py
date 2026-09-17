@@ -201,6 +201,7 @@ function Ouvrir-Fenetre {{
 Ouvrir-Fenetre -Profil "{profil}" -Chemin "{chemin}" -Peripherique "{peripherique}" `
   -X {x} -Y {y} -Largeur {largeur} -Hauteur {hauteur}
 """,
+    # Ce morceau n'est PAS formate (voir construire_lanceur) : accolades simples.
     "pied": """
 # Chrome finit sa transition plein ecran APRES qu'on l'a pose, et refait sa
 # fenetre au passage : le topmost pose une seconde plus tot ne tenait pas, et
@@ -211,23 +212,23 @@ Ouvrir-Fenetre -Profil "{profil}" -Chemin "{chemin}" -Peripherique "{peripheriqu
 $principal = [System.Windows.Forms.Screen]::PrimaryScreen.DeviceName
 $fin = (Get-Date).AddSeconds(20)
 $tous = New-Object 'System.Collections.Generic.HashSet[uint32]'
-while ((Get-Date) -lt $fin) {{
+while ((Get-Date) -lt $fin) {
   # Toutes les fenetres Chrome visibles, relues a chaque tour : celle que
   # Chrome vient de refaire est prise aussi.
-  Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object {{ [void]$tous.Add([uint32]$_.Id) }}
-  foreach ($h in [AixamWin]::FenetresChrome($tous)) {{
+  Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object { [void]$tous.Add([uint32]$_.Id) }
+  foreach ($h in [AixamWin]::FenetresChrome($tous)) {
     # L'attribut, puis la remontee en tete de la bande des topmost : c'est la
     # derniere fenetre ACTIVEE qui y est dessus, et au demarrage c'est la
     # barre des taches, la avant nous.
     [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
     [AixamWin]::SetWindowPos($h, [AixamWin]::TOP, 0, 0, 0, 0, 0x0013) | Out-Null
-  }}
+  }
   Start-Sleep -Milliseconds 500
-}}
-if ($script:Fenetres.ContainsKey($principal)) {{
+}
+if ($script:Fenetres.ContainsKey($principal)) {
   $ok = [AixamWin]::Activer($script:Fenetres[$principal])
   Write-Host "focus a la fenetre de l'ecran principal ($principal) : $ok"
-}}
+}
 Write-Host "Fenetres ouvertes, toujours au premier plan."
 """,
 }
