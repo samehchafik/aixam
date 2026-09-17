@@ -16,6 +16,10 @@ set "HOTE=http://localhost:%PORT%"
 
 echo == fermeture de tout Chrome
 taskkill /IM chrome.exe /F /T >nul 2>&1
+call "%~dp0stop-clavier.bat"
+
+echo == Ctrl+Q fermera la borne
+start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%RACINE%\scripts\arret-clavier.ps1" -Pid "%RACINE%\.run\arret-clavier.pid"
 
 echo == attente de l'API sur %HOTE%
 set /a ESSAIS=0
