@@ -114,13 +114,25 @@ Write-Host "`n[5] Docker au demarrage" -ForegroundColor White
 # session ouverte, et son propre reglage « AutoStart » peut etre a false sans
 # que l'entree de demarrage disparaisse -- la borne revient alors d'un
 # redemarrage avec l'API eteinte et personne pour s'en apercevoir.
+# OpenUIOnStartupDisabled compte autant qu'AutoStart : sans lui, le tableau de
+# bord de Docker s'ouvre en grand a chaque demarrage, devant les visiteurs et a
+# portee de quelqu'un qui n'a aucune raison d'y toucher -- arreter un conteneur
+# depuis cette fenetre prend un clic, et arrete l'animation.
 $reglages = Join-Path $env:APPDATA "Docker\settings-store.json"
-Etat ((Test-Path $reglages) -and ((Get-Content $reglages -Raw) -match '"AutoStart"\s*:\s*true')) `
-     "Docker Desktop : AutoStart" {
-       if (-not (Test-Path $reglages)) { throw "Docker Desktop jamais lance : l'ouvrir une fois, puis relancer ce script." }
-       (Get-Content $reglages -Raw) -replace '"AutoStart"\s*:\s*false', '"AutoStart": true' |
-         Set-Content $reglages -NoNewline
-     }
+$voulu = @{ AutoStart = $true; OpenUIOnStartupDisabled = $true }
+$dejaLa = (Test-Path $reglages) -and $(
+  $j = Get-Content $reglages -Raw | ConvertFrom-Json
+  -not ($voulu.Keys | Where-Object { $j.$_ -ne $voulu[$_] })
+)
+Etat $dejaLa "Docker Desktop : demarre seul, sans ouvrir sa fenetre" {
+  if (-not (Test-Path $reglages)) { throw "Docker Desktop jamais lance : l'ouvrir une fois, puis relancer ce script." }
+  $j = Get-Content $reglages -Raw | ConvertFrom-Json
+  foreach ($c in $voulu.Keys) {
+    if (-not $j.PSObject.Properties.Name.Contains($c)) { $j | Add-Member -NotePropertyName $c -NotePropertyValue $false }
+    $j.$c = $voulu[$c]
+  }
+  $j | ConvertTo-Json -Depth 20 | Set-Content $reglages -Encoding UTF8
+}
 
 $docker = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 Etat ([bool](Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue)) `
