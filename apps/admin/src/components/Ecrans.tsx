@@ -66,6 +66,12 @@ export function Ecrans() {
 
   useEffect(() => {
     charger()
+    // L'API refait son relevé toutes les trente secondes ; sans relecture,
+    // cette page montrerait l'état du moment où on l'a ouverte, et un écran
+    // branché entre-temps n'apparaîtrait qu'après un rechargement — que
+    // personne ne pense à faire, puisque rien ne dit que c'est nécessaire.
+    const relecture = window.setInterval(() => charger(), 15_000)
+    return () => window.clearInterval(relecture)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -207,7 +213,8 @@ export function Ecrans() {
 
         <Text c="dimmed" fz="xs">
           Dernier relevé : {new Date(releve.releve_le).toLocaleString('fr-FR')} · {releve.systeme}.
-          L'agent réannonce les écrans dès qu'ils changent, et se signale toutes les cinq minutes.
+          L'API refait le relevé toutes les trente secondes et cette page le relit toutes les
+          quinze : un écran branché ou déplacé apparaît ici sans rien recharger.
         </Text>
       </Stack>
     </div>
