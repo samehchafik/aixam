@@ -138,9 +138,14 @@ function Ouvrir-Fenetre {{
   # coup et se recale sur l'ecran principal. Le succes n'est annonce que sur
   # une lecture reussie : un rectangle jamais rempli vaut 0,0, ce qui coincide
   # avec la position attendue du premier ecran.
+  # HWND_TOPMOST (-1), pas HWND_TOP : la barre des taches est elle-meme
+  # « toujours au premier plan », et Windows ne la fait passer dessous que pour
+  # une fenetre plein ecran qui a le focus -- que la seconde fenetre, ouverte
+  # en dernier, lui prend. Au meme niveau que la barre, la fenetre posee en
+  # dernier passe dessus, sur les deux ecrans.
   $r = New-Object AixamWin+RECT
   for ($i = 0; $i -lt 10; $i++) {{
-    [AixamWin]::SetWindowPos($h, [IntPtr]::Zero, $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
+    [AixamWin]::SetWindowPos($h, [IntPtr](-1), $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
     Start-Sleep -Milliseconds 300
     if ([AixamWin]::GetWindowRect($h, [ref]$r) -and $r.L -eq $X -and $r.T -eq $Y) {{
       Write-Host "$Profil : sur $Peripherique en $X,$Y"
