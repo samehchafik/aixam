@@ -47,13 +47,19 @@ if [ "$PLATEFORME" = "windows" ]; then
   # uvicorn lance par une tache planifiee meurt avec la console de la tache.
   # Start-Process lui donne une console a lui, cachee, et rend le pid Windows
   # -- que tasklist et taskkill comprennent, contrairement a kill.
+  #
+  # Et surtout pas -RedirectStandardOutput : avec une redirection, Start-Process
+  # cree le processus en lui leguant tous nos handles, tubes SSH compris, et
+  # ce qui lit notre sortie attend leur fermeture -- c'est-a-dire la fin du
+  # serveur. Sans redirection il passe par ShellExecute, qui ne legue rien ;
+  # c'est alors un cmd /c, dans sa console cachee, qui ecrit le journal.
   lancer_detache() {   # $1 journal, $2 dossier de travail, $3... commande ; pid sur stdout
     local journal; journal="$(cygpath -m "$1")"
     local dossier; dossier="$(cygpath -m "$2")"
     local exe; exe="$(cygpath -m "$3")"; shift 3
-    powershell -NoProfile -Command "\$p = Start-Process -FilePath '$exe' -ArgumentList '$*' \
-      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru \
-      -RedirectStandardOutput '$journal' -RedirectStandardError '$journal.err'; \$p.Id" | tr -d '\r'
+    powershell -NoProfile -Command "\$p = Start-Process -FilePath 'cmd.exe' \
+      -ArgumentList '/c \"\"$exe\" $* >> \"$journal\" 2>&1\"' \
+      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru; \$p.Id" | tr -d '\r'
   }
   vivant() { tasklist /FI "PID eq $1" /NH 2>/dev/null | grep -q " $1 "; }
   tuer()   { taskkill /PID "$1" /T /F >/dev/null 2>&1; }
