@@ -47,10 +47,13 @@ def current_kiosk(
 def require_kiosk_basic_auth(request: Request) -> None:
     """Protege le lien https de dev de la borne.
 
-    Desactive si KIOSK_BASIC_USER est vide (cas du salon, ou la borne tourne en
-    local et n'a pas a demander un mot de passe a chaque redemarrage).
+    Desactive des que l'un des deux reglages est vide -- c'est le cas du salon,
+    ou la borne tourne en local et ou personne ne peut repondre a une demande
+    d'identifiants : le navigateur s'ouvre en plein ecran, sans clavier, devant
+    les visiteurs. Un identifiant renseigne sans mot de passe est une
+    configuration a moitie faite, pas une protection a appliquer quand meme.
     """
-    if not settings.kiosk_basic_user:
+    if not settings.kiosk_basic_user or not settings.kiosk_basic_password:
         return
 
     header = request.headers.get("authorization", "")
