@@ -43,7 +43,8 @@ die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
 usage() {
   sed -n '2,/^[^#]/ s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"
   echo "Ou compiler : --docker | --local   (defaut : BUILD_MODE=$BUILD_MODE)"
-  echo "Options : --api-image (obligatoire apres toute modification Python),"
+  echo "Options : --api-image (obligatoire apres toute modification Python,"
+  echo "          et utilisable seul : aucune SPA n'est recompilee),"
   echo "          --reset-config (reprend le config.json des sources), -h"
   echo "Variables : BUILD_MODE (docker|local), NODE_IMAGE (defaut $NODE_IMAGE)"
 }
@@ -138,7 +139,11 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-[ $ADMIN -eq 1 ] || [ $FRONT -eq 1 ] || die "preciser --admin, --front ou --all"
+# --api-image seul est legitime : une correction Python ne touche aucune SPA,
+# et exiger --all ferait recompiler les deux pour rien -- une minute a chaque
+# aller-retour, sur une borne qu'on depanne a distance.
+[ $ADMIN -eq 1 ] || [ $FRONT -eq 1 ] || [ $API_IMAGE -eq 1 ] \
+  || die "preciser --admin, --front, --all ou --api-image"
 
 case "$BUILD_MODE" in
   docker|local) ;;
