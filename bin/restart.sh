@@ -10,6 +10,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/bin/plateforme.sh"
 
 say() { printf '\033[36m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }

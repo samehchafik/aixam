@@ -10,6 +10,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/bin/plateforme.sh"
 cd "$ROOT"
 
 SANS_DOCKER=0
