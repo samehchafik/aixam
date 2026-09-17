@@ -184,10 +184,16 @@ check("le second ecran nomme", '-Peripherique "\\\\.\\DISPLAY2"' in script)
 check("le releve en secours", "-X 1920 -Y 0 -Largeur 3840 -Hauteur 2160" in script)
 check("meme repere que le releve : pixels physiques", "SetProcessDPIAware()" in script)
 check("la fenetre est posee puis relue", "SetWindowPos(" in script and "GetWindowRect(" in script)
-# Sans HWND_TOPMOST, la barre des taches restait devant le tactile : elle est
-# « toujours au premier plan », et la fenetre de l'ecran principal n'a pas le
-# focus -- la seconde, ouverte en dernier, le lui prend.
-check("au-dessus de la barre des taches", "SetWindowPos($h, [IntPtr](-1)," in script)
+# La barre des taches ne passe derriere qu'une fenetre plein ecran qui a le
+# focus, et le focus va a la derniere ouverte -- le grand ecran. Le script le
+# rend a la fenetre de l'ecran principal. Pas de HWND_TOPMOST : une fenetre
+# « toujours au premier plan » passerait aussi devant tout ce qu'on voudrait
+# voir, et rien ne la fermerait plus au clavier.
+check("pas de fenetre toujours au premier plan", "[IntPtr](-1)" not in script)
+check("le focus revient a l'ecran principal",
+      "PrimaryScreen.DeviceName" in script and "SetForegroundWindow(" in script)
+check("apres l'ouverture de toutes les fenetres",
+      script.rindex("Ouvrir-Fenetre -Profil") < script.index("SetForegroundWindow($script:Fenetres"))
 check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in script
       and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)

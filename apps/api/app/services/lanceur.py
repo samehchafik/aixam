@@ -84,12 +84,15 @@ public static class AixamWin {{
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr z, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [StructLayout(LayoutKind.Sequential)] public struct RECT {{ public int L, T, R, B; }}
 }}
 "@
 # Meme repere que le releve (pixels physiques) : sans cela Windows convertit
 # nos coordonnees a l'echelle du bureau, et la fenetre tombe a cote.
 [AixamWin]::SetProcessDPIAware() | Out-Null
+
+$script:Fenetres = @{{}}
 
 function Ouvrir-Fenetre {{
   param($Profil, $Chemin, $Peripherique, $X, $Y, $Largeur, $Hauteur)
@@ -138,14 +141,14 @@ function Ouvrir-Fenetre {{
   # coup et se recale sur l'ecran principal. Le succes n'est annonce que sur
   # une lecture reussie : un rectangle jamais rempli vaut 0,0, ce qui coincide
   # avec la position attendue du premier ecran.
-  # HWND_TOPMOST (-1), pas HWND_TOP : la barre des taches est elle-meme
-  # « toujours au premier plan », et Windows ne la fait passer dessous que pour
-  # une fenetre plein ecran qui a le focus -- que la seconde fenetre, ouverte
-  # en dernier, lui prend. Au meme niveau que la barre, la fenetre posee en
-  # dernier passe dessus, sur les deux ecrans.
+  # HWND_TOP, pas HWND_TOPMOST : une fenetre « toujours au premier plan »
+  # passerait aussi devant tout ce qu'on voudrait voir -- et rien ne la
+  # fermerait plus au clavier. La barre des taches se traite autrement, en
+  # pied de script : par le focus.
+  $script:Fenetres[$Peripherique] = $h
   $r = New-Object AixamWin+RECT
   for ($i = 0; $i -lt 10; $i++) {{
-    [AixamWin]::SetWindowPos($h, [IntPtr](-1), $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
+    [AixamWin]::SetWindowPos($h, [IntPtr]::Zero, $X, $Y, $Largeur, $Hauteur, 0x0040) | Out-Null
     Start-Sleep -Milliseconds 300
     if ([AixamWin]::GetWindowRect($h, [ref]$r) -and $r.L -eq $X -and $r.T -eq $Y) {{
       Write-Host "$Profil : sur $Peripherique en $X,$Y"
@@ -161,6 +164,17 @@ Ouvrir-Fenetre -Profil "{profil}" -Chemin "{chemin}" -Peripherique "{peripheriqu
   -X {x} -Y {y} -Largeur {largeur} -Hauteur {hauteur}
 """,
     "pied": """
+# La barre des taches vit sur l'ecran principal, et Windows ne la fait passer
+# derriere qu'une fenetre plein ecran qui a le FOCUS. Or le focus va a la
+# derniere fenetre ouverte -- le grand ecran --, et la barre restait visible
+# sous le tactile. On rend donc le focus a la fenetre de l'ecran principal,
+# quel que soit l'ordre d'ouverture.
+$principal = [System.Windows.Forms.Screen]::PrimaryScreen.DeviceName
+if ($script:Fenetres.ContainsKey($principal)) {{
+  Start-Sleep -Milliseconds 500
+  [AixamWin]::SetForegroundWindow($script:Fenetres[$principal]) | Out-Null
+  Write-Host "focus a la fenetre de l'ecran principal ($principal)"
+}}
 Write-Host "Fenetres ouvertes."
 """,
 }
