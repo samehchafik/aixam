@@ -24,7 +24,9 @@ taskkill /IM chrome.exe /F /T >nul 2>&1
 call "%~dp0stop-clavier.bat"
 
 call :dire "== Ctrl+Q fermera la borne, et le topmost sera maintenu"
-start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%RACINE%\scripts\arret-clavier.ps1" -Pid "%RACINE%\.run\arret-clavier.pid"
+rem Son journal a lui : lance sans fenetre, un veilleur qui meurt a la premiere
+rem ligne ne laisserait sinon aucune trace.
+start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%RACINE%\scripts\arret-clavier.ps1' -FichierPid '%RACINE%\.run\arret-clavier.pid' *>> '%RACINE%\.run\arret-clavier.log'"
 
 call :dire "== attente de l'API sur %HOTE%"
 set /a ESSAIS=0
@@ -48,7 +50,8 @@ if not exist "%~dp0launch-kiosk-genere.ps1" (
   exit /b 1
 )
 rem Pas Tee-Object : il ecrit en UTF-16, illisible avec les lignes du .bat.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0launch-kiosk-genere.ps1' 2>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
+rem *>&1 et pas 2>&1 : Write-Host passe par le flux d'information, que 2>&1 ignore.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0launch-kiosk-genere.ps1' *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
 exit /b 0
 
 :dire

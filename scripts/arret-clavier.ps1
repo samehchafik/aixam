@@ -18,10 +18,14 @@
 # avoir ferme Chrome, start.bat en relance un a chaque demarrage.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\arret-clavier.ps1 [-Touche Q] [-Modif Ctrl|Ctrl+Alt]
+#
+# Le fichier de pid s'appelle -FichierPid, pas -Pid : $PID est une variable
+# reservee de PowerShell, et l'assigner est une erreur fatale des la premiere
+# ligne -- le veilleur n'a jamais demarre tant qu'il s'appelait ainsi.
 param(
   [string]$Touche = "Q",
   [string]$Modif = "Ctrl",
-  [string]$Pid = ""
+  [string]$FichierPid = ""
 )
 
 Add-Type @"
@@ -79,7 +83,7 @@ $vk = [int][char]$Touche.ToUpper()
 $WM_HOTKEY = 0x0312
 $WM_TIMER = 0x0113
 
-if ($Pid) { Set-Content -Path $Pid -Value $PID }
+if ($FichierPid) { Set-Content -Path $FichierPid -Value $PID }
 if (-not [RaccourciWin]::RegisterHotKey([IntPtr]::Zero, 1, $modificateurs, $vk)) {
   throw "$Modif+$Touche est deja pris par un autre programme."
 }
@@ -132,4 +136,4 @@ while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
   }
 }
 [RaccourciWin]::UnregisterHotKey([IntPtr]::Zero, 1) | Out-Null
-if ($Pid) { Remove-Item $Pid -ErrorAction SilentlyContinue }
+if ($FichierPid) { Remove-Item $FichierPid -ErrorAction SilentlyContinue }
