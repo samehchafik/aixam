@@ -188,7 +188,17 @@ check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in scrip
       and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
 check("mode kiosque", '"--kiosk"' in script)
-check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:8080")' in script)
+check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:8080"' in script)
+
+print("\n[4 bis] Le lanceur attend l'API avant d'ouvrir quoi que ce soit")
+# Au demarrage de la borne, l'API et le lanceur sont deux taches planifiees :
+# rien ne garantit l'ordre. Sans attente, Chrome s'ouvre en plein ecran sur une
+# page d'erreur, devant les visiteurs et sans clavier pour recharger.
+for systeme in ("Windows", "Darwin", "Linux"):
+    script = construire_lanceur(LanceurIn(systeme=systeme, hote="http://localhost:8080", ecrans=ECRANS))
+    check(f"{systeme} : interroge /healthz", "/healthz" in script)
+    check(f"{systeme} : l'attente precede l'ouverture",
+          script.index("/healthz") < script.index("--app"))
 
 print("\n[5] Ce qui n'est pas eprouve ici")
 if platform.system() != "Windows":

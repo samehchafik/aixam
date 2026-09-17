@@ -34,7 +34,26 @@ _WINDOWS = {
 # debranche puis rebranche sur une autre prise peut changer de numero).
 #
 #   powershell -ExecutionPolicy Bypass -File {fichier}
-param([string]$ApiHost = "{hote}")
+param([string]$ApiHost = "{hote}", [int]$AttenteMax = 180)
+
+# Attendre l'API plutot que de parier sur un delai : au demarrage de la borne,
+# l'API et ce script sont lances par deux taches, et rien ne garantit l'ordre.
+# PostgreSQL froid, un disque occupe, et Chrome s'ouvrirait en plein ecran sur
+# une page d'erreur -- devant les visiteurs, sans clavier pour recharger.
+Write-Host "attente de l'API sur $ApiHost"
+$debut = Get-Date
+while ($true) {{
+  try {{
+    Invoke-WebRequest -Uri "$ApiHost/healthz" -UseBasicParsing -TimeoutSec 3 | Out-Null
+    break
+  }} catch {{
+    if (((Get-Date) - $debut).TotalSeconds -ge $AttenteMax) {{
+      throw "l'API n'a pas repondu en $AttenteMax s : les fenetres ne sont pas ouvertes"
+    }}
+    Start-Sleep -Seconds 2
+  }}
+}}
+Write-Host "API prete apres $([int]((Get-Date) - $debut).TotalSeconds) s"
 
 $chrome = @(
   "$env:ProgramFiles\\Google\\Chrome\\Application\\chrome.exe",
@@ -140,6 +159,17 @@ HOTE="${{HOTE:-{hote}}}"
 PROFILS="${{PROFILS:-$HOME/.aixam-kiosk}}"
 JOURNAUX="${{JOURNAUX:-$PROFILS/journaux}}"
 mkdir -p "$JOURNAUX"
+
+# Attendre l'API plutot que de parier sur un delai -- voir le lanceur Windows.
+printf "attente de l'API sur %s\n" "$HOTE"
+DEBUT=$(date +%s)
+until curl -sf -o /dev/null --max-time 3 "$HOTE/healthz"; do
+  if [ $(( $(date +%s) - DEBUT )) -ge "${{ATTENTE_MAX:-180}}" ]; then
+    echo "l'API n'a pas repondu : les fenetres ne sont pas ouvertes" >&2
+    exit 1
+  fi
+  sleep 2
+done
 
 for candidat in {candidats}; do
   if [ -x "$candidat" ] || command -v "$candidat" >/dev/null 2>&1; then
