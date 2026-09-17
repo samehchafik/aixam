@@ -20,7 +20,66 @@ param(
   [switch]$UneFois
 )
 
-Add-Type -AssemblyName System.Windows.Forms
+# Pourquoi user32 plutot que System.Windows.Forms : Screen::AllScreens met sa
+# liste en cache dans le processus et ne l'invalide qu'en recevant un message
+# Windows. Un script console n'a pas de pompe a messages -- l'agent interrogeait
+# donc indefiniment la photo prise a son demarrage, et un ecran branche en cours
+# de route n'apparaissait jamais. EnumDisplayMonitors, lui, demande au systeme a
+# chaque appel.
+#
+# SetProcessDPIAware met les coordonnees en pixels PHYSIQUES, le meme repere que
+# le releve de l'API (app/services/materiel.py) et que le lanceur engendre.
+# Sans lui, un affichage a 150 % rendrait 2133x1333 la ou le lanceur attend
+# 3200x2000, et les fenetres tomberaient a cote.
+Add-Type @"
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+public class MoniteursWin {
+  [StructLayout(LayoutKind.Sequential)]
+  public struct RECT { public int Left, Top, Right, Bottom; }
+
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  public struct MONITORINFOEX {
+    public int cbSize;
+    public RECT rcMonitor;
+    public RECT rcWork;
+    public uint dwFlags;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice;
+  }
+
+  delegate bool Rappel(IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr donnee);
+
+  [DllImport("user32.dll")]
+  static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, Rappel rappel, IntPtr donnee);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX info);
+  [DllImport("user32.dll")]
+  static extern bool SetProcessDPIAware();
+
+  // « nom|x|y|largeur|hauteur|principal », une ligne par moniteur.
+  public static List<string> Lister() {
+    SetProcessDPIAware();
+    var trouves = new List<string>();
+    EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
+      delegate (IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr donnee) {
+        var info = new MONITORINFOEX();
+        info.cbSize = Marshal.SizeOf(typeof(MONITORINFOEX));
+        if (GetMonitorInfo(hMonitor, ref info)) {
+          trouves.Add(string.Format("{0}|{1}|{2}|{3}|{4}|{5}",
+            info.szDevice,
+            info.rcMonitor.Left, info.rcMonitor.Top,
+            info.rcMonitor.Right - info.rcMonitor.Left,
+            info.rcMonitor.Bottom - info.rcMonitor.Top,
+            (info.dwFlags & 1) != 0));
+        }
+        return true;
+      }, IntPtr.Zero);
+    return trouves;
+  }
+}
+"@
 
 $racine = Split-Path -Parent $PSScriptRoot
 $env_fichier = Join-Path $racine ".env"
@@ -38,15 +97,16 @@ if (-not $Token)   { $Token   = Valeur-Env 'DEFAULT_KIOSK_TOKEN' '' }
 if (-not $Token)   { throw "Aucun jeton de borne : renseigner DEFAULT_KIOSK_TOKEN dans .env, ou passer -Token" }
 
 function Releve-Ecrans {
-  [System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
+  [MoniteursWin]::Lister() | ForEach-Object {
+    $c = $_ -split "\|"
     [ordered]@{
-      peripherique = $_.DeviceName
+      peripherique = $c[0]
       modele       = ""
-      x            = $_.Bounds.X
-      y            = $_.Bounds.Y
-      largeur      = $_.Bounds.Width
-      hauteur      = $_.Bounds.Height
-      principal    = [bool]$_.Primary
+      x            = [int]$c[1]
+      y            = [int]$c[2]
+      largeur      = [int]$c[3]
+      hauteur      = [int]$c[4]
+      principal    = [bool]::Parse($c[5])
     }
   }
 }
