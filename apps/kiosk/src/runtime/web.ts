@@ -1,3 +1,4 @@
+import { normaliserConfig } from './config'
 import type { KioskConfig, Runtime } from './types'
 
 /**
@@ -11,7 +12,7 @@ export const webRuntime: Runtime = {
   async loadConfig() {
     const res = await fetch(`${import.meta.env.BASE_URL}config.json`, { cache: 'no-store' })
     if (!res.ok) throw new Error('config.json introuvable')
-    return (await res.json()) as KioskConfig
+    return normaliserConfig((await res.json()) as KioskConfig)
   },
 
   async openDisplayWindow() {

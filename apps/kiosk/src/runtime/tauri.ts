@@ -1,3 +1,4 @@
+import { normaliserConfig } from './config'
 import type { KioskConfig, Runtime } from './types'
 
 /**
@@ -17,7 +18,7 @@ export const tauriRuntime: Runtime = {
     // config.json est livre a cote de l'executable : l'installateur du salon
     // l'edite sans recompiler.
     const path = await resolveResource('config.json')
-    return JSON.parse(await readTextFile(path)) as KioskConfig
+    return normaliserConfig(JSON.parse(await readTextFile(path)) as KioskConfig)
   },
 
   async openDisplayWindow(config: KioskConfig) {
