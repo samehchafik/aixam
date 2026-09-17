@@ -131,8 +131,18 @@ if [ $SANS_DOCKER -eq 1 ]; then
   demarrer() {   # $1 = nom du processus, $2... = commande
     local nom="$1"; shift
     local pid="$ROOT/.run/$nom.pid"
-    if [ -f "$pid" ] && kill -0 "$(cat "$pid")" 2>/dev/null; then
+    if [ -f "$pid" ] && vivant "$(cat "$pid")"; then
       warn "$nom tourne deja (pid $(cat "$pid")) -- bin/stop.sh --local pour l'arreter"
+      return
+    fi
+    if [ "$PLATEFORME" = "windows" ]; then
+      # Sous Windows, nohup ne detache rien : voir lancer_detache dans
+      # bin/plateforme.sh. Le .env est lu sans ses \r, un fichier edite dans
+      # Notepad en portant : « localhost\r » n'est pas un hote.
+      (
+        set -a; . <(tr -d '\r' < "$ROOT/.env"); set +a
+        lancer_detache "$ROOT/.run/$nom.log" "$ROOT/apps/api" "$@"
+      ) > "$pid"
       return
     fi
     # `exec` est ce qui rend le pid utilisable : sans lui, $! designe le

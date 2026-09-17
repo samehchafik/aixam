@@ -40,8 +40,8 @@ if [ $SANS_DOCKER -eq 1 ]; then
   arrete=0
   for nom in api worker; do
     pid="$ROOT/.run/$nom.pid"
-    if [ -f "$pid" ] && kill -0 "$(cat "$pid")" 2>/dev/null; then
-      kill "$(cat "$pid")" && arrete=$((arrete + 1))
+    if [ -f "$pid" ] && vivant "$(cat "$pid")"; then
+      tuer "$(cat "$pid")" && arrete=$((arrete + 1))
       say "$nom arrete (pid $(cat "$pid"))"
     fi
     rm -f "$pid"

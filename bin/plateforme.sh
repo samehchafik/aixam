@@ -23,8 +23,8 @@
 #    Docker Hub public. Un registre prive depuis Windows demande de definir
 #    DOCKER_CONFIG soi-meme : s'il est deja pose, on n'y touche pas.
 #
-# Sur macOS et Linux, ce fichier ne fait que definir PLATEFORME, VENV_BIN et
-# hote().
+# Sur macOS et Linux, ce fichier ne fait que definir PLATEFORME, VENV_BIN,
+# hote(), vivant() et tuer().
 
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*) PLATEFORME=windows ;;
@@ -42,6 +42,22 @@ if [ "$PLATEFORME" = "windows" ]; then
   # Scripts/, pas dans bin/ : c'est ce que bin/start.sh --local doit chercher.
   VENV_BIN="Scripts"
 
+  # nohup ne detache rien sous Windows : le processus reste accroche a la
+  # console qui l'a lance. Une session SSH ne rend alors plus la main, et un
+  # uvicorn lance par une tache planifiee meurt avec la console de la tache.
+  # Start-Process lui donne une console a lui, cachee, et rend le pid Windows
+  # -- que tasklist et taskkill comprennent, contrairement a kill.
+  lancer_detache() {   # $1 journal, $2 dossier de travail, $3... commande ; pid sur stdout
+    local journal; journal="$(cygpath -m "$1")"
+    local dossier; dossier="$(cygpath -m "$2")"
+    local exe; exe="$(cygpath -m "$3")"; shift 3
+    powershell -NoProfile -Command "\$p = Start-Process -FilePath '$exe' -ArgumentList '$*' \
+      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru \
+      -RedirectStandardOutput '$journal' -RedirectStandardError '$journal.err'; \$p.Id" | tr -d '\r'
+  }
+  vivant() { tasklist /FI "PID eq $1" /NH 2>/dev/null | grep -q " $1 "; }
+  tuer()   { taskkill /PID "$1" /T /F >/dev/null 2>&1; }
+
   # Docker sous Windows, si l'on y tient, impose deux precautions -- voir
   # l'en-tete. Sur la borne, on n'y tient pas : l'API tourne en local.
   hote() { cygpath -m "$1"; }
@@ -56,5 +72,7 @@ if [ "$PLATEFORME" = "windows" ]; then
   fi
 else
   VENV_BIN="bin"
-  hote() { printf '%s' "$1"; }
+  hote()   { printf '%s' "$1"; }
+  vivant() { kill -0 "$1" 2>/dev/null; }
+  tuer()   { kill "$1"; }
 fi
