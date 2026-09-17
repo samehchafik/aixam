@@ -137,10 +137,14 @@ Etat ((wsl.exe -d $distro -u root -e sh -c "command -v docker >/dev/null && syst
      }
 
 # Une tache suffit a tout relancer : demarrer la distribution demarre systemd,
-# qui demarre dockerd, qui relance les conteneurs (restart: unless-stopped).
-Etat ([bool](Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue)) `
-     "tache aixam-docker : demarre WSL a l'ouverture de session" {
-       Tache "aixam-docker" "wsl.exe" "-d $distro -u root -e /bin/true" "PT15S"
+# qui demarre dockerd, qui relance les conteneurs. Le script pose ensuite la
+# redirection de port qui expose l'API sur le reseau -- voir son en-tete.
+$demarreur = Join-Path $Racine "scripts\demarrer-docker.ps1"
+$tacheDocker = Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue
+Etat ($tacheDocker -and ($tacheDocker.Actions.Arguments -like "*demarrer-docker.ps1*")) `
+     "tache aixam-docker : docker dans WSL et API exposee, a l'ouverture de session" {
+       Tache "aixam-docker" "powershell.exe" `
+         "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$demarreur`"" "PT15S"
      }
 
 # Docker Desktop, s'il reste installe, ne doit surtout pas se lancer a cote :
