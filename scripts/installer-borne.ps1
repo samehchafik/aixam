@@ -28,13 +28,13 @@ param(
 $script:Manques = 0
 
 function Etat($fait, $quoi, $comment) {
-  if ($fait) { Write-Host "  OK   $quoi" -ForegroundColor Green; return $true }
+  # Aucune valeur de retour : PowerShell imprimerait « True » sous chaque ligne.
+  if ($fait) { Write-Host "  OK     $quoi" -ForegroundColor Green; return }
   $script:Manques++
-  if ($Verifier) { Write-Host "  MANQUE $quoi" -ForegroundColor Yellow; return $false }
-  Write-Host "  ...  $quoi" -ForegroundColor Cyan
+  if ($Verifier) { Write-Host "  MANQUE $quoi" -ForegroundColor Yellow; return }
+  Write-Host "  ...    $quoi" -ForegroundColor Cyan
   & $comment
-  Write-Host "  FAIT $quoi" -ForegroundColor Green
-  return $true
+  Write-Host "  FAIT   $quoi" -ForegroundColor Green
 }
 
 $eleve = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -74,7 +74,12 @@ Etat ([bool](Get-NetFirewallRule -Name sshd -ErrorAction SilentlyContinue)) `
 
 Write-Host "`n[3] Mise en veille" -ForegroundColor White
 # La panne numero un d'une borne : l'ecran s'eteint pendant la pause dejeuner.
-$veille = (powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE | Select-String "Index actuel du param.tre de l'alimentation secteur|Current AC Power Setting Index") -match "0x00000000"
+# Les libelles de powercfg sont traduits : on lit les valeurs, pas les phrases.
+# Les deux dernieres sont l'index secteur puis l'index batterie.
+$index = @(powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE |
+           Select-String "0x[0-9a-fA-F]{8}" -AllMatches |
+           ForEach-Object { $_.Matches.Value })
+$veille = $index.Count -ge 2 -and $index[-2] -eq "0x00000000"
 Etat $veille "ecran, disque et session sans mise en veille" {
   powercfg /change monitor-timeout-ac 0; powercfg /change standby-timeout-ac 0
   powercfg /change disk-timeout-ac 0;    powercfg /change hibernate-timeout-ac 0

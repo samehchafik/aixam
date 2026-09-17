@@ -1,0 +1,24 @@
+# Les fins de ligne ne sont pas une affaire de gout ici.
+#
+# Git for Windows arrive avec core.autocrlf=true : sans ce fichier, la borne
+# recoit bin/*.sh en CRLF, et un \r egare dans un script bash produit des
+# erreurs qu'on ne relie jamais a leur cause -- « command not found » sur une
+# commande qui existe, un `case` qui ne filtre plus. Un jour de salon, c'est
+# une panne qu'on ne diagnostique pas.
+#
+# Les .ps1 restent en CRLF : ils s'editent sous Windows, parfois dans Notepad.
+
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.ps1       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+scripts/win/bashrc-borne text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
