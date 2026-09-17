@@ -79,8 +79,31 @@ $commun = @(
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type @"
 using System;
+using System.Text;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 public static class AixamWin {{
+  // Les fenetres visibles de Chrome, retrouvees par leur classe -- ce que fait
+  // « ahk_exe chrome.exe » : Chrome refait parfois sa fenetre en passant en
+  // plein ecran, et le MainWindowHandle du processus pointe alors sur une
+  // fenetre morte.
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  public static List<IntPtr> FenetresChrome(HashSet<uint> pids) {{
+    var trouvees = new List<IntPtr>();
+    EnumWindows((h, l) => {{
+      if (!IsWindowVisible(h)) return true;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (!pids.Contains(pid)) return true;
+      var classe = new StringBuilder(64); GetClassName(h, classe, 64);
+      if (classe.ToString() == "Chrome_WidgetWin_1") trouvees.Add(h);
+      return true;
+    }}, IntPtr.Zero);
+    return trouvees;
+  }}
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr z, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
@@ -131,11 +154,15 @@ function Ouvrir-Fenetre {{
       "--app=$ApiHost$Chemin"))
   }}
 
+  # La fenetre de CE Chrome : celle de classe Chrome_WidgetWin_1 visible dans
+  # son processus, relue a chaque tour -- pas un handle memorise une fois.
+  $pids = New-Object 'System.Collections.Generic.HashSet[uint32]'
+  [void]$pids.Add([uint32]$p.Id)
   $h = [IntPtr]::Zero
   for ($i = 0; $i -lt 75 -and $h -eq [IntPtr]::Zero; $i++) {{
     Start-Sleep -Milliseconds 200
-    try {{ $p.Refresh(); $h = $p.MainWindowHandle }} catch {{ $h = $null }}
-    if (-not $h) {{ $h = [IntPtr]::Zero }}
+    $trouvees = [AixamWin]::FenetresChrome($pids)
+    if ($trouvees.Count -gt 0) {{ $h = $trouvees[0] }}
   }}
   if ($h -eq [IntPtr]::Zero) {{ throw "Chrome n'a pas ouvert de fenetre pour $Profil" }}
 
@@ -175,8 +202,12 @@ Ouvrir-Fenetre -Profil "{profil}" -Chemin "{chemin}" -Peripherique "{peripheriqu
 # tactile : Windows ne cache la barre que sous une fenetre plein ecran active.
 $principal = [System.Windows.Forms.Screen]::PrimaryScreen.DeviceName
 $fin = (Get-Date).AddSeconds(20)
+$tous = New-Object 'System.Collections.Generic.HashSet[uint32]'
 while ((Get-Date) -lt $fin) {{
-  foreach ($h in $script:Fenetres.Values) {{
+  # Toutes les fenetres Chrome visibles, relues a chaque tour : celle que
+  # Chrome vient de refaire est prise aussi.
+  Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object {{ [void]$tous.Add([uint32]$_.Id) }}
+  foreach ($h in [AixamWin]::FenetresChrome($tous)) {{
     [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
   }}
   Start-Sleep -Milliseconds 500

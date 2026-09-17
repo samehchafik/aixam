@@ -196,6 +196,11 @@ check("reaffirme apres l'ouverture, sans bouger ni activer",
 check("le focus revient a l'ecran principal",
       "PrimaryScreen.DeviceName" in script and "SetForegroundWindow(" in script)
 check("un refus de SetWindowPos est dit", "GetLastError()" in script)
+# Comme « ahk_exe chrome.exe » : la fenetre est retrouvee par sa classe a
+# chaque tour, jamais memorisee -- Chrome la refait parfois en passant en
+# plein ecran, et un MainWindowHandle pris trop tot pointait sur une morte.
+check("la fenetre est retrouvee par sa classe, pas memorisee",
+      "EnumWindows(" in script and '"Chrome_WidgetWin_1"' in script and "MainWindowHandle" not in script)
 check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in script
       and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)

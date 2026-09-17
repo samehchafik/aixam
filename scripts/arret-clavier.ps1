@@ -26,8 +26,30 @@ param(
 
 Add-Type @"
 using System;
+using System.Text;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 public class RaccourciWin {
+  // Les fenetres visibles de Chrome par leur classe, comme « ahk_exe
+  // chrome.exe » : Chrome refait parfois sa fenetre, et un handle memorise
+  // pointe alors sur une fenetre morte.
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  public static List<IntPtr> FenetresChrome(HashSet<uint> pids) {
+    var trouvees = new List<IntPtr>();
+    EnumWindows((h, l) => {
+      if (!IsWindowVisible(h)) return true;
+      uint pid; GetWindowThreadProcessId(h, out pid);
+      if (!pids.Contains(pid)) return true;
+      var classe = new StringBuilder(64); GetClassName(h, classe, 64);
+      if (classe.ToString() == "Chrome_WidgetWin_1") trouvees.Add(h);
+      return true;
+    }, IntPtr.Zero);
+    return trouvees;
+  }
   [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
   [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr h, int id);
   [StructLayout(LayoutKind.Sequential)]
@@ -59,8 +81,10 @@ $msg = New-Object RaccourciWin+MSG
 while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
   if ($msg.message -eq $WM_TIMER) {
     # SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE : seul l'ordre change.
-    Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Object {
-      [RaccourciWin]::SetWindowPos($_.MainWindowHandle, [RaccourciWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
+    $pids = New-Object 'System.Collections.Generic.HashSet[uint32]'
+    Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object { [void]$pids.Add([uint32]$_.Id) }
+    foreach ($h in [RaccourciWin]::FenetresChrome($pids)) {
+      [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
     }
     continue
   }
