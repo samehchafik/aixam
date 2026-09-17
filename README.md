@@ -131,8 +131,8 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    docker** : l'API et le worker tournent en local (`bin/start.sh --all
    --local`), sur un PostgreSQL installé par l'étape 0. Dans `.env` :
    `COMPOSE_PROFILES=` (vide), `POSTGRES_HOST=localhost`, `BUILD_MODE=local`.
-   Puis le rôle et la base, une fois, avec le mot de passe de `.env` :
-   `psql -U postgres -c "CREATE ROLE aixam LOGIN PASSWORD '…'" -c "CREATE DATABASE aixam OWNER aixam"`.
+   L'installeur de l'étape 0 crée le rôle et la base à partir du
+   `POSTGRES_PASSWORD` de `.env` — d'où l'ordre : `.env` d'abord.
    Pourquoi pas docker ici : une application de bureau s'affiche quand elle
    le décide devant les visiteurs, et une machine virtuelle impose des ponts
    réseau — trois couches pour deux processus et une base. En local, l'API

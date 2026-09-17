@@ -116,19 +116,52 @@ Write-Host "`n[5] L'application, en local" -ForegroundColor White
 # trois couches pour deux processus et une base. En local, chaque piece est
 # visible dans le gestionnaire des taches, et l'API voit les moniteurs
 # elle-meme : plus d'agent des ecrans.
+# Ces installeurs veulent la session ouverte : lances par SSH, ils attendent
+# une confirmation dans une fenetre que personne ne voit, et restent la des
+# heures a 0 % de CPU. D'ou la console administrateur exigee en tete.
+$envFichier = Join-Path $Racine ".env"
+function Valeur-Env([string]$cle) {
+  if (-not (Test-Path $envFichier)) { return "" }
+  $l = Select-String -Path $envFichier -Pattern "^$cle=(.*)$" | Select-Object -First 1
+  if ($l) { return $l.Matches[0].Groups[1].Value.Trim() } else { return "" }
+}
+$mdpBase = Valeur-Env "POSTGRES_PASSWORD"
+if (-not $mdpBase) { throw "POSTGRES_PASSWORD absent de .env : le renseigner avant d'installer PostgreSQL." }
+
 foreach ($paquet in @(
-  @{ id = "Python.Python.3.12";      quoi = "Python 3.12";         test = { Get-Command py, python3.12, python -ErrorAction SilentlyContinue | Where-Object { $_.Source -notlike "*WindowsApps*" } } },
-  @{ id = "OpenJS.NodeJS.LTS";       quoi = "Node.js (compile les fronts)"; test = { Get-Command npm -ErrorAction SilentlyContinue } },
-  @{ id = "tschoonj.GTKForWindows";  quoi = "runtime GTK (cairo, pour le rendu des SVG)"; test = { Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\libcairo-2.dll" } },
-  @{ id = "PostgreSQL.PostgreSQL.16"; quoi = "PostgreSQL 16"; test = { Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue } }
+  @{ id = "Python.Python.3.12";      quoi = "Python 3.12";
+     test = { Test-Path "C:\Program Files\Python312\python.exe" };
+     options = @("--override", "/quiet InstallAllUsers=1 PrependPath=1 Include_test=0") },
+  @{ id = "OpenJS.NodeJS.LTS";       quoi = "Node.js (compile les fronts)";
+     test = { Test-Path "C:\Program Files\nodejs\npm.cmd" }; options = @("--silent") },
+  @{ id = "tschoonj.GTKForWindows";  quoi = "runtime GTK (cairo, pour le rendu des SVG)";
+     test = { Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\libcairo-2.dll" }; options = @("--silent") },
+  # Le superutilisateur recoit le mot de passe de .env : une borne n'a pas
+  # besoin de deux secrets pour une base, et l'installeur peut alors creer le
+  # role et la base lui-meme, juste apres.
+  @{ id = "PostgreSQL.PostgreSQL.16"; quoi = "PostgreSQL 16";
+     test = { Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue };
+     options = @("--override", "--mode unattended --unattendedmodeui none --superpassword $mdpBase --serverport 5432 --servicename postgresql-x64-16 --enable-components server,commandlinetools") }
 )) {
-  $id = $paquet.id
-  Etat ([bool](& $paquet.test)) $paquet.quoi { winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements | Out-Null }
+  $id = $paquet.id; $options = $paquet.options
+  Etat ([bool](& $paquet.test)) $paquet.quoi {
+    winget install --id $id -e --accept-package-agreements --accept-source-agreements @options | Out-Null
+  }
 }
 
 $pg = Get-Service postgresql-x64-16 -ErrorAction SilentlyContinue
 Etat ($pg -and $pg.StartType -eq "Automatic" -and $pg.Status -eq "Running") `
      "PostgreSQL demarre, au demarrage de Windows" { Set-Service postgresql-x64-16 -StartupType Automatic; Start-Service postgresql-x64-16 }
+
+$psql = "C:\Program Files\PostgreSQL\16\bin\psql.exe"
+$env:PGPASSWORD = $mdpBase
+$roleLa = (& $psql -U postgres -h localhost -tAc "SELECT 1 FROM pg_roles WHERE rolname='aixam'" 2>$null) -eq "1"
+$baseLa = (& $psql -U postgres -h localhost -tAc "SELECT 1 FROM pg_database WHERE datname='aixam'" 2>$null) -eq "1"
+Etat ($roleLa -and $baseLa) "role et base « aixam » dans PostgreSQL" {
+  if (-not $roleLa) { & $psql -U postgres -h localhost -c "CREATE ROLE aixam LOGIN PASSWORD '$mdpBase'" | Out-Null }
+  if (-not $baseLa) { & $psql -U postgres -h localhost -c "CREATE DATABASE aixam OWNER aixam" | Out-Null }
+}
+Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
 
 # Le runtime GTK n'est cherche que dans PATH : sans cette ligne, cairosvg ne
 # trouve pas libcairo-2.dll et le rendu des creations echoue.
@@ -140,9 +173,8 @@ Etat (([Environment]::GetEnvironmentVariable("Path", "Machine") -split ";") -con
 
 $venv = Join-Path $Racine ".venv\Scripts\uvicorn.exe"
 Etat (Test-Path $venv) "environnement Python de l'API (.venv)" {
-  $py = Get-Command py -ErrorAction SilentlyContinue
-  if ($py) { & py -3.12 -m venv (Join-Path $Racine ".venv") } else { & python -m venv (Join-Path $Racine ".venv") }
-  & (Join-Path $Racine ".venv\Scripts\pip.exe") install -q -r (Join-Path $Racine "apps\api\requirements.txt")
+  & "C:\Program Files\Python312\python.exe" -m venv (Join-Path $Racine ".venv")
+  & (Join-Path $Racine ".venv\Scripts\python.exe") -m pip install -q -r (Join-Path $Racine "apps\api\requirements.txt")
 }
 
 # L'API et le worker : un seul lanceur, bin/start.sh --local, dans la session
@@ -184,8 +216,9 @@ Write-Host @"
     HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device
     \DevicePasswordLessBuildVersion. Sans elle, une coupure de courant laisse
     la borne sur l'ecran de connexion.
-  - Dans .env : COMPOSE_PROFILES vide, POSTGRES_HOST=localhost, BUILD_MODE=local,
-    et le role/base PostgreSQL crees (voir README, « Installation sur le salon »).
+  - Dans .env : COMPOSE_PROFILES vide, POSTGRES_HOST=localhost, BUILD_MODE=local.
+  - Compiler les fronts puis demarrer : bin/build.sh --all --local ;
+    bin/start.sh --all --local (dans Git Bash, ou en SSH).
   - AnyDesk : mot de passe d'acces non surveille, sinon chaque prise en main
     demande un clic sur place.
   - Reservation DHCP de l'adresse de la borne dans la box.
