@@ -32,6 +32,25 @@ case "$(uname -s)" in
 esac
 
 if [ "$PLATEFORME" = "windows" ]; then
+  # Sur la borne, docker ne tourne pas sous Windows mais dans WSL2 : Docker
+  # Desktop est une application de bureau qui s'affiche quand elle le decide
+  # -- ecran d'accueil, invitation a creer un compte -- devant les visiteurs,
+  # et un clic y suffit a arreter un conteneur. Docker Engine dans WSL est un
+  # service Linux : aucune fenetre, jamais.
+  #
+  # Les scripts se relancent donc d'eux-memes dans la distribution, sur le
+  # MEME dossier, vu la-bas sous /mnt/c. Rien a retenir cote appelant :
+  # `bin/start.sh --all` en SSH marche comme avant.
+  if [ -z "${AIXAM_DANS_WSL:-}" ] && command -v wsl.exe >/dev/null 2>&1; then
+    DISTRO="${AIXAM_WSL_DISTRO:-Ubuntu-24.04}"
+    if wsl.exe -d "$DISTRO" -u root -e true >/dev/null 2>&1; then
+      RACINE_WSL="/mnt$(printf '%s' "$ROOT" | sed 's|^/\([a-z]\)/|/\1/|')"
+      exec wsl.exe -d "$DISTRO" -u root -e env AIXAM_DANS_WSL=1 \
+        bash "$RACINE_WSL/bin/$(basename "$0")" "$@"
+    fi
+  fi
+
+  # Faute de WSL, on retombe sur Docker Desktop, avec ce qu'il impose.
   export MSYS2_ARG_CONV_EXCL='*'
   hote() { cygpath -m "$1"; }
 

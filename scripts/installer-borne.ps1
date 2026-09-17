@@ -109,55 +109,57 @@ Etat ((Test-Path $bashrc) -and ((Get-Content $bashrc -Raw) -eq (Get-Content $mod
        Set-Content (Join-Path $env:USERPROFILE ".bash_profile") '[ -f ~/.bashrc ] && . ~/.bashrc'
      }
 
-Write-Host "`n[5] Docker au demarrage" -ForegroundColor White
-# Docker Desktop est une application de bureau : rien ne repart sans une
-# session ouverte, et son propre reglage « AutoStart » peut etre a false sans
-# que l'entree de demarrage disparaisse -- la borne revient alors d'un
-# redemarrage avec l'API eteinte et personne pour s'en apercevoir.
-# OpenUIOnStartupDisabled compte autant qu'AutoStart : sans lui, le tableau de
-# bord de Docker s'ouvre en grand a chaque demarrage, devant les visiteurs et a
-# portee de quelqu'un qui n'a aucune raison d'y toucher -- arreter un conteneur
-# depuis cette fenetre prend un clic, et arrete l'animation.
+Write-Host "`n[5] Docker, dans WSL2" -ForegroundColor White
+# Pourquoi pas Docker Desktop : c'est une application de bureau, qui s'affiche
+# quand elle le decide -- ecran d'accueil, invitation a creer un compte, mise a
+# jour -- devant les visiteurs, et ou un clic arrete un conteneur. Meme reglee
+# pour demarrer reduite, elle finit par ouvrir une fenetre. Docker Engine dans
+# WSL2 est un service Linux : aucune interface, jamais.
+$distro = $env:AIXAM_WSL_DISTRO; if (-not $distro) { $distro = "Ubuntu-24.04" }
+
+Etat ((wsl.exe -l -q 2>$null) -replace "`0", "" -contains $distro) `
+     "distribution $distro installee" {
+       wsl.exe --install -d $distro --no-launch
+       wsl.exe -d $distro -u root -e true
+     }
+
+# systemd, parce que c'est lui qui relancera dockerd a chaque demarrage de la
+# distribution, sans que personne n'ait rien a lancer.
+Etat ((wsl.exe -d $distro -u root -e sh -c "grep -q systemd=true /etc/wsl.conf 2>/dev/null && echo oui") -match "oui") `
+     "systemd actif dans $distro" {
+       wsl.exe -d $distro -u root -e sh -c "printf '[boot]\nsystemd=true\n\n[user]\ndefault=root\n' > /etc/wsl.conf"
+       wsl.exe --shutdown
+     }
+
+Etat ((wsl.exe -d $distro -u root -e sh -c "command -v docker >/dev/null && systemctl is-enabled docker 2>/dev/null") -match "enabled") `
+     "docker installe et lance au demarrage de $distro" {
+       wsl.exe -d $distro -u root -e sh -c "export DEBIAN_FRONTEND=noninteractive; apt-get update -qq && apt-get install -y -qq docker.io docker-compose-v2 curl && systemctl enable --now docker"
+     }
+
+# Une tache suffit a tout relancer : demarrer la distribution demarre systemd,
+# qui demarre dockerd, qui relance les conteneurs (restart: unless-stopped).
+Etat ([bool](Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue)) `
+     "tache aixam-docker : demarre WSL a l'ouverture de session" {
+       Tache "aixam-docker" "wsl.exe" "-d $distro -u root -e /bin/true" "PT15S"
+     }
+
+# Docker Desktop, s'il reste installe, ne doit surtout pas se lancer a cote :
+# deux moteurs se disputeraient le port 8080, et sa fenetre reviendrait.
 $reglages = Join-Path $env:APPDATA "Docker\settings-store.json"
-$voulu = @{ AutoStart = $true; OpenUIOnStartupDisabled = $true }
-$dejaLa = (Test-Path $reglages) -and $(
+if (Test-Path $reglages) {
   $j = Get-Content $reglages -Raw | ConvertFrom-Json
-  -not ($voulu.Keys | Where-Object { $j.$_ -ne $voulu[$_] })
-)
-Etat $dejaLa "Docker Desktop : demarre seul, sans ouvrir sa fenetre" {
-  if (-not (Test-Path $reglages)) { throw "Docker Desktop jamais lance : l'ouvrir une fois, puis relancer ce script." }
-  Copy-Item $reglages "$reglages.avant-aixam" -Force
-  $j = Get-Content $reglages -Raw | ConvertFrom-Json
-  foreach ($c in $voulu.Keys) {
-    if (-not $j.PSObject.Properties.Name.Contains($c)) { $j | Add-Member -NotePropertyName $c -NotePropertyValue $false }
-    $j.$c = $voulu[$c]
-  }
-  # Surtout pas Set-Content -Encoding UTF8 : sous PowerShell 5.1 il ajoute un
-  # BOM, et Docker refuse alors de lire ses propres reglages (« invalid
-  # character 'i' »). Son backend plante au demarrage, il repart sur des
-  # reglages par defaut -- AutoStart compris -- et la borne revient d'un
-  # redemarrage sans API, sans que rien n'explique pourquoi.
-  [System.IO.File]::WriteAllText($reglages, ($j | ConvertTo-Json -Depth 20),
-                                 (New-Object System.Text.UTF8Encoding($false)))
-  # On relit ce qu'on vient d'ecrire. Un fichier de reglages casse ne se voit
-  # qu'au demarrage suivant, et coute une heure a relier a sa cause.
-  try { Get-Content $reglages -Raw | ConvertFrom-Json | Out-Null }
-  catch {
-    Copy-Item "$reglages.avant-aixam" $reglages -Force
-    throw "reglages Docker illisibles apres ecriture : sauvegarde restauree."
+  $lancee = (Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue).PSObject.Properties.Name -contains "Docker Desktop"
+  Etat ((-not $j.AutoStart) -and (-not $lancee)) "Docker Desktop ne demarre plus" {
+    Copy-Item $reglages "$reglages.avant-aixam" -Force
+    $j.AutoStart = $false
+    # Jamais Set-Content -Encoding UTF8 : il ajoute un BOM sous PowerShell 5.1,
+    # Docker refuse alors de lire ses reglages et repart sur ses valeurs par
+    # defaut, AutoStart compris.
+    [System.IO.File]::WriteAllText($reglages, ($j | ConvertTo-Json -Depth 20),
+                                   (New-Object System.Text.UTF8Encoding($false)))
+    Remove-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Docker Desktop" -ErrorAction SilentlyContinue
   }
 }
-
-$docker = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-Etat ([bool](Get-ScheduledTask -TaskName aixam-docker -ErrorAction SilentlyContinue)) `
-     "tache aixam-docker, a l'ouverture de session" {
-       if (-not (Test-Path $docker)) { throw "Docker Desktop absent : winget install --id Docker.DockerDesktop -e" }
-       # Ceinture et bretelles : le reglage d'AutoStart se perd a une mise a
-       # jour de Docker Desktop, la tache non. Lancer deux fois est sans effet,
-       # l'application n'admet qu'une instance. Trente secondes de delai : au
-       # demarrage, WSL2 et le reseau ne sont pas encore prets.
-       Tache "aixam-docker" $docker "-Autostart" "PT30S"
-     }
 
 Write-Host "`n[6] Taches de la session ouverte" -ForegroundColor White
 # Ni l'agent des ecrans ni le navigateur ne peuvent etre lances par SSH : une
@@ -178,8 +180,8 @@ Write-Host @"
     HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device
     \DevicePasswordLessBuildVersion. Sans elle, une coupure de courant laisse
     la borne sur l'ecran de connexion.
-  - Docker Desktop : « Start Docker Desktop when you log in », moteur WSL 2,
-    et le compte dans le groupe docker-users.
+  - Rien a faire pour docker : il tourne dans WSL2, en service, et la tache
+    aixam-docker demarre la distribution a l'ouverture de session.
   - AnyDesk : mot de passe d'acces non surveille, sinon chaque prise en main
     demande un clic sur place.
   - Reservation DHCP de l'adresse de la borne dans la box.

@@ -126,8 +126,13 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    pas faire — ouverture de session automatique, Docker Desktop au démarrage,
    mot de passe AnyDesk, réservation DHCP — il le rappelle à la fin.
 
-1. Installer Docker, copier le dépôt, renseigner `.env` (envoi des emails,
-   mots de passe — voir **Envoi des emails** ci-dessous).
+1. Copier le dépôt et renseigner `.env` (envoi des emails, mots de passe —
+   voir **Envoi des emails** ci-dessous). Sous Windows, docker vient de
+   l'étape 0 : il tourne dans **WSL2**, pas dans Docker Desktop. Une
+   application de bureau s'affiche quand elle le décide — écran d'accueil,
+   invitation à créer un compte — devant les visiteurs, et un clic y suffit
+   à arrêter un conteneur. Les scripts `bin/*.sh` s'en occupent seuls : ils
+   se relancent dans la distribution, sur le même dossier vu sous `/mnt/c`.
 2. `make up`.
 3. Récupérer le token de la borne dans **Réglages → Bornes** du back-office.
 4. Renseigner `apiBaseUrl` et `kioskToken` dans le `config.json` de la borne
