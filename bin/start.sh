@@ -157,6 +157,16 @@ if [ $SANS_DOCKER -eq 1 ]; then
     echo $! > "$pid"
   }
 
+  # Une session SSH est une ouverture de session RESEAU : les processus qu'on y
+  # lance ne voient aucun moniteur -- le releve des ecrans n'y trouve qu'un
+  # « WinDisc » virtuel de 1024x768, et le lanceur engendre poserait ses
+  # fenetres sur un ecran qui n'existe pas. C'est la tache aixam-api, declaree
+  # Interactive, qui doit lancer l'API sur la borne.
+  if [ "$PLATEFORME" = "windows" ] && [ -n "${SSH_CONNECTION:-}" ]; then
+    warn "API lancee depuis une session SSH : elle ne verra pas les ecrans."
+    warn "        Pour la borne, passer par la tache : schtasks /run /tn aixam-api"
+  fi
+
   say "demarrage sans docker : api, worker"
   # L'API d'abord : c'est elle qui cree les tables au demarrage. Le worker
   # sait patienter, mais autant lui epargner l'attente.

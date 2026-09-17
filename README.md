@@ -142,7 +142,10 @@ cd apps/admin && npm run dev                          # http://localhost:5174
 4. Renseigner `apiBaseUrl` et `kioskToken` dans le `config.json` de la borne
    (à côté de l'exécutable Tauri, ou dans `apps/kiosk/public/config.json`).
 5. Les écrans : l'API les relève elle-même au démarrage puis toutes les
-   trente secondes — brancher ou déplacer un moniteur se voit dans
+   trente secondes — **à condition d'avoir été lancée dans la session ouverte**,
+   par la tâche `aixam-api`. Démarrée depuis SSH, elle ne verrait qu'un écran
+   virtuel de 1024×768 : une ouverture de session réseau n'a pas de moniteur.
+   `bin/start.sh --local` le signale — brancher ou déplacer un moniteur se voit dans
    **Réglages → Écrans** sans rien relancer. (Seule une API en conteneur, qui
    ne voit aucun moniteur, a besoin de `scripts/agent-ecrans.ps1`.)
 6. **Reglages → Ecrans** : affecter les moniteurs et engendrer le lanceur,
