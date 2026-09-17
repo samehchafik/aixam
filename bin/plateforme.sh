@@ -48,24 +48,22 @@ if [ "$PLATEFORME" = "windows" ]; then
   # Start-Process lui donne une console a lui, cachee, et rend le pid Windows
   # -- que tasklist et taskkill comprennent, contrairement a kill.
   #
-  # Et surtout pas -RedirectStandardOutput : avec une redirection, Start-Process
-  # cree le processus en lui leguant tous nos handles, tubes SSH compris, et
-  # ce qui lit notre sortie attend leur fermeture -- c'est-a-dire la fin du
-  # serveur. Sans redirection il passe par ShellExecute, qui ne legue rien ;
-  # c'est alors un cmd /c, dans sa console cachee, qui ecrit le journal.
+  # Le processus cree herite de tout handle heritable du shell appelant : un
+  # tube « powershell | tr » pour lire le pid en est un, et tr attendrait la
+  # fin du serveur. PowerShell ne recoit donc que le peripherique nul, et le
+  # pid passe par un fichier. Pas de cmd /c intermediaire : ses guillemets
+  # laissaient le worker orphelin, vivant sans que rien ne le suive.
   #
-  # Meme ShellExecute legue les handles heritables, et un tube « powershell |
-  # tr » pour lire le pid en est un : tr attendrait la fin du serveur. Le pid
-  # passe donc par un fichier, et PowerShell ne recoit que le peripherique nul
-  # -- il n'y a plus rien a heriter qui puisse retenir qui que ce soit.
+  # -RedirectStandardError tronque a chaque lancement : le journal est celui
+  # du dernier demarrage, ce qui est ce que l'on cherche en depannage.
   lancer_detache() {   # $1 journal, $2 dossier de travail, $3... commande ; pid sur stdout
     local journal; journal="$(cygpath -m "$1")"
     local dossier; dossier="$(cygpath -m "$2")"
     local exe; exe="$(cygpath -m "$3")"; shift 3
     local fpid; fpid="$(mktemp)"
-    powershell -NoProfile -Command "\$p = Start-Process -FilePath 'cmd.exe' \
-      -ArgumentList '/c \"\"$exe\" $* >> \"$journal\" 2>&1\"' \
-      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru; \
+    powershell -NoProfile -Command "\$p = Start-Process -FilePath '$exe' -ArgumentList '$*' \
+      -WorkingDirectory '$dossier' -WindowStyle Hidden -PassThru \
+      -RedirectStandardError '$journal' -RedirectStandardOutput '$journal.out'; \
       Set-Content -Path '$(cygpath -m "$fpid")' -Value \$p.Id" < /dev/null > /dev/null 2>&1
     tr -d '\r\n' < "$fpid"; rm -f "$fpid"
   }
