@@ -114,6 +114,18 @@ cd apps/admin && npm run dev                          # http://localhost:5174
 
 ## Installation sur le salon
 
+0. Sous Windows, préparer la machine : serveur SSH, Git Bash comme shell des
+   sessions distantes, pare-feu, mise en veille, tâche de l'agent des écrans.
+   Une commande, rejouable, dans une console **administrateur** :
+
+   ```
+   powershell -ExecutionPolicy Bypass -File scripts\installer-borne.ps1
+   ```
+
+   `-Verifier` ne change rien et dit ce qui manque. Ce que le script ne peut
+   pas faire — ouverture de session automatique, Docker Desktop au démarrage,
+   mot de passe AnyDesk, réservation DHCP — il le rappelle à la fin.
+
 1. Installer Docker, copier le dépôt, renseigner `.env` (envoi des emails,
    mots de passe — voir **Envoi des emails** ci-dessous).
 2. `make up`.

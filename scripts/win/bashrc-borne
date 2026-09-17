@@ -1,0 +1,22 @@
+# Borne AIXAM - shell de la session SSH
+
+export TERM=${TERM:-xterm-256color}
+export LANG=fr_FR.UTF-8
+export LS_COLORS='di=01;34:ln=01;36:ex=01;32:*.sh=01;32:*.md=00;33:*.json=00;33:*.yml=00;33'
+
+alias ls='ls --color=auto -F'
+alias ll='ls -lh --color=auto -F'
+alias la='ls -lha --color=auto -F'
+alias grep='grep --color=auto'
+alias dc='docker compose'
+alias logs='docker compose logs -f api worker'
+alias aixam='cd /c/aixam'
+
+parse_git_branch() {
+  git branch --show-current 2>/dev/null | sed 's/.*/ (&)/'
+}
+
+PS1='\[\e[01;32m\]\u@borne\[\e[00m\]:\[\e[01;34m\]\w\[\e[00m\]\[\e[01;33m\]$(parse_git_branch)\[\e[00m\]\$ '
+
+[ -d /c/aixam ] && cd /c/aixam
+
