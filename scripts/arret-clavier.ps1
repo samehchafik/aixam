@@ -57,9 +57,20 @@ public class RaccourciWin {
   [DllImport("user32.dll")] public static extern int GetMessage(out MSG m, IntPtr h, uint min, uint max);
   [DllImport("user32.dll")] public static extern UIntPtr SetTimer(IntPtr h, UIntPtr id, uint ms, IntPtr proc);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr z, int x, int y, int w, int hh, uint f);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   public static readonly IntPtr TOPMOST = new IntPtr(-1);
+  public static readonly IntPtr TOP = IntPtr.Zero;
+  // Un processus sans fenetre n'a pas le droit de donner le focus -- sauf s'il
+  // vient de simuler une frappe. Une pression d'Alt, relachee aussitot, suffit.
+  public static bool Activer(IntPtr h) {
+    keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
+    return SetForegroundWindow(h);
+  }
 }
 "@
+Add-Type -AssemblyName System.Windows.Forms
 
 $MOD = @{ Alt = 0x0001; Ctrl = 0x0002; Shift = 0x0004; Win = 0x0008 }
 $modificateurs = 0x4000   # MOD_NOREPEAT : une frappe, un evenement
@@ -77,15 +88,39 @@ Write-Host "$Modif+$Touche ferme la borne (veilleur pid $PID)"
 # le raccourci.
 [RaccourciWin]::SetTimer([IntPtr]::Zero, [UIntPtr]::Zero, 1000, [IntPtr]::Zero) | Out-Null
 
+$premiereVue = $null; $focusDonne = $false
 $msg = New-Object RaccourciWin+MSG
 while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
   if ($msg.message -eq $WM_TIMER) {
-    # SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE : seul l'ordre change.
     $pids = New-Object 'System.Collections.Generic.HashSet[uint32]'
     Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object { [void]$pids.Add([uint32]$_.Id) }
-    foreach ($h in [RaccourciWin]::FenetresChrome($pids)) {
+    $fenetres = [RaccourciWin]::FenetresChrome($pids)
+    foreach ($h in $fenetres) {
+      # Au demarrage, la barre des taches est creee APRES nos fenetres et
+      # s'insere au-dessus d'elles dans la bande des « toujours au premier
+      # plan » : reaffirmer l'attribut ne remonte pas une fenetre qui l'a deja.
+      # HWND_TOPMOST pose l'attribut, HWND_TOP la remonte en tete de sa bande.
+      # SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE : seul l'ordre change.
       [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
+      [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOP, 0, 0, 0, 0, 0x0013) | Out-Null
     }
+    # Le focus, une fois, quelques secondes apres l'apparition des fenetres :
+    # Windows ne cache la barre que sous une fenetre plein ecran ACTIVE, et au
+    # demarrage c'est le bureau qui l'a. On vise la fenetre de l'ecran
+    # principal, la ou vit la barre.
+    if ($fenetres.Count -gt 0 -and -not $focusDonne) {
+      if (-not $premiereVue) { $premiereVue = Get-Date }
+      elseif (((Get-Date) - $premiereVue).TotalSeconds -ge 8) {
+        foreach ($h in $fenetres) {
+          if ([System.Windows.Forms.Screen]::FromHandle($h).Primary) {
+            $ok = [RaccourciWin]::Activer($h)
+            Write-Host "$(Get-Date -Format HH:mm:ss) focus a la fenetre de l'ecran principal : $ok"
+            $focusDonne = $true
+          }
+        }
+        if (-not $focusDonne) { $focusDonne = $true }
+      }
+    } elseif ($fenetres.Count -eq 0) { $premiereVue = $null }
     continue
   }
   if ($msg.message -eq $WM_HOTKEY) {

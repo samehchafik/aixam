@@ -108,8 +108,16 @@ public static class AixamWin {{
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr z, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("kernel32.dll")] public static extern uint GetLastError();
   public static readonly IntPtr TOPMOST = new IntPtr(-1);
+  public static readonly IntPtr TOP = IntPtr.Zero;
+  // Un processus sans fenetre n'a pas le droit de donner le focus -- sauf s'il
+  // vient de simuler une frappe. Une pression d'Alt, relachee aussitot, suffit.
+  public static bool Activer(IntPtr h) {{
+    keybd_event(0x12, 0, 0, UIntPtr.Zero); keybd_event(0x12, 0, 2, UIntPtr.Zero);
+    return SetForegroundWindow(h);
+  }}
   [StructLayout(LayoutKind.Sequential)] public struct RECT {{ public int L, T, R, B; }}
 }}
 "@
@@ -208,13 +216,16 @@ while ((Get-Date) -lt $fin) {{
   # Chrome vient de refaire est prise aussi.
   Get-Process chrome -ErrorAction SilentlyContinue | ForEach-Object {{ [void]$tous.Add([uint32]$_.Id) }}
   foreach ($h in [AixamWin]::FenetresChrome($tous)) {{
+    # L'attribut, puis la remontee en tete de la bande des topmost : une
+    # barre des taches creee apres nous s'y etait inseree au-dessus.
     [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
+    [AixamWin]::SetWindowPos($h, [AixamWin]::TOP, 0, 0, 0, 0, 0x0013) | Out-Null
   }}
   Start-Sleep -Milliseconds 500
 }}
 if ($script:Fenetres.ContainsKey($principal)) {{
-  [AixamWin]::SetForegroundWindow($script:Fenetres[$principal]) | Out-Null
-  Write-Host "focus a la fenetre de l'ecran principal ($principal)"
+  $ok = [AixamWin]::Activer($script:Fenetres[$principal])
+  Write-Host "focus a la fenetre de l'ecran principal ($principal) : $ok"
 }}
 Write-Host "Fenetres ouvertes, toujours au premier plan."
 """,
