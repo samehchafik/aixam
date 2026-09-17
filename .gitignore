@@ -1,4 +1,8 @@
 .env
+# Les copies de travail d'un .env portent les memes secrets que lui : une
+# sauvegarde avant manipulation ne doit pas se retrouver a portee de `git add`.
+.env.*
+!.env.example
 node_modules/
 dist/
 __pycache__/
