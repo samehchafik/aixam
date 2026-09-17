@@ -18,6 +18,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATIC="$ROOT/apps/api/static"
 
+# Voir bin/build.sh : sous Git Bash, MSYS reecrit les arguments qui
+# ressemblent a des chemins Unix, y compris la destination d'un -v.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) export MSYS2_ARG_CONV_EXCL='*' ;;
+esac
+
 say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mattention:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }

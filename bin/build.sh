@@ -35,6 +35,15 @@ STATIC="$ROOT/apps/api/static"
 NODE_IMAGE="${NODE_IMAGE:-node:22-alpine}"
 BUILD_MODE="${BUILD_MODE:-docker}"
 
+# Git Bash (MSYS) reecrit tout argument qui ressemble a un chemin Unix avant
+# de lancer le binaire Windows : `-w /app` arrive au demon docker en
+# `C:/Program Files/Git/app`, et le build echoue. On coupe la conversion, et
+# on traduit nous-memes les seuls chemins qui en ont besoin : ceux de l'hote.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) export MSYS2_ARG_CONV_EXCL='*'; hote() { cygpath -m "$1"; } ;;
+  *)                    hote() { printf '%s' "$1"; } ;;
+esac
+
 say()  { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mattention:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[31merreur:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -73,7 +82,7 @@ build_one() {
     # dependances, puis rend tout ce qu'il a depose dans le depot au compte
     # hote -- dist/, mais aussi tsconfig.tsbuildinfo que tsc ecrit a la racine.
     docker run --rm \
-      -v "$src:/app" \
+      -v "$(hote "$src"):/app" \
       -v "$volume:/app/node_modules" \
       -w /app "$NODE_IMAGE" \
       sh -c "npm ci --no-audit --no-fund && npm run build && \
