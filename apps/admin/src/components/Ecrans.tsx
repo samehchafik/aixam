@@ -72,6 +72,10 @@ export function Ecrans() {
   if (!releve) return <Text c="dimmed">Chargement...</Text>
 
   const choisis = releve.ecrans.filter((e) => roles[e.peripherique])
+  // Deux battements manques : on laisse passer un redemarrage de l'API ou un
+  // reseau qui hoquette avant d'accuser l'agent.
+  const perime =
+    !releve.indisponible && Date.now() - new Date(releve.releve_le).getTime() > 11 * 60 * 1000
 
   const engendrer = async () => {
     setBusy(true)
@@ -186,10 +190,24 @@ export function Ecrans() {
         )}
         {message && <Text c="dimmed" fz="sm">{message}</Text>}
 
+        {/*
+          L'agent se réannonce toutes les cinq minutes même sans changement.
+          Un relevé plus vieux que ça veut donc dire qu'il ne tourne plus — et
+          la page montrerait sinon un état d'écrans périmé avec l'aplomb d'un
+          état courant.
+        */}
+        {perime && (
+          <Alert color="orange" variant="light" title="Relevé figé">
+            Aucune nouvelle depuis {new Date(releve.releve_le).toLocaleString('fr-FR')}. L'agent
+            des écrans ne tourne probablement plus sur le PC du stand : ce qui est affiché ici
+            date d'avant. Le relancer — tâche <Code>aixam-ecrans</Code>, ou{' '}
+            <Code>scripts\agent-ecrans.ps1</Code> dans la session ouverte.
+          </Alert>
+        )}
+
         <Text c="dimmed" fz="xs">
           Dernier relevé : {new Date(releve.releve_le).toLocaleString('fr-FR')} · {releve.systeme}.
-          À refaire après tout changement de disposition : débrancher un écran ou en intervertir
-          deux change les coordonnées, et le script les place par coordonnées.
+          L'agent réannonce les écrans dès qu'ils changent, et se signale toutes les cinq minutes.
         </Text>
       </Stack>
     </div>

@@ -16,6 +16,7 @@ param(
   [string]$ApiHost,
   [string]$Token,
   [int]$Secondes = 5,
+  [int]$Battement = 300,
   [switch]$UneFois
 )
 
@@ -74,13 +75,19 @@ Pousser $ecrans
 if ($UneFois) { exit 0 }
 
 $precedente = Signature $ecrans
+$dernier = Get-Date
 while ($true) {
   Start-Sleep -Seconds $Secondes
   $ecrans = Releve-Ecrans
   $courante = Signature $ecrans
-  if ($courante -ne $precedente) {
-    Write-Host "changement d'affichage detecte"
-    try { Pousser $ecrans; $precedente = $courante }
+  # Reannoncer meme sans changement, toutes les cinq minutes : c'est ce qui
+  # distingue « rien n'a bouge » de « l'agent est mort ». Sans ce battement,
+  # le back-office afficherait indefiniment le dernier releve connu, et une
+  # borne dont l'agent s'est arrete ressemblerait a une borne en bon etat.
+  $battu = ((Get-Date) - $dernier).TotalSeconds -ge $Battement
+  if ($courante -ne $precedente -or $battu) {
+    if ($courante -ne $precedente) { Write-Host "changement d'affichage detecte" }
+    try { Pousser $ecrans; $precedente = $courante; $dernier = Get-Date }
     # L'API redemarre, le reseau hoquette : on retentera au tour suivant. Ne
     # pas avancer la signature, sinon le changement serait perdu.
     catch { Write-Warning "annonce refusee : $($_.Exception.Message)" }
