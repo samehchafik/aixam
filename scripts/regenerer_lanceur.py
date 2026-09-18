@@ -43,8 +43,10 @@ releve = json.load(urllib.request.urlopen(req, timeout=20))
 ecrans = releve["ecrans"]
 for e in ecrans:
     print("  ecran :", e["peripherique"], f'{e["largeur"]}x{e["hauteur"]}', f'en {e["x"]},{e["y"]}')
-if len(ecrans) < 2 or any(e["peripherique"] == "WinDisc" for e in ecrans):
-    raise SystemExit(f"{len(ecrans)} ecran(s) releve(s), dont un virtuel : l'API doit tourner dans la session ouverte (tache aixam-api).")
+if any(e["peripherique"] == "WinDisc" for e in ecrans):
+    raise SystemExit("releve virtuel (WinDisc) : l'API doit tourner dans la session ouverte (tache aixam-api).")
+if len(ecrans) < 2:
+    raise SystemExit(f"{len(ecrans)} ecran(s) releve(s), il en faut deux : second moniteur eteint ou en mode Dupliquer ?")
 
 corps = {
     "hote": HOTE,
