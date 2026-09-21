@@ -269,6 +269,23 @@ if (Test-Path $lanceur) {
   $script:Manques++
 }
 
+# Les reglages du back-office vivent en base : la perdre, c'est perdre le
+# jeton du relais d'emails -- et les visiteurs de la journee, au salon.
+$sauvegarde = Get-ScheduledTask -TaskName aixam-sauvegarde -ErrorAction SilentlyContinue
+Etat ([bool]$sauvegarde) "tache aixam-sauvegarde : la base, tous les jours a 13 h" {
+  $racineBash = "/" + ($Racine -replace ":", "" -replace "\\", "/")
+  $action = New-ScheduledTaskAction -Execute $bash `
+    -Argument "-lc `"cd '$racineBash' && bin/sauvegarde.sh`""
+  # A midi passe plutot qu'a l'aube : une borne de salon est allumee la
+  # journee, pas la nuit, et une tache manquee se rattrape au demarrage.
+  $declencheur = New-ScheduledTaskTrigger -Daily -At 13:00
+  $qui = New-ScheduledTaskPrincipal -UserId $Compte -LogonType Interactive
+  $comment = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries -StartWhenAvailable
+  Register-ScheduledTask -TaskName "aixam-sauvegarde" -Action $action -Trigger $declencheur `
+    -Principal $qui -Settings $comment -Force | Out-Null
+}
+
 foreach ($ancienne in "aixam-docker", "aixam-ecrans") {
   Etat (-not (Get-ScheduledTask -TaskName $ancienne -ErrorAction SilentlyContinue)) "plus de tache $ancienne" {
     Unregister-ScheduledTask -TaskName $ancienne -Confirm:$false

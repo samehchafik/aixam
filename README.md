@@ -205,6 +205,11 @@ Le JPEG ne voyage pas — `layers` est la source de verite et le serveur sait
 re-rendre. Le chemin du rendu local et l'identifiant de borne ne voyagent pas
 non plus : ils n'ont pas de sens sur le serveur.
 
+Ce jeton, comme celui du relais, vit **dans la base** : le `.env` n'en est que
+le repli. Recreer la base les efface tous les deux --
+`scripts/reporter_reglages.py` recopie donc les reglages vers le `.env`, et
+`bin/sauvegarde.sh` sauve la base entiere (voir [docs/exploitation.md](docs/exploitation.md)).
+
 Authentification par le meme jeton que le relais d'emails, avec sa revocation
 et sa page d'admin. Cote serveur, `SYNC_SERVER_ENABLED=true` ouvre le role.
 
