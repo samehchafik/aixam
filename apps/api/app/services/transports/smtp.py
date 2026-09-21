@@ -55,30 +55,29 @@ def build_message(message: Outgoing) -> EmailMessage:
     msg.add_alternative(corps, subtype="html", charset="utf-8")
 
     if message.attachment:
-        if lien:
-            # Attachee au HTML, pas au message : c'est ce qui fait un
-            # multipart/related, et ce qui permet au <img> de la trouver.
-            #
-            # `disposition="attachment"` malgre l'affichage dans le corps :
-            # une partie citee par un cid: est rendue de toute facon, et cette
-            # disposition la garde en plus dans la liste des pieces jointes --
-            # le visiteur doit pouvoir enregistrer sa creation, pas seulement
-            # la regarder.
-            msg.get_payload()[-1].add_related(
-                message.attachment.content,
-                maintype=message.attachment.maintype,
-                subtype=message.attachment.subtype,
-                cid=lien,
-                filename=message.attachment.filename,
-                disposition="attachment",
-            )
-        else:
-            msg.add_attachment(
-                message.attachment.content,
-                maintype=message.attachment.maintype,
-                subtype=message.attachment.subtype,
-                filename=message.attachment.filename,
-            )
+        # UNE seule copie des octets, piece jointe du message -- pas partie
+        # liee au HTML. Les deux s'affichent dans le corps, mais seule
+        # celle-ci est une piece jointe pour tout le monde : posee au premier
+        # niveau, elle apparait dans la liste des fichiers de n'importe quel
+        # client. Imbriquee dans le HTML (multipart/related), elle s'affichait
+        # bien, mais certains clients ne la proposaient plus a enregistrer --
+        # or le visiteur doit pouvoir garder sa creation, c'est tout l'objet
+        # de cet email.
+        #
+        # Le Content-ID reste : `cid:` se resout sur le message entier, pas
+        # sur les seuls voisins d'un multipart/related. L'image est donc a la
+        # fois posee dans le corps et enregistrable.
+        #
+        # Pas de seconde copie pour forcer les deux : outre les 200 Kio,
+        # certains clients affichent d'office toute image jointe a la fin du
+        # message -- le visiteur verrait sa creation deux fois.
+        msg.add_attachment(
+            message.attachment.content,
+            maintype=message.attachment.maintype,
+            subtype=message.attachment.subtype,
+            filename=message.attachment.filename,
+            **({"cid": lien} if lien else {}),
+        )
     return msg
 
 

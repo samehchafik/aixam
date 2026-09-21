@@ -126,9 +126,16 @@ liee = build_message(Outgoing(message_id="z", to_email="v@example.com",
                               subject="Votre creation", body_html=vraie,
                               attachment=load_attachment(str(skin))))
 
-types = [p.get_content_type() for p in liee.walk()]
-check("le HTML et l'image forment un multipart/related",
-      "multipart/related" in types, types)
+# L'image est posee au PREMIER niveau du message, pas imbriquee dans le HTML.
+# C'est ce qui en fait une piece jointe pour tout le monde : dans un
+# multipart/related elle s'affichait bien, mais certains clients ne la
+# proposaient plus a enregistrer -- or garder sa creation est tout l'objet de
+# cet email.
+check("structure multipart/mixed", liee.get_content_type() == "multipart/mixed",
+      liee.get_content_type())
+check("l'image est listee comme piece jointe",
+      [p.get_filename() for p in liee.iter_attachments()] == [skin.name],
+      [p.get_filename() for p in liee.iter_attachments()])
 html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
 image = next(p for p in liee.walk() if p.get_content_type() == "image/png")
 
@@ -142,10 +149,15 @@ check("le marqueur a bien ete remplace",
       f"cid:{CID_CREATION}" not in html_part.get_content())
 check("aucun lien http dans le corps", "http" not in html_part.get_content())
 
-# Affichee ET enregistrable : le visiteur doit pouvoir garder sa creation.
-check("elle reste une piece jointe nommee",
+# Affichee ET enregistrable, en UN seul exemplaire : `cid:` se resout sur le
+# message entier, pas sur les seuls voisins d'un multipart/related. Une
+# seconde copie couterait 200 Kio et ferait afficher la creation deux fois
+# chez les clients qui posent d'office les images jointes en fin de message.
+check("elle est nommee et marquee piece jointe",
       image.get_filename() and image.get_content_disposition() == "attachment",
       (image.get_filename(), image.get_content_disposition()))
+check("un seul exemplaire des octets",
+      sum(1 for p in liee.walk() if p.get_content_type() == "image/png") == 1)
 check("le texte seul ne garde aucune balise",
       "<" not in next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain"))
 
