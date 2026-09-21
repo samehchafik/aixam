@@ -10,8 +10,12 @@
 #   bin/sauvegarde.sh                dans .run/sauvegardes/
 #   bin/sauvegarde.sh --vers DOSSIER ailleurs (cle USB, partage)
 #
-# Restauration -- la base doit exister et etre vide :
-#   psql -U aixam -h localhost -d aixam -f .run/sauvegardes/aixam-....sql
+# Restauration -- la base doit exister et etre vide. La creer demande le
+# superutilisateur : le role « aixam » n'a pas ce droit, et c'est voulu.
+#   psql -U postgres -h localhost -d postgres -c "create database aixam owner aixam"
+#   psql -U aixam    -h localhost -d aixam    -f .run/sauvegardes/aixam-....sql
+# Eprouve le 2026-09-21 sur une base d'essai : reglages, visiteurs, creations
+# et bornes reviennent, jeton du relais compris.
 #
 # Ce qui n'y est PAS : les JPEG de media/renders/. Ils se refabriquent depuis
 # les calques, qui sont en base (voir README, « Apres le salon »).
