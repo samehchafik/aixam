@@ -55,28 +55,38 @@ def build_message(message: Outgoing) -> EmailMessage:
     msg.add_alternative(corps, subtype="html", charset="utf-8")
 
     if message.attachment:
-        # UNE seule copie des octets, piece jointe du message -- pas partie
-        # liee au HTML. Les deux s'affichent dans le corps, mais seule
-        # celle-ci est une piece jointe pour tout le monde : posee au premier
-        # niveau, elle apparait dans la liste des fichiers de n'importe quel
-        # client. Imbriquee dans le HTML (multipart/related), elle s'affichait
-        # bien, mais certains clients ne la proposaient plus a enregistrer --
-        # or le visiteur doit pouvoir garder sa creation, c'est tout l'objet
-        # de cet email.
+        # DEUX parties pour la meme image, et ce n'est pas un oubli.
         #
-        # Le Content-ID reste : `cid:` se resout sur le message entier, pas
-        # sur les seuls voisins d'un multipart/related. L'image est donc a la
-        # fois posee dans le corps et enregistrable.
+        # On a essaye les deux economies, chacune a manque une moitie :
         #
-        # Pas de seconde copie pour forcer les deux : outre les 200 Kio,
-        # certains clients affichent d'office toute image jointe a la fin du
-        # message -- le visiteur verrait sa creation deux fois.
+        #   image dans le multipart/related seul  -> affichee, pas enregistrable
+        #   image en piece jointe seule, citee    -> enregistrable, pas affichee
+        #
+        # La theorie donne raison a la seconde -- `cid:` designe le message
+        # entier -- mais les clients ne la suivent pas : ils ne resolvent le
+        # lien qu'entre voisins d'un multipart/related. Et une piece jointe
+        # n'est listee de facon sure qu'au premier niveau du message.
+        #
+        # Donc une partie pour montrer, une partie pour garder. Le cout est de
+        # 200 Kio par email, et chez les clients qui posent d'office les images
+        # jointes en fin de message le visiteur verra sa creation deux fois.
+        # C'est le prix a payer pour qu'il l'ait a coup sur.
+        if lien:
+            msg.get_payload()[-1].add_related(
+                message.attachment.content,
+                maintype=message.attachment.maintype,
+                subtype=message.attachment.subtype,
+                cid=lien,
+                # Sans nom de fichier ni disposition « attachment » : cette
+                # copie-la n'existe que pour le <img>, elle n'a pas a paraitre
+                # une seconde fois dans la liste des fichiers.
+                disposition="inline",
+            )
         msg.add_attachment(
             message.attachment.content,
             maintype=message.attachment.maintype,
             subtype=message.attachment.subtype,
             filename=message.attachment.filename,
-            **({"cid": lien} if lien else {}),
         )
     return msg
 

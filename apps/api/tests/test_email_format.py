@@ -126,18 +126,32 @@ liee = build_message(Outgoing(message_id="z", to_email="v@example.com",
                               subject="Votre creation", body_html=vraie,
                               attachment=load_attachment(str(skin))))
 
-# L'image est posee au PREMIER niveau du message, pas imbriquee dans le HTML.
-# C'est ce qui en fait une piece jointe pour tout le monde : dans un
-# multipart/related elle s'affichait bien, mais certains clients ne la
-# proposaient plus a enregistrer -- or garder sa creation est tout l'objet de
-# cet email.
+# DEUX parties pour la meme image. Les deux economies ont ete essayees en
+# vrai, chacune a manque une moitie : dans le seul multipart/related elle
+# s'affichait sans etre enregistrable ; en seule piece jointe citee par un
+# cid:, l'inverse. Les clients ne resolvent le lien qu'entre voisins d'un
+# related, et ne listent de facon sure qu'une piece du premier niveau.
 check("structure multipart/mixed", liee.get_content_type() == "multipart/mixed",
       liee.get_content_type())
-check("l'image est listee comme piece jointe",
+check("le corps et l'image liee forment un multipart/related",
+      "multipart/related" in [p.get_content_type() for p in liee.walk()])
+html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
+images = [p for p in liee.walk() if p.get_content_type() == "image/png"]
+check("deux parties image : une pour montrer, une pour garder", len(images) == 2,
+      [p.get_content_disposition() for p in images])
+image = next(p for p in images if p["Content-ID"])
+jointe = next(p for p in images if p.get_content_disposition() == "attachment")
+
+# Une seule doit paraitre dans la liste des fichiers : celle qui n'existe que
+# pour le <img> n'a ni nom ni disposition « attachment ».
+check("une seule piece jointe listee",
       [p.get_filename() for p in liee.iter_attachments()] == [skin.name],
       [p.get_filename() for p in liee.iter_attachments()])
-html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
-image = next(p for p in liee.walk() if p.get_content_type() == "image/png")
+check("la copie du corps ne se propose pas a enregistrer",
+      image.get_filename() is None and image.get_content_disposition() == "inline",
+      (image.get_filename(), image.get_content_disposition()))
+check("les deux portent bien les memes octets",
+      image.get_payload(decode=True) == jointe.get_payload(decode=True))
 
 # Le piege classique : une balise qui cite un identifiant que la partie ne
 # porte pas. L'email est bien forme, et le visiteur voit un cadre casse.
@@ -149,15 +163,8 @@ check("le marqueur a bien ete remplace",
       f"cid:{CID_CREATION}" not in html_part.get_content())
 check("aucun lien http dans le corps", "http" not in html_part.get_content())
 
-# Affichee ET enregistrable, en UN seul exemplaire : `cid:` se resout sur le
-# message entier, pas sur les seuls voisins d'un multipart/related. Une
-# seconde copie couterait 200 Kio et ferait afficher la creation deux fois
-# chez les clients qui posent d'office les images jointes en fin de message.
-check("elle est nommee et marquee piece jointe",
-      image.get_filename() and image.get_content_disposition() == "attachment",
-      (image.get_filename(), image.get_content_disposition()))
-check("un seul exemplaire des octets",
-      sum(1 for p in liee.walk() if p.get_content_type() == "image/png") == 1)
+check("la piece jointe porte le nom du fichier", jointe.get_filename() == skin.name,
+      jointe.get_filename())
 check("le texte seul ne garde aucune balise",
       "<" not in next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain"))
 
