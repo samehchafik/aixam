@@ -25,7 +25,15 @@ os.environ.update(
 on_path()
 
 from app.services.mailer import render_template
-from app.services.transports import Outgoing, SendError, html_vers_texte, load_attachment
+from app.services.transports import (
+    CID_CREATION,
+    Outgoing,
+    SendError,
+    html_vers_texte,
+    load_attachment,
+    retirer_image_liee,
+)
+from app.services.transports.brevo import build_payload
 from app.services.transports.smtp import build_message
 from app.services.renderer import render_design
 from app.schemas import Layer
@@ -104,6 +112,57 @@ except SendError as exc:
     check("le message dit quoi chercher", "introuvable" in str(exc), str(exc))
 check("pas de chemin, pas de piece : ce cas reste normal",
       load_attachment(None) is None)
+
+
+print("\n[7] La creation s'affiche dans le corps du message")
+# `cid:` n'est pas une adresse : elle designe une partie de CE message. L'image
+# est donc dans l'email, affichee hors ligne, sans rien demander a un serveur.
+# Un <img src="https://..."> serait bloque par defaut par la plupart des
+# messageries, expirerait avec le serveur, et dirait a qui l'a envoye quand le
+# visiteur l'a ouvert.
+vraie = render_template("creation.html", first_name="Camille", base_url="https://exemple.fr")
+check("le gabarit pose le marqueur", f"cid:{CID_CREATION}" in vraie, vraie[:200])
+liee = build_message(Outgoing(message_id="z", to_email="v@example.com",
+                              subject="Votre creation", body_html=vraie,
+                              attachment=load_attachment(str(skin))))
+
+types = [p.get_content_type() for p in liee.walk()]
+check("le HTML et l'image forment un multipart/related",
+      "multipart/related" in types, types)
+html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
+image = next(p for p in liee.walk() if p.get_content_type() == "image/png")
+
+# Le piege classique : une balise qui cite un identifiant que la partie ne
+# porte pas. L'email est bien forme, et le visiteur voit un cadre casse.
+check("l'image porte un Content-ID", image["Content-ID"] is not None)
+check("le HTML cite exactement cet identifiant",
+      f"cid:{image['Content-ID'][1:-1]}" in html_part.get_content(),
+      (image["Content-ID"], html_part.get_content()[-300:]))
+check("le marqueur a bien ete remplace",
+      f"cid:{CID_CREATION}" not in html_part.get_content())
+check("aucun lien http dans le corps", "http" not in html_part.get_content())
+
+# Affichee ET enregistrable : le visiteur doit pouvoir garder sa creation.
+check("elle reste une piece jointe nommee",
+      image.get_filename() and image.get_content_disposition() == "attachment",
+      (image.get_filename(), image.get_content_disposition()))
+check("le texte seul ne garde aucune balise",
+      "<" not in next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain"))
+
+print("\n[8] Pas d'image liee sans piece a lier")
+# Sans piece jointe, la balise designerait une partie absente. Le transport la
+# retire plutot que de montrer un cadre casse.
+seul = build_message(Outgoing(message_id="w", to_email="v@example.com",
+                              subject="Votre creation", body_html=vraie))
+check("la balise est retiree", "cid:" not in next(
+    p.get_content() for p in seul.walk() if p.get_content_type() == "text/html"))
+# L'API Brevo prend des pieces jointes, pas des images liees au corps.
+check("Brevo retire aussi la balise",
+      "cid:" not in build_payload(Outgoing(message_id="v", to_email="v@example.com",
+                                           subject="s", body_html=vraie))["htmlContent"])
+check("retirer_image_liee ne touche pas au reste",
+      retirer_image_liee("<p>avant</p><img src=\'cid:creation\'><p>apres</p>")
+      == "<p>avant</p><p>apres</p>")
 
 
 sys.exit(report())

@@ -6,4 +6,25 @@
   Partagez-la sur vos reseaux avec <strong>#EASYbyAIXAM</strong> &mdash; les plus belles
   creations pourront etre selectionnees pour la future production.
 </p>
+
+{# La creation, posee dans le corps. `cid:creation` n'est pas une adresse : le
+   transport y branche la piece jointe elle-meme, deja dans le message. Rien
+   n'est demande a un serveur -- l'image s'affiche hors ligne et ne dit a
+   personne quand elle a ete ouverte.
+
+   La planche fait pres de dix fois plus large que haute : elle tient sur une
+   bande. Le rendu porte deja son propre liseret sombre -- lui en ajouter un
+   ferait un cadre dans un cadre.
+
+   Un tableau plutot qu'un div, et `width` en attribut autant qu'en style :
+   Outlook ignore les deux sinon. #}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="margin:0 0 20px;border-collapse:collapse">
+  <tr>
+    <td align="center">
+      <img src="cid:creation" alt="Votre creation EASY" width="456"
+           style="display:block;width:100%;max-width:456px;height:auto;border:0;border-radius:8px">
+    </td>
+  </tr>
+</table>
 {% endblock %}

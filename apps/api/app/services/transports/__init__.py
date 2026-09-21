@@ -21,6 +21,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+# Le gabarit ecrit <img src="cid:creation">. Ce n'est pas une adresse : `cid:`
+# designe une partie du message lui-meme. L'image est donc DANS l'email, et
+# s'affiche hors ligne, sans rien demander a un serveur -- la ou un lien http
+# serait bloque par defaut par la plupart des messageries, expirerait avec le
+# serveur, et dirait a qui l'a envoye quand le visiteur l'a ouvert.
+#
+# Le transport remplace ce marqueur par l'identifiant reel de la partie. Celui
+# qui ne sait pas faire d'image liee retire la balise : mieux vaut pas d'image
+# qu'un cadre casse, la piece jointe restant la.
+CID_CREATION = "creation"
+
+_IMAGE_LIEE = re.compile(
+    r"""<img\b[^>]*\bsrc=["']cid:""" + CID_CREATION + r"""["'][^>]*>""", re.IGNORECASE
+)
+
+
+def retirer_image_liee(html_source: str) -> str:
+    return _IMAGE_LIEE.sub("", html_source)
+
+
 class SendError(RuntimeError):
     """Echec d'envoi. Le worker retentera."""
 

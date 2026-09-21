@@ -15,7 +15,14 @@ from datetime import datetime, timezone
 
 from app.config import settings
 
-from . import Outgoing, PermanentSendError, SendError, html_vers_texte
+from . import (
+    CID_CREATION,
+    Outgoing,
+    PermanentSendError,
+    SendError,
+    html_vers_texte,
+    retirer_image_liee,
+)
 
 
 def build_message(message: Outgoing) -> EmailMessage:
@@ -31,15 +38,47 @@ def build_message(message: Outgoing) -> EmailMessage:
     msg["Message-ID"] = make_msgid(domain=settings.mail_from.rpartition("@")[2] or None)
     if settings.mail_reply_to:
         msg["Reply-To"] = settings.mail_reply_to
-    msg.set_content(html_vers_texte(message.body_html), subtype="plain", charset="utf-8")
-    msg.add_alternative(message.body_html, subtype="html", charset="utf-8")
+    # L'identifiant de la partie image se fabrique ici, au moment ou la partie
+    # existe. Le gabarit ne peut ecrire qu'un marqueur : il est rendu a la mise
+    # en file, bien avant qu'on sache comment le message sera decoupe.
+    corps = message.body_html
+    lien = None
+    if message.attachment and f"cid:{CID_CREATION}" in corps:
+        lien = make_msgid(domain=settings.mail_from.rpartition("@")[2] or None)
+        corps = corps.replace(f"cid:{CID_CREATION}", f"cid:{lien[1:-1]}")
+    else:
+        # Rien a lier : la balise designerait une partie absente, et le
+        # visiteur verrait un cadre casse a la place de sa creation.
+        corps = retirer_image_liee(corps)
+
+    msg.set_content(html_vers_texte(corps), subtype="plain", charset="utf-8")
+    msg.add_alternative(corps, subtype="html", charset="utf-8")
+
     if message.attachment:
-        msg.add_attachment(
-            message.attachment.content,
-            maintype=message.attachment.maintype,
-            subtype=message.attachment.subtype,
-            filename=message.attachment.filename,
-        )
+        if lien:
+            # Attachee au HTML, pas au message : c'est ce qui fait un
+            # multipart/related, et ce qui permet au <img> de la trouver.
+            #
+            # `disposition="attachment"` malgre l'affichage dans le corps :
+            # une partie citee par un cid: est rendue de toute facon, et cette
+            # disposition la garde en plus dans la liste des pieces jointes --
+            # le visiteur doit pouvoir enregistrer sa creation, pas seulement
+            # la regarder.
+            msg.get_payload()[-1].add_related(
+                message.attachment.content,
+                maintype=message.attachment.maintype,
+                subtype=message.attachment.subtype,
+                cid=lien,
+                filename=message.attachment.filename,
+                disposition="attachment",
+            )
+        else:
+            msg.add_attachment(
+                message.attachment.content,
+                maintype=message.attachment.maintype,
+                subtype=message.attachment.subtype,
+                filename=message.attachment.filename,
+            )
     return msg
 
 
