@@ -25,7 +25,7 @@ os.environ.update(
 on_path()
 
 from app.services.mailer import render_template
-from app.services.transports import Outgoing, html_vers_texte, load_attachment
+from app.services.transports import Outgoing, SendError, html_vers_texte, load_attachment
 from app.services.transports.smtp import build_message
 from app.services.renderer import render_design
 from app.schemas import Layer
@@ -76,5 +76,34 @@ check("les sauts de ligne survivent",
 check("les entites sont decodees", "l'ete" in html_vers_texte("<p>l&#39;ete</p>"))
 check("styles et scripts disparaissent",
       "rouge" not in html_vers_texte("<style>.a{color:rouge}</style><p>bonjour</p>"))
+
+print("\n[5] L'image voyage en octets, jamais en lien")
+# L'image doit etre DANS le message. Un <img src="https://..."> serait bloque
+# par defaut par la plupart des messageries, expirerait avec le serveur, et
+# dirait a qui l'ouvre quand il l'a ouvert. Le visiteur doit pouvoir garder sa
+# creation hors ligne, des reception.
+corps = "".join(
+    p.get_content() for p in avec.walk()
+    if p.get_content_type() in ("text/plain", "text/html")
+)
+check("aucun lien http vers l'image", "http" not in corps, corps[:120])
+check("les octets du PNG sont bien dans le message",
+      len(jointes[0].get_payload(decode=True)) > 1000,
+      len(jointes[0].get_payload(decode=True)))
+
+print("\n[6] Une piece jointe absente ne part pas en silence")
+# Le corps annonce « votre creation est en piece jointe » : l'envoyer sans
+# elle est une promesse vide, et le visiteur n'a aucun moyen de le signaler.
+# C'est arrive -- l'API ecrivait la piece dans un dossier que le worker ne
+# montait pas. La ligne doit echouer, visible dans l'ecran Emails.
+try:
+    load_attachment("media/renders/ce-fichier-n-existe-pas.png")
+    check("un chemin sans fichier leve", False, "rien n'a ete leve")
+except SendError as exc:
+    check("un chemin sans fichier leve", True)
+    check("le message dit quoi chercher", "introuvable" in str(exc), str(exc))
+check("pas de chemin, pas de piece : ce cas reste normal",
+      load_attachment(None) is None)
+
 
 sys.exit(report())

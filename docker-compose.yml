@@ -68,6 +68,13 @@ services:
       # RENDERS_HOST_DIR dans .env pour le poser ailleurs, /var/lib/aixam par
       # exemple, sur le disque sauvegarde du serveur.
       - ${RENDERS_HOST_DIR:-./apps/api/media/renders}:/app/media/renders
+      # Les pieces jointes que les bornes confient au relais. L'API les ecrit,
+      # le WORKER les relit : sans ce montage chacun regarde dans sa propre
+      # couche de conteneur, et le worker ne trouve rien. Elles vivaient dans
+      # l'ancien volume `media`, partage par les deux ; en le remplacant par des
+      # montages cibles, on a partage les rendus et oublie celles-ci. Les
+      # emails partaient alors sans l'image, en silence.
+      - ./apps/api/media/relay:/app/media/relay
       - ./apps/api/static:/app/static:ro
       # Releve des ecrans de la machine hote -- voir MATERIEL_FILE ci-dessus.
       - ./.run/materiel:/app/materiel
@@ -104,6 +111,13 @@ services:
       # RENDERS_HOST_DIR dans .env pour le poser ailleurs, /var/lib/aixam par
       # exemple, sur le disque sauvegarde du serveur.
       - ${RENDERS_HOST_DIR:-./apps/api/media/renders}:/app/media/renders
+      # Les pieces jointes que les bornes confient au relais. L'API les ecrit,
+      # le WORKER les relit : sans ce montage chacun regarde dans sa propre
+      # couche de conteneur, et le worker ne trouve rien. Elles vivaient dans
+      # l'ancien volume `media`, partage par les deux ; en le remplacant par des
+      # montages cibles, on a partage les rendus et oublie celles-ci. Les
+      # emails partaient alors sans l'image, en silence.
+      - ./apps/api/media/relay:/app/media/relay
 
 volumes:
   pgdata:

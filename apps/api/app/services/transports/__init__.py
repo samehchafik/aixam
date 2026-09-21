@@ -75,13 +75,27 @@ class Outgoing:
 
 
 def load_attachment(path: str | None) -> Attachment | None:
+    """Relit la piece jointe que la ligne d'outbox designe.
+
+    Un chemin sans fichier leve, il ne s'ignore pas. On renvoyait le mail sans
+    la piece, en se disant qu'un rendu purge ne devait pas bloquer la file --
+    sauf que le corps du message annonce « votre creation est en piece
+    jointe ». Le visiteur recevait donc une promesse vide, et rien nulle part
+    n'en gardait trace : ni journal, ni ligne en echec, ni compteur.
+
+    C'est ce silence qui a laissé passer un dossier que le worker ne voyait
+    pas. Mieux vaut une ligne rouge dans l'ecran Emails : le worker retente
+    avec son backoff, abandonne au bout de ses essais, et l'animateur voit
+    laquelle des creations n'est pas partie.
+    """
     if not path:
         return None
     file = Path(path)
     if not file.is_file():
-        # Le rendu a pu etre purge : on envoie le mail sans la piece plutot
-        # que de bloquer la file pour un fichier qui ne reviendra pas.
-        return None
+        raise SendError(
+            f"piece jointe introuvable : {path} "
+            "(ce processus ne voit pas le dossier ou elle a ete ecrite ?)"
+        )
     ctype, _ = mimetypes.guess_type(file.name)
     return Attachment(
         filename=file.name,
