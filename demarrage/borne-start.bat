@@ -56,6 +56,10 @@ call :dire "== fermeture de tout Chrome"
 taskkill /IM chrome.exe /F /T >nul 2>&1
 call "%~dp0stop-clavier.bat"
 
+rem Un journal neuf a chaque lancement : l'ancien fut ecrit en UTF-16 par un
+rem Tee-Object, puis complete en UTF-8 -- deux encodages dans un fichier, et
+rem plus rien de lisible. Le precedent est garde une fois, en .ancien.
+if exist "%RACINE%\.run\arret-clavier.log" move /y "%RACINE%\.run\arret-clavier.log" "%RACINE%\.run\arret-clavier.log.ancien" >nul 2>&1
 call :dire "== Ctrl+Q fermera la borne, et le topmost sera maintenu"
 start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%RACINE%\scripts\arret-clavier.ps1' -FichierPid '%RACINE%\.run\arret-clavier.pid' *>&1 | Out-File -FilePath '%RACINE%\.run\arret-clavier.log' -Append -Encoding utf8"
 

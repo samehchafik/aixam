@@ -19,6 +19,8 @@
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\arret-clavier.ps1 [-Touche Q] [-Modif Ctrl|Ctrl+Alt]
 #
+# Journal : demarrage\start.bat le repart a neuf a chaque lancement.
+#
 # Le fichier de pid s'appelle -FichierPid, pas -Pid : $PID est une variable
 # reservee de PowerShell, et l'assigner est une erreur fatale des la premiere
 # ligne -- le veilleur n'a jamais demarre tant qu'il s'appelait ainsi.
@@ -66,6 +68,32 @@ public class RaccourciWin {
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   public static readonly IntPtr TOPMOST = new IntPtr(-1);
   public static readonly IntPtr TOP = IntPtr.Zero;
+  // Le clavier tactile de Windows est-il a l'ecran ? IFrameworkInputPane est
+  // l'API prevue pour cela : elle rend le rectangle du clavier, vide s'il est
+  // range. Elle vaut pour TabTip (Windows 10) comme pour TextInputHost
+  // (Windows 11). A defaut, on cherche la fenetre de TabTip par sa classe.
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  [ComImport, Guid("5752238B-24F0-495A-82F1-2FD593056796"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  public interface IFrameworkInputPane {
+    [PreserveSig] int Advise([MarshalAs(UnmanagedType.IUnknown)] object w, [MarshalAs(UnmanagedType.IUnknown)] object h, out uint cookie);
+    [PreserveSig] int AdviseWithHWND(IntPtr hwnd, [MarshalAs(UnmanagedType.IUnknown)] object h, out uint cookie);
+    [PreserveSig] int Unadvise(uint cookie);
+    [PreserveSig] int Location(out RECT r);
+  }
+  [ComImport, Guid("D5120AA3-46BA-44C5-822D-CA8092C1FC72")] public class FrameworkInputPane {}
+  static IFrameworkInputPane pane; static bool paneEssaye;
+  [DllImport("user32.dll")] public static extern IntPtr FindWindow(string classe, string titre);
+  public static bool DetectionClavierDisponible() {
+    if (!paneEssaye) { paneEssaye = true; try { pane = (IFrameworkInputPane)new FrameworkInputPane(); } catch { pane = null; } }
+    return pane != null;
+  }
+  public static bool ClavierTactileVisible() {
+    if (DetectionClavierDisponible()) {
+      try { RECT r; if (pane.Location(out r) == 0) return (r.B - r.T) > 0 && (r.R - r.L) > 0; } catch { pane = null; }
+    }
+    var tabtip = FindWindow("IPTip_Main_Window", null);
+    return tabtip != IntPtr.Zero && IsWindowVisible(tabtip);
+  }
   // Un processus sans fenetre n'a pas le droit de donner le focus -- sauf s'il
   // vient de simuler une frappe. Une pression d'Alt, relachee aussitot, suffit.
   public static bool Activer(IntPtr h) {
@@ -94,7 +122,43 @@ else { Write-Warning "$Modif+$Touche est deja pris par un autre programme : pas 
 # le raccourci.
 [RaccourciWin]::SetTimer([IntPtr]::Zero, [UIntPtr]::Zero, 1000, [IntPtr]::Zero) | Out-Null
 
-$premiereVue = $null; $focusDonne = $false
+# La fenetre du profil « tactile », reconnue par le dossier de profil de son
+# processus -- c'est l'ecran du visiteur, celle qu'il faut rendre active quand
+# quelque chose lui a pris le focus.
+$profilParPid = @{}
+function Fenetre-Tactile($fenetres) {
+  foreach ($h in $fenetres) {
+    $pid = [uint32]0; [RaccourciWin]::GetWindowThreadProcessId($h, [ref]$pid) | Out-Null
+    if (-not $profilParPid.ContainsKey($pid)) {
+      $ligne = (Get-CimInstance Win32_Process -Filter "ProcessId = $pid" -ErrorAction SilentlyContinue).CommandLine
+      $profilParPid[$pid] = if ($ligne -like "*\aixam-kiosk\tactile*") { "tactile" } elseif ($ligne -like "*\aixam-kiosk\*") { "autre" } else { "" }
+    }
+    if ($profilParPid[$pid] -eq "tactile") { return $h }
+  }
+  return [IntPtr]::Zero
+}
+
+# A qui donner le focus : la fenetre de l'ecran principal si l'on en a une --
+# c'est la que vit la barre --, sinon celle du tactile, sinon la premiere.
+# Le focus n'allait qu'a l'ecran principal ; sur un portable ferme dont les
+# fenetres sont sur des moniteurs annexes, il n'y en a aucune, et le veilleur
+# renoncait sans un mot. La barre gardait le dessus.
+function Activer-Borne($fenetres, $raison) {
+  $cible = [IntPtr]::Zero; $ou = ""
+  foreach ($h in $fenetres) {
+    if ([System.Windows.Forms.Screen]::FromHandle($h).Primary) { $cible = $h; $ou = "ecran principal"; break }
+  }
+  if ($cible -eq [IntPtr]::Zero) { $cible = Fenetre-Tactile $fenetres; if ($cible -ne [IntPtr]::Zero) { $ou = "tactile" } }
+  if ($cible -eq [IntPtr]::Zero -and $fenetres.Count -gt 0) { $cible = $fenetres[0]; $ou = "premiere fenetre" }
+  if ($cible -eq [IntPtr]::Zero) { Write-Warning "$(Get-Date -Format HH:mm:ss) $raison : aucune fenetre a activer"; return }
+  $ok = [RaccourciWin]::Activer($cible)
+  Write-Host "$(Get-Date -Format HH:mm:ss) $raison : focus a la fenetre ($ou) : $ok"
+}
+
+if ([RaccourciWin]::DetectionClavierDisponible()) { Write-Host "$(Get-Date -Format HH:mm:ss) clavier tactile : detection par IFrameworkInputPane" }
+else { Write-Host "$(Get-Date -Format HH:mm:ss) clavier tactile : IFrameworkInputPane indisponible, repli sur la fenetre de TabTip" }
+
+$premiereVue = $null; $focusDonne = $false; $clavierVisible = $false
 $msg = New-Object RaccourciWin+MSG
 while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
   if ($msg.message -eq $WM_TIMER) {
@@ -103,32 +167,32 @@ while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
     $fenetres = [RaccourciWin]::FenetresChrome($pids)
     foreach ($h in $fenetres) {
       # Dans la bande des « toujours au premier plan », c'est la derniere
-      # fenetre ACTIVEE qui est dessus. Au demarrage c'est le bureau et sa
-      # barre, deja la quand Chrome arrive ; a la main, Chrome herite du focus
-      # de la console qui le lance et passe devant. Reaffirmer l'attribut ne
-      # remonte pas une fenetre qui l'a deja : HWND_TOPMOST pose l'attribut,
-      # HWND_TOP la remonte en tete de sa bande.
-      # SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE : seul l'ordre change.
+      # fenetre ACTIVEE qui est dessus. Reaffirmer l'attribut ne remonte pas
+      # une fenetre qui l'a deja : HWND_TOPMOST pose l'attribut, HWND_TOP la
+      # remonte en tete de sa bande. SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE.
       [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOPMOST, 0, 0, 0, 0, 0x0013) | Out-Null
       [RaccourciWin]::SetWindowPos($h, [RaccourciWin]::TOP, 0, 0, 0, 0, 0x0013) | Out-Null
     }
     # Le focus, une fois, quelques secondes apres l'apparition des fenetres :
     # Windows ne cache la barre que sous une fenetre plein ecran ACTIVE, et au
-    # demarrage c'est le bureau qui l'a. On vise la fenetre de l'ecran
-    # principal, la ou vit la barre.
+    # demarrage c'est le bureau qui l'a.
     if ($fenetres.Count -gt 0 -and -not $focusDonne) {
       if (-not $premiereVue) { $premiereVue = Get-Date }
       elseif (((Get-Date) - $premiereVue).TotalSeconds -ge 8) {
-        foreach ($h in $fenetres) {
-          if ([System.Windows.Forms.Screen]::FromHandle($h).Primary) {
-            $ok = [RaccourciWin]::Activer($h)
-            Write-Host "$(Get-Date -Format HH:mm:ss) focus a la fenetre de l'ecran principal : $ok"
-            $focusDonne = $true
-          }
-        }
-        if (-not $focusDonne) { $focusDonne = $true }
+        Activer-Borne $fenetres "demarrage"
+        $focusDonne = $true
       }
-    } elseif ($fenetres.Count -eq 0) { $premiereVue = $null }
+    } elseif ($fenetres.Count -eq 0) { $premiereVue = $null; $focusDonne = $false; $profilParPid.Clear() }
+    # Le clavier tactile de Windows. Il se leve quand le visiteur touche un
+    # champ du formulaire -- la borne n'a pas de clavier a elle. C'est une
+    # fenetre « toujours au premier plan » qui active Explorer : la barre
+    # remonte avec lui, et quand il se range, rien ne rendait le focus a la
+    # borne. On le rend au moment ou il disparait.
+    if ($fenetres.Count -gt 0) {
+      $visible = [RaccourciWin]::ClavierTactileVisible()
+      if ($clavierVisible -and -not $visible) { Activer-Borne $fenetres "clavier tactile range" }
+      $clavierVisible = $visible
+    }
     continue
   }
   if ($msg.message -eq $WM_HOTKEY) {
