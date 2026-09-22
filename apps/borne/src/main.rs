@@ -136,7 +136,18 @@ fn poser(fenetre: &WebviewWindow, m: &Monitor) {
 
 /// Ce que la page ne doit pas offrir sur un stand : le menu contextuel (qui
 /// donne acces a « Inspecter »), et le zoom au pincement.
+///
+/// Et ce qu'elle ne doit pas VOIR : Tauri pose `__TAURI_INTERNALS__` dans
+/// toute vue qu'il cree. Une page qui le trouve se croit dans l'application
+/// empaquetee et cherche ses reglages par les API Tauri -- la borne le
+/// faisait, et s'ouvrait sur « Erreur de demarrage ». borne.exe est un
+/// navigateur, rien de plus : la page doit se comporter comme dans Chrome.
+/// Retirer ces objets ferme du meme coup tout acces a l'IPC depuis une page
+/// distante.
 const GARDE_FOUS: &str = r#"
+for (const nom of ['__TAURI_INTERNALS__', '__TAURI__', '__TAURI_EVENT_PLUGIN_INTERNALS__', '__TAURI_PATTERN__']) {
+  try { delete window[nom]; } catch (e) {}
+}
 document.addEventListener('contextmenu', e => e.preventDefault(), true);
 document.addEventListener('gesturestart', e => e.preventDefault(), true);
 "#;
