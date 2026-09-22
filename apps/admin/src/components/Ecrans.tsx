@@ -26,6 +26,8 @@ type Releve = {
 // Le script suit le systeme de la machine relevee : un .ps1 telecharge sur un
 // Mac ne servirait a rien.
 const SCRIPTS: Record<string, string> = {
+  // Sous Windows le script ne lance plus un navigateur mais borne.exe, notre
+  // coquille : plein écran, sans bord, au premier plan, sur l'écran demandé.
   Windows: 'PowerShell (.ps1)',
   Darwin: 'shell (.sh)',
   Linux: 'shell (.sh)',
@@ -179,7 +181,7 @@ export function Ecrans() {
 
         <TextInput
           label="Adresse de l'API vue par la borne"
-          description="C'est ce que Chromium ouvrira. Sur le PC du stand lui-même, localhost convient."
+          description="L'adresse que les fenêtres ouvriront. Sur le PC du stand lui-même, localhost convient."
           value={hote}
           onChange={(e) => setHote(e.currentTarget.value)}
           w={360}

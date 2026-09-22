@@ -153,7 +153,7 @@ cd apps/admin && npm run dev                          # http://localhost:5174
    **Réglages → Écrans** sans rien relancer. (Seule une API en conteneur, qui
    ne voit aucun moniteur, a besoin de `scripts/agent-ecrans.ps1`.)
 6. **Réglages → Écrans** : affecter les moniteurs et engendrer le lanceur,
-   à déposer dans `demarrage/launch-kiosk-genere.ps1` (ou
+   à déposer dans `demarrage/launch-borne-genere.ps1` (ou
    `scripts/regenerer_lanceur.py`, qui fait pareil sans navigateur). Puis
    **`demarrage\start.bat`** : il ferme tout Chrome, attend que l'API réponde,
    et ouvre les deux fenêtres — c'est lui que la tâche `aixam-borne` lance à
@@ -241,6 +241,13 @@ chose l'a pris — sauf tant que le clavier tactile est ouvert, sinon il se
 refermerait sous les doigts du visiteur. **Alt+F4 ferme et termine** : la
 sortie de secours reste celle de Windows. Une erreur d'usage s'affiche dans
 une boîte de message, l'exe n'ayant pas de console.
+
+C'est `borne.exe` que lance le script engendré par **Réglages → Écrans**,
+`demarrage/launch-borne-genere.ps1` : il attend l'API, puis ouvre une fenêtre
+par moniteur, désigné par sa **position**. Plus rien à placer, à réaffirmer ni
+à surveiller — 100 lignes au lieu de 260. `demarrage/start.bat` le prend, et
+se replie sur l'ancien `launch-kiosk-genere.ps1` (Chrome) tant qu'il n'a pas
+été régénéré.
 
 Le source est dans `apps/borne/` (Tauri, un fichier Rust). La borne n'a pas de
 chaîne Rust : l'exe se compile sur le poste de développement et se dépose en

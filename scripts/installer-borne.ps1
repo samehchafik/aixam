@@ -250,12 +250,15 @@ Etat ($tacheApi -and ($tacheApi.Actions.Arguments -like "*WindowStyle Hidden*sta
        Tache "aixam-api" "powershell.exe" `
          "-NoProfile -WindowStyle Hidden -Command `"& '$bash' -lc 'cd $racineBash && bin/start.sh --all --local'`"" "PT10S"
      }
-# Le navigateur : demarrage\start.bat ferme tout Chrome, attend l'API, puis
+# Les fenetres : demarrage\start.bat les ferme, attend l'API, puis
 # lance le script engendre depuis Reglages > Ecrans. Tant que ce dernier
 # n'existe pas, on ne pose pas la tache -- le dire vaut mieux que la creer vide.
-$lanceur = Join-Path $Racine "demarrage\launch-kiosk-genere.ps1"
+# L'un ou l'autre : launch-borne-genere.ps1 lance borne.exe, l'ancien lance
+# Chrome. start.bat prend le premier et se replie sur le second.
+$lanceur = @("demarrage\launch-borne-genere.ps1", "demarrage\launch-kiosk-genere.ps1") |
+  ForEach-Object { Join-Path $Racine $_ } | Where-Object { Test-Path $_ } | Select-Object -First 1
 $demarrage = Join-Path $Racine "demarrage\start.bat"
-if (Test-Path $lanceur) {
+if ($lanceur) {
   $tacheBorne = Get-ScheduledTask -TaskName aixam-borne -ErrorAction SilentlyContinue
   Etat ($tacheBorne -and ($tacheBorne.Actions.Arguments -like "*WindowStyle Hidden*start.bat*")) `
        "tache aixam-borne : demarrage\start.bat a l'ouverture de session, sans fenetre" {
@@ -264,7 +267,7 @@ if (Test-Path $lanceur) {
            "-NoProfile -WindowStyle Hidden -Command `"& cmd.exe /c '$demarrage'`"" "PT20S"
        }
 } else {
-  Write-Host "  MANQUE lanceur du navigateur : demarrage\launch-kiosk-genere.ps1" -ForegroundColor Yellow
+  Write-Host "  MANQUE lanceur des fenetres : demarrage\launch-borne-genere.ps1" -ForegroundColor Yellow
   Write-Host "         L'engendrer depuis le back-office : Reglages > Ecrans > Generer le script."
   $script:Manques++
 }

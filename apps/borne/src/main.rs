@@ -74,11 +74,18 @@ fn lire_options() -> Result<Options, String> {
             }
         }
     }
-    let url = url.ok_or("l'url de la page a ouvrir manque")?;
-    if !(url.starts_with("http://") || url.starts_with("https://")) {
-        return Err(format!("url invalide, il faut http:// ou https:// : {url}"));
-    }
+    let url = url_acceptee(&url.ok_or("l'url de la page a ouvrir manque")?)?;
     Ok(Options { url, ecran, titre })
+}
+
+/// Seules http et https : un file:// ou une faute de frappe ouvrirait une
+/// fenetre vide en plein ecran, que rien ne fermerait sinon Alt+F4.
+fn url_acceptee(url: &str) -> Result<String, String> {
+    if url.starts_with("http://") || url.starts_with("https://") {
+        Ok(url.to_string())
+    } else {
+        Err(format!("url invalide, il faut http:// ou https:// : {url}"))
+    }
 }
 
 fn analyser_ecran(v: &str) -> Result<Ecran, String> {
@@ -96,9 +103,16 @@ fn analyser_ecran(v: &str) -> Result<Ecran, String> {
     Err(format!("--ecran : attendu principal, un numero ou x,y ; recu {v}"))
 }
 
+/// Le point (x, y) tombe-t-il dans ce rectangle d'ecran ? Sorti de `contient`
+/// pour etre eprouvable sans moniteur : un Monitor ne se fabrique pas a la
+/// main, et c'est cette arithmetique-la qui decide ou une fenetre atterrit.
+fn dans_rect(px: i32, py: i32, largeur: u32, hauteur: u32, x: i32, y: i32) -> bool {
+    x >= px && y >= py && x < px + largeur as i32 && y < py + hauteur as i32
+}
+
 fn contient(m: &Monitor, x: i32, y: i32) -> bool {
     let (p, s) = (m.position(), m.size());
-    x >= p.x && y >= p.y && x < p.x + s.width as i32 && y < p.y + s.height as i32
+    dans_rect(p.x, p.y, s.width, s.height, x, y)
 }
 
 /// Le moniteur demande, ou le plus proche de ce qui a ete demande : un numero
@@ -109,7 +123,10 @@ fn choisir_moniteur(app: &tauri::AppHandle, ecran: &Ecran) -> Option<Monitor> {
     let principal = || app.primary_monitor().ok().flatten().or_else(|| tous.first().cloned());
     match ecran {
         Ecran::Principal => principal(),
-        Ecran::Numero(n) => tous.get(*n).cloned().or_else(|| tous.last().cloned()),
+        // Pas de repli sur le dernier moniteur : « --ecran 3840 » est une
+        // position tronquee, pas un numero, et prendre le dernier ecran
+        // aurait pose les deux fenetres au meme endroit sans un mot.
+        Ecran::Numero(n) => tous.get(*n).cloned(),
         Ecran::Position(x, y) => tous
             .iter()
             .find(|m| m.position().x == *x && m.position().y == *y)
@@ -238,8 +255,14 @@ fn main() {
                 .always_on_top(true)
                 .initialization_script(GARDE_FOUS)
                 .build()?;
-            if let Some(m) = choisir_moniteur(app.handle(), &ecran) {
-                poser(&fenetre, &m);
+            match choisir_moniteur(app.handle(), &ecran) {
+                Some(m) => poser(&fenetre, &m),
+                None => {
+                    let n = app.available_monitors().map(|m| m.len()).unwrap_or(0);
+                    dire("borne", &format!(
+                        "ecran demande introuvable ({ecran:?}) : cette machine en compte {n}.\n\n                         Un numero designe un moniteur (0, 1, ...) ; pour une position, il faut\n                         les deux valeurs, par exemple --ecran 3840,0."));
+                    std::process::exit(2);
+                }
             }
 
             // Windows recompose le bureau quand un capot se ferme ou qu'un
@@ -276,4 +299,61 @@ fn main() {
             dire("borne", &format!("lancement impossible : {e}"));
             std::process::exit(1);
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ecran_par_defaut_et_formes_acceptees() {
+        assert!(matches!(analyser_ecran("principal"), Ok(Ecran::Principal)));
+        assert!(matches!(analyser_ecran("PRINCIPAL"), Ok(Ecran::Principal)));
+        assert!(matches!(analyser_ecran("0"), Ok(Ecran::Numero(0))));
+        assert!(matches!(analyser_ecran("2"), Ok(Ecran::Numero(2))));
+        // La forme que le lanceur engendre passe : c'est celle qui survit a un
+        // moniteur renumerote.
+        assert!(matches!(analyser_ecran("3840,0"), Ok(Ecran::Position(3840, 0))));
+        assert!(matches!(analyser_ecran(" 3840 , 2160 "), Ok(Ecran::Position(3840, 2160))));
+        // Un ecran a gauche du principal a une abscisse negative.
+        assert!(matches!(analyser_ecran("-1920,0"), Ok(Ecran::Position(-1920, 0))));
+        // « 3840 » seul est un NUMERO, pas une position : c'est bien lu ainsi,
+        // et c'est pourquoi un numero hors de portee doit se dire plutot que
+        // de retomber sur le dernier ecran -- une position tronquee aurait
+        // sinon pose les deux fenetres au meme endroit, en silence.
+        assert!(matches!(analyser_ecran("3840"), Ok(Ecran::Numero(3840))));
+    }
+
+    #[test]
+    fn une_valeur_illisible_est_refusee_pas_ignoree() {
+        // Retomber en silence sur l'ecran principal poserait les deux fenetres
+        // l'une sur l'autre, sans que rien ne le dise.
+        for v in ["", "gauche", "3840,", ",0", "3840,0,0", "a,b"] {
+            assert!(analyser_ecran(v).is_err(), "{v:?} aurait du etre refuse");
+        }
+    }
+
+    #[test]
+    fn le_point_tombe_dans_le_bon_ecran() {
+        // Deux moniteurs cote a cote : 3200x2000 a l'origine, 1920x1080 a sa
+        // droite. C'est la disposition de la borne, capot ouvert.
+        assert!(dans_rect(0, 0, 3200, 2000, 0, 0));
+        assert!(dans_rect(0, 0, 3200, 2000, 3199, 1999));
+        // Le bord droit appartient au voisin, pas a lui : sans le `<` strict,
+        // une fenetre posee en 3200,0 aurait pu revenir sur le premier ecran.
+        assert!(!dans_rect(0, 0, 3200, 2000, 3200, 0));
+        assert!(dans_rect(3200, 0, 1920, 1080, 3200, 0));
+        assert!(!dans_rect(3200, 0, 1920, 1080, 5120, 0));
+    }
+
+    #[test]
+    fn l_url_doit_etre_http() {
+        // Un chemin de fichier ou une faute de frappe ouvrirait une fenetre
+        // vide en plein ecran, sans rien pour la fermer sinon Alt+F4.
+        for v in ["localhost:8080", "file:///C:/x.html", "/kiosk/", "javascript:1"] {
+            assert!(url_acceptee(v).is_err(), "{v:?} aurait du etre refuse");
+        }
+        assert!(url_acceptee("http://localhost:8080/kiosk/").is_ok());
+        assert!(url_acceptee("https://aixam.ifrit.fr/#/display").is_ok());
+    }
 }

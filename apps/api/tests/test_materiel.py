@@ -124,7 +124,7 @@ ECRANS = [
 ]
 
 for systeme, extension, marqueur in (
-    ("Windows", ".ps1", "Start-Process"),
+    ("Windows", ".ps1", "borne.exe"),
     ("Darwin", ".sh", "/Applications/Google Chrome.app"),
     ("Linux", ".sh", "google-chrome chromium"),
 ):
@@ -132,21 +132,19 @@ for systeme, extension, marqueur in (
     check(f"{systeme} : le bon nom de fichier", nom_fichier(systeme).endswith(extension), nom_fichier(systeme))
     check(f"{systeme} : la bonne facon de trouver le navigateur", marqueur in produit)
     if systeme == "Windows":
-        # Sous Windows la fenetre est posee par le script, pas par Chrome :
-        # un appel par ecran, avec le releve en secours.
-        check(f"{systeme} : une fenetre par ecran", produit.count("Ouvrir-Fenetre -Profil") == 2)
-        check(f"{systeme} : les coordonnees reelles",
-              "-X 0 -Y 0 -Largeur 1920 -Hauteur 1080" in produit
-              and "-X 1920 -Y 0 -Largeur 3840 -Hauteur 2160" in produit)
+        # Sous Windows, une fenetre borne.exe par ecran : l'executable place la
+        # sienne, le script n'a plus qu'a la lancer.
+        check(f"{systeme} : une fenetre par ecran", produit.count("Ouvrir-Borne -Profil") == 2)
+        check(f"{systeme} : les coordonnees reelles", "-X 0 -Y 0" in produit and "-X 1920 -Y 0" in produit)
     else:
         check(f"{systeme} : une fenetre par ecran", produit.count("--window-position") == 2)
         check(f"{systeme} : les coordonnees reelles",
               "--window-position=0,0" in produit and "--window-position=1920,0" in produit)
+        # Sans cela Chrome s'enregistre aupres de GCM et noie le journal du
+        # stand sous des erreurs sans consequence. borne.exe n'a rien de tel.
+        check(f"{systeme} : pas de trafic de fond", "--disable-background-networking" in produit)
     check(f"{systeme} : un profil par fenetre",
           "tactile" in produit and "grand-ecran" in produit)
-    # Sans cela Chrome s'enregistre aupres de GCM et noie le journal du stand
-    # sous des erreurs sans consequence.
-    check(f"{systeme} : pas de trafic de fond", "--disable-background-networking" in produit)
 
 # Les commentaires glisses dans le tableau de drapeaux ne doivent pas finir
 # passes a Chrome comme des arguments.
@@ -175,42 +173,32 @@ script = construire_lanceur(LanceurIn(hote="http://localhost:8080", systeme="Win
     EcranLanceurIn(peripherique=r"\\.\DISPLAY2", libelle="Grand ecran", x=1920, y=0,
                    largeur=3840, hauteur=2160, chemin="/kiosk/#/display", profil="grand-ecran"),
 ]))
-check("une fenetre par ecran", script.count("Ouvrir-Fenetre -Profil") == 2, script.count("Ouvrir-Fenetre -Profil"))
-# `--kiosk` ignore `--window-position` sous Windows, et l'echelle d'affichage
-# fausse les pixels : c'est le script qui pose la fenetre, par l'API Windows,
-# sur l'ecran retrouve par son nom. Le releve ne sert que de secours.
-check("l'ecran est retrouve par son nom", "[System.Windows.Forms.Screen]::AllScreens" in script)
-check("le premier ecran nomme", '-Peripherique "\\\\.\\DISPLAY1"' in script)
-check("le second ecran nomme", '-Peripherique "\\\\.\\DISPLAY2"' in script)
-check("le releve en secours", "-X 1920 -Y 0 -Largeur 3840 -Hauteur 2160" in script)
-check("meme repere que le releve : pixels physiques", "SetProcessDPIAware()" in script)
-check("la fenetre est posee puis relue", "SetWindowPos(" in script and "GetWindowRect(" in script)
-# La barre des taches est « toujours au premier plan » : seule une fenetre
-# HWND_TOPMOST passe devant. Et Chrome refait sa fenetre en finissant son
-# plein ecran, apres qu'on l'a posee : un topmost pose une seule fois ne tenait
-# pas au redemarrage. Il est reaffirme pendant vingt secondes, sans toucher a
-# la position ni au focus, puis le focus revient au tactile.
-check("toujours au premier plan", "[AixamWin]::TOPMOST" in script and "new IntPtr(-1)" in script)
-check("reaffirme apres l'ouverture, sans bouger ni activer",
-      "SetWindowPos($h, [AixamWin]::TOPMOST, 0, 0, 0, 0, 0x0013)" in script
-      and script.rindex("Ouvrir-Fenetre -Profil") < script.index("0x0013"))
-check("le focus revient a l'ecran principal, avec le droit de le prendre",
-      "PrimaryScreen.DeviceName" in script and "keybd_event(0x12" in script and "Activer(" in script)
-# Dans la bande des topmost, la derniere fenetre activee est dessus -- au
-# demarrage, la barre des taches, la avant nous. L'attribut seul ne remonte
-# pas une fenetre qui l'a deja, HWND_TOP la remet en tete de sa bande.
-check("remontee en tete de la bande topmost", "SetWindowPos($h, [AixamWin]::TOP, 0, 0, 0, 0, 0x0013)" in script)
-check("un refus de SetWindowPos est dit", "GetLastError()" in script)
-# Comme « ahk_exe chrome.exe » : la fenetre est retrouvee par sa classe a
-# chaque tour, jamais memorisee -- Chrome la refait parfois en passant en
-# plein ecran, et un MainWindowHandle pris trop tot pointait sur une morte.
-check("la fenetre est retrouvee par sa classe, pas memorisee",
-      "EnumWindows(" in script and '"Chrome_WidgetWin_1"' in script and "$p.MainWindowHandle" not in script)
-check("chaque fenetre a son profil", 'Ouvrir-Fenetre -Profil "tactile"' in script
-      and 'Ouvrir-Fenetre -Profil "grand-ecran"' in script)
+check("une fenetre par ecran", script.count("Ouvrir-Borne -Profil") == 2,
+      script.count("Ouvrir-Borne -Profil"))
+# L'ecran est designe par sa POSITION, jamais par son nom. Un moniteur
+# debranche puis rebranche sur une autre prise change de numero : le journal de
+# la borne a porte deux « \\.\DISPLAY introuvable » de suite, et les fenetres
+# sont parties sur des coordonnees qui n'existaient plus. borne.exe cherche
+# l'ecran a cette position, puis celui qui la contient, et retombe sur l'ecran
+# principal -- il ne pose jamais une fenetre hors de tout ecran.
+check("l'ecran est designe par sa position", '"--ecran", "$X,$Y"' in script)
+check("aucun nom de peripherique passe a l'executable", "-Peripherique" not in script)
+check("le premier ecran", "-X 0 -Y 0" in script)
+check("le second ecran", "-X 1920 -Y 0" in script)
+check("chaque fenetre a son role", 'Ouvrir-Borne -Profil "tactile"' in script
+      and 'Ouvrir-Borne -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
-check("mode kiosque", '"--kiosk"' in script)
-check("l'hote est parametrable", 'param([string]$ApiHost = "http://localhost:8080"' in script)
+check("l'hote est parametrable", '[string]$ApiHost = "http://localhost:8080"' in script)
+check("borne.exe est cherche, pas suppose", "bin\\win\\borne.exe" in script and "Test-Path" in script)
+check("son absence est dite", "borne.exe introuvable" in script)
+
+# Ce que le script n'a PLUS a faire : borne.exe tient sa propre fenetre, la
+# repose quand Windows recompose le bureau, garde le premier plan et reprend le
+# focus. Un script ne pouvait agir qu'une fois, au lancement -- d'ou six
+# tentatives successives, et un topmost qui ne tenait jamais au demarrage.
+for reste in ("SetWindowPos", "SetProcessDPIAware", "EnumWindows", "Chrome_WidgetWin_1",
+              "keybd_event", "PrimaryScreen", "--kiosk", "--user-data-dir"):
+    check(f"plus de {reste} dans le lanceur", reste not in script)
 
 print("\n[4 rendu] Le script engendre ne contient plus aucune trace du gabarit")
 # Le pied du gabarit n'est pas formate : des accolades doublees y restaient
@@ -224,17 +212,14 @@ for systeme in ("Windows", "Darwin", "Linux"):
     check(f"{systeme} : pas de champ non rendu",
           not re.search(r"\{(hote|date|fichier|profil|chemin|peripherique|x|y|largeur|hauteur|libelle|candidats)\}", script))
 
-print("\n[4 ter] Un Chrome deja lance est repris, pas double")
-# Relancer le script pendant que Chrome tourne : la nouvelle instance delegue a
-# l'ancienne et sort sans fenetre. MainWindowHandle rend $null, que
-# « -eq [IntPtr]::Zero » ne voit pas, et SetWindowPos echouait sur un handle
-# vide -- tout en annonçant un succes, le rectangle jamais rempli valant 0,0.
+print("\n[4 ter] Une relance ne double pas les fenetres")
+# Chrome deleguait a l'instance du meme profil et sortait sans fenetre, d'ou
+# tout un detour par Win32_Process pour retrouver la sienne. Chaque borne.exe
+# est un processus a lui : il suffit de fermer les precedents.
 script = construire_lanceur(LanceurIn(systeme="Windows", ecrans=ECRANS))
-check("cherche un chrome du meme profil", "Win32_Process" in script and "--user-data-dir=" in script)
-check("sans confondre le navigateur et ses rendus", "-notlike \"*--type=*\"" in script)
-check("aucune fenetre trouvee est dit, pas ignore",
-      "$trouvees.Count -gt 0" in script and "throw \"Chrome n'a pas ouvert de fenetre" in script)
-check("le succes exige une lecture reussie", "GetWindowRect($h, [ref]$r) -and" in script)
+check("les fenetres precedentes sont fermees",
+      "Get-Process borne" in script and "Stop-Process" in script)
+check("et c'est dit", "fermeture de $($anciennes.Count) fenetre(s)" in script)
 
 print("\n[4 bis] Le lanceur attend l'API avant d'ouvrir quoi que ce soit")
 # Au demarrage de la borne, l'API et le lanceur sont deux taches planifiees :
@@ -243,36 +228,21 @@ print("\n[4 bis] Le lanceur attend l'API avant d'ouvrir quoi que ce soit")
 for systeme in ("Windows", "Darwin", "Linux"):
     script = construire_lanceur(LanceurIn(systeme=systeme, hote="http://localhost:8080", ecrans=ECRANS))
     check(f"{systeme} : interroge /healthz", "/healthz" in script)
+    ouverture = "Ouvrir-Borne" if systeme == "Windows" else "--app"
     check(f"{systeme} : l'attente precede l'ouverture",
-          script.index("/healthz") < script.index("--app"))
+          script.index("/healthz") < script.index(ouverture))
 
-print("\n[4 quater] Le focus final ne depend plus de l'ecran principal")
-# Vu sur la borne : les deux fenetres posees sur des moniteurs annexes, aucune
-# sur l'ecran principal reste celui du portable. Le bloc qui donne le focus
-# etait alors saute SANS UN MOT, et la barre des taches gardait le dessus --
-# c'est le focus, pas l'attribut topmost, qui la fait passer derriere. Le
-# journal annoncait pourtant « toujours au premier plan ».
+print("\n[4 quater] Le lanceur ne ment plus sur ce qu'il a ouvert")
+# « Fenetres ouvertes, toujours au premier plan » etait ecrit quoi qu'il
+# arrive -- y compris quand le bloc qui donne le focus avait ete saute. On a
+# cherche la panne ailleurs pendant des jours. Une fenetre qui se referme
+# aussitot (WebView2 absent, url refusee) doit se voir.
 script = construire_lanceur(LanceurIn(systeme="Windows", ecrans=ECRANS))
-check("une fenetre est retenue a l'ouverture",
-      "$script:Ordre += $h" in script and '$Profil -eq "tactile"' in script)
-check("le tactile prend le relais de l'ecran principal",
-      "elseif ($script:Tactile -ne [IntPtr]::Zero)" in script)
-check("et a defaut, la premiere ouverte", "$script:Ordre[0]" in script)
-check("l'echec est dit, pas tu",
-      'Write-Warning "aucune fenetre a activer' in script)
-check("le succes n'est annonce qu'apres un focus reel",
-      script.index("Activer($cible)") < script.index('Write-Host "Fenetres ouvertes'))
-
-print("\n[4 quinquies] Un ecran renomme est retrouve par sa position")
-# Un moniteur debranche puis rebranche sur une autre prise change de numero :
-# « \\.\DISPLAY5 introuvable » deux fois de suite dans le journal de la borne,
-# et les fenetres posees sur des coordonnees qui n'existaient plus.
-check("on cherche l'ecran a la position relevee",
-      "$_.Bounds.X -eq $X -and $_.Bounds.Y -eq $Y" in script)
-check("puis celui qui contient ce point", "$_.Bounds.Contains($X, $Y)" in script)
-check("et l'absence totale est dite",
-      "aucun ecran en $X,$Y" in script)
-
+check("les processus lances sont retenus", "$script:Lances += $p" in script)
+check("leur survie est verifiee", "HasExited" in script)
+check("et l'echec sort en erreur", "exit 1" in script)
+check("le succes n'est annonce qu'apres la verification",
+      script.index("HasExited") < script.index("fenetre(s) ouvertes"))
 
 print("\n[5] Ce qui n'est pas eprouve ici")
 if platform.system() != "Windows":

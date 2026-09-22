@@ -1,5 +1,11 @@
-﻿# Ferme la borne au clavier : Ctrl+Q ferme tout Chrome. Et tant qu'il veille,
-# il garde les fenetres de la borne « toujours au premier plan ».
+﻿# Ferme la borne au clavier : Ctrl+Q ferme toutes ses fenetres. Et tant qu'il
+# veille, il garde celles de Chrome « toujours au premier plan ».
+#
+# Depuis borne.exe, le maintien au premier plan n'est plus de son ressort :
+# l'executable tient sa propre fenetre, et Alt+F4 en ferme une. Ce veilleur
+# garde deux roles : Ctrl+Q, qui les ferme TOUTES d'un geste quel que soit
+# l'ecran qui a le focus, et le premier plan des fenetres Chrome tant qu'une
+# borne n'est pas passee a borne.exe.
 #
 # Pourquoi un veilleur : Chrome sous Windows n'a pas de Ctrl+Q (c'est un
 # raccourci macOS et Linux), et les fenetres du kiosque sont posees au-dessus
@@ -196,7 +202,10 @@ while ([RaccourciWin]::GetMessage([ref]$msg, [IntPtr]::Zero, 0, 0) -gt 0) {
     continue
   }
   if ($msg.message -eq $WM_HOTKEY) {
-    Write-Host "$(Get-Date -Format HH:mm:ss) $Modif+$Touche : fermeture de Chrome"
+    Write-Host "$(Get-Date -Format HH:mm:ss) $Modif+$Touche : fermeture des fenetres"
+    # borne.exe d'abord : c'est lui qui sert desormais. Alt+F4 ferme une
+    # fenetre, Ctrl+Q les ferme toutes -- y compris celle qui n'a pas le focus.
+    taskkill /IM borne.exe /F /T 2>&1 | Out-Null
     taskkill /IM chrome.exe /F /T 2>&1 | Out-Null
     break
   }

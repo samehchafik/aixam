@@ -4,7 +4,7 @@ rem Demarrage de la borne, au choix : un ecran, ou les deux.
 rem
 rem   demarrage\borne-start.bat -b=all       les deux fenetres, posees chacune
 rem                                          sur son moniteur par le lanceur
-rem                                          engendre (launch-kiosk-genere.ps1)
+rem                                          engendre (launch-borne-genere.ps1)
 rem   demarrage\borne-start.bat -b=tactile   le tactile seul, sur l'ecran par
 rem                                          defaut
 rem   demarrage\borne-start.bat -b=grand     le grand ecran seul, sur l'ecran
@@ -15,14 +15,9 @@ rem tache planifiee ; celui-ci sert a la main, quand on n'a qu'un ecran sous
 rem le coude -- un poste de developpement, un test sur le portable, une
 rem demonstration sans le second moniteur.
 rem
-rem Un seul ecran n'a rien a placer : Chrome ouvre son plein ecran sur le
-rem moniteur principal, et la fenetre, derniere ouverte, prend le focus qui
-rem fait passer la barre des taches derriere. Le veilleur arret-clavier.ps1
-rem reaffirme ensuite le premier plan chaque seconde, et Ctrl+Q ferme tout.
-rem
-rem Meme profil que le lanceur engendre (%LOCALAPPDATA%\aixam-kiosk\<role>) :
-rem un Chrome deja ouvert avec ce profil recevrait la commande par delegation,
-rem d'ou la fermeture prealable, comme dans start.bat.
+rem Un seul ecran n'a rien a placer : borne.exe s'ouvre sur l'ecran principal,
+rem plein ecran, sans bord et au premier plan. Alt+F4 ferme la fenetre et
+rem termine le programme ; Ctrl+Q les ferme toutes (arret-clavier.ps1).
 
 set "RACINE=%~dp0.."
 set "PORT=8080"
@@ -52,7 +47,10 @@ if /i not "%B%"=="all" goto usage))
 
 echo ---- %DATE% %TIME% (borne-start -b=%B%) ---->> "%JOURNAL%"
 
-call :dire "== fermeture de tout Chrome"
+call :dire "== fermeture des fenetres en cours"
+rem borne.exe d'abord : c'est lui qui sert desormais. Chrome reste ferme aussi,
+rem le temps que toutes les bornes soient passees a borne.exe.
+taskkill /IM borne.exe /F /T >nul 2>&1
 taskkill /IM chrome.exe /F /T >nul 2>&1
 call "%~dp0stop-clavier.bat"
 
@@ -80,36 +78,35 @@ goto attente
 :prete
 if /i "%B%"=="all" goto tous
 
-rem Un seul ecran : Chrome directement, sans placement. Memes options que le
-rem lanceur engendre -- kiosque, pas de premier lancement, rien en fond, et les
-rem trois qui gardent la fenetre vive meme sans le focus.
-set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
-if not exist "%CHROME%" set "CHROME=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
-if not exist "%CHROME%" (
-  call :dire "Chrome introuvable : fenetre non ouverte."
+rem Un seul ecran : borne.exe directement, sur l'ecran principal.
+set "BORNE=%RACINE%\bin\win\borne.exe"
+if not exist "%BORNE%" set "BORNE=%~dp0borne.exe"
+if not exist "%BORNE%" (
+  call :dire "borne.exe introuvable : le compiler (voir README) et le deposer dans bin\win\."
   exit /b 1
 )
 call :dire "== API prete, ouverture du %ROLE% sur l'ecran par defaut"
-start "" "%CHROME%" --kiosk --no-first-run --no-default-browser-check --disable-translate ^
-  --overscroll-history-navigation=0 --disable-pinch ^
-  --noerrdialogs --disable-session-crashed-bubble ^
-  --autoplay-policy=no-user-gesture-required ^
-  --disable-background-networking --disable-sync --disable-component-update ^
-  --disable-background-timer-throttling --disable-backgrounding-occluded-windows ^
-  --disable-renderer-backgrounding ^
-  --user-data-dir="%LOCALAPPDATA%\aixam-kiosk\%ROLE%" ^
-  --app=%HOTE%%CHEMIN%
+start "" "%BORNE%" %HOTE%%CHEMIN% --ecran principal --titre "AIXAM %ROLE%"
 call :dire "%ROLE% ouvert : %HOTE%%CHEMIN%"
 exit /b 0
 
 :tous
 call :dire "== API prete, ouverture des deux fenetres"
-if not exist "%~dp0launch-kiosk-genere.ps1" (
-  call :dire "lanceur absent : le generer depuis Reglages > Ecrans, ou scripts\regenerer_lanceur.py"
-  exit /b 1
+rem Le lanceur des fenetres borne.exe. Repli sur l'ancien lanceur Chrome tant
+rem qu'il n'a pas ete regenere : une borne ne doit pas rester noire parce qu'un
+rem fichier a change de nom.
+set "LANCEUR=%~dp0launch-borne-genere.ps1"
+if not exist "%LANCEUR%" (
+  if exist "%~dp0launch-kiosk-genere.ps1" (
+    set "LANCEUR=%~dp0launch-kiosk-genere.ps1"
+    call :dire "launch-borne-genere.ps1 absent : repli sur l'ancien lanceur Chrome. Le regenerer depuis Reglages puis Ecrans."
+  ) else (
+    call :dire "lanceur absent : le generer depuis Reglages puis Ecrans, ou scripts\regenerer_lanceur.py"
+    exit /b 1
+  )
 )
 rem Pas Tee-Object : il ecrit en UTF-16, illisible avec les lignes de ce .bat.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0launch-kiosk-genere.ps1' *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%LANCEUR%' *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
 exit /b 0
 
 :usage

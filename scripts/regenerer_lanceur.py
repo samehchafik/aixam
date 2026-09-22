@@ -59,6 +59,8 @@ corps = {
 }
 d = poster(f"{HOTE}/api/admin/materiel/lanceur", corps, jeton)
 (RACINE / "demarrage").mkdir(exist_ok=True)
-cible = RACINE / "demarrage" / "launch-kiosk-genere.ps1"
+# Le nom vient du serveur : c'est lui qui sait s'il a engendre le lanceur
+# borne.exe (Windows) ou celui du navigateur (ailleurs).
+cible = RACINE / "demarrage" / d["nom"]
 cible.write_text(d["script"], encoding="utf-8")
 print("ecrit :", cible, len(d["script"]), "octets")

@@ -19,7 +19,10 @@ set "JOURNAL=%RACINE%\.run\demarrage.log"
 if not exist "%RACINE%\.run" mkdir "%RACINE%\.run"
 echo ---- %DATE% %TIME% ---->> "%JOURNAL%"
 
-call :dire "== fermeture de tout Chrome"
+call :dire "== fermeture des fenetres en cours"
+rem borne.exe d'abord : c'est lui qui sert desormais. Chrome reste ferme aussi,
+rem le temps que toutes les bornes soient passees a borne.exe.
+taskkill /IM borne.exe /F /T >nul 2>&1
 taskkill /IM chrome.exe /F /T >nul 2>&1
 call "%~dp0stop-clavier.bat"
 
@@ -50,13 +53,22 @@ goto attente
 
 :prete
 call :dire "== API prete, ouverture des fenetres"
-if not exist "%~dp0launch-kiosk-genere.ps1" (
-  call :dire "lanceur absent : le generer depuis Reglages > Ecrans, ou scripts\regenerer_lanceur.py"
-  exit /b 1
+rem Le lanceur des fenetres borne.exe. Repli sur l'ancien lanceur Chrome tant
+rem qu'il n'a pas ete regenere : une borne ne doit pas rester noire parce qu'un
+rem fichier a change de nom.
+set "LANCEUR=%~dp0launch-borne-genere.ps1"
+if not exist "%LANCEUR%" (
+  if exist "%~dp0launch-kiosk-genere.ps1" (
+    set "LANCEUR=%~dp0launch-kiosk-genere.ps1"
+    call :dire "launch-borne-genere.ps1 absent : repli sur l'ancien lanceur Chrome. Le regenerer depuis Reglages puis Ecrans."
+  ) else (
+    call :dire "lanceur absent : le generer depuis Reglages puis Ecrans, ou scripts\regenerer_lanceur.py"
+    exit /b 1
+  )
 )
 rem Pas Tee-Object : il ecrit en UTF-16, illisible avec les lignes du .bat.
 rem *>&1 et pas 2>&1 : Write-Host passe par le flux d'information, que 2>&1 ignore.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%~dp0launch-kiosk-genere.ps1' *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%LANCEUR%' *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
 exit /b 0
 
 :dire
