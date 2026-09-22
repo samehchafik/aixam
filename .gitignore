@@ -6,6 +6,7 @@ demarrage/*
 !demarrage/start.bat
 !demarrage/stop.bat
 !demarrage/stop-clavier.bat
+!demarrage/borne-start.bat
 # Les copies de travail d'un .env portent les memes secrets que lui : une
 # sauvegarde avant manipulation ne doit pas se retrouver a portee de `git add`.
 .env.*
