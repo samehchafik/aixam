@@ -224,9 +224,22 @@ fn reprendre_focus(fenetre: tauri::Window) {
 #[cfg(windows)]
 fn dire(titre: &str, texte: &str) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
-    let en_utf16 = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
-    let (t, x) = (en_utf16(titre), en_utf16(texte));
-    unsafe { MessageBoxW(std::ptr::null_mut(), x.as_ptr(), t.as_ptr(), MB_OK | MB_ICONERROR) };
+    let (t, x) = (titre.to_string(), texte.to_string());
+    let fil = std::thread::spawn(move || {
+        let en_utf16 = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+        let (t, x) = (en_utf16(&t), en_utf16(&x));
+        unsafe { MessageBoxW(std::ptr::null_mut(), x.as_ptr(), t.as_ptr(), MB_OK | MB_ICONERROR) };
+    });
+    // La boite est montree sur un fil, et l'on n'attend pas indefiniment
+    // qu'on y clique. Lancee par le lanceur au demarrage de la borne,
+    // personne n'est la pour le faire : le processus restait vivant sur sa
+    // boite, et le lanceur -- qui verifie que les processus survivent -- le
+    // comptait comme une fenetre ouverte. Il annoncait « 2 fenetres
+    // ouvertes » alors que les deux avaient echoue.
+    let debut = std::time::Instant::now();
+    while !fil.is_finished() && debut.elapsed() < Duration::from_secs(20) {
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 #[cfg(not(windows))]

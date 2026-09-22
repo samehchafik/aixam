@@ -189,6 +189,12 @@ check("chaque fenetre a son role", 'Ouvrir-Borne -Profil "tactile"' in script
       and 'Ouvrir-Borne -Profil "grand-ecran"' in script)
 check("les adresses ouvertes", '-Chemin "/kiosk/"' in script and '-Chemin "/kiosk/#/display"' in script)
 check("l'hote est parametrable", '[string]$ApiHost = "http://localhost:8080"' in script)
+# `Start-Process -ArgumentList` joint le tableau par des espaces SANS proteger
+# ce qui en contient : « --titre AIXAM tactile » arrivait en deux arguments,
+# et « tactile » passait pour une seconde url. Les deux fenetres refusaient de
+# s'ouvrir, et le lanceur annoncait quand meme « 2 fenetres ouvertes ».
+check("le titre est protege, il contient une espace",
+      '"`\"AIXAM $Profil`\""' in script, script[script.index("--titre") - 120:script.index("--titre") + 40])
 check("borne.exe est cherche, pas suppose", "bin\\win\\borne.exe" in script and "Test-Path" in script)
 check("son absence est dite", "borne.exe introuvable" in script)
 

@@ -100,8 +100,12 @@ function Ouvrir-Borne {{
   # Le titre porte le ROLE, pas le libelle du moniteur : il sert a reconnaitre
   # la fenetre dans un diagnostic, et un libelle peut etre vide ou changer
   # quand le studio rebranche un ecran.
+  # Les guillemets font partie de la valeur : `Start-Process -ArgumentList`
+  # joint le tableau par des espaces SANS proteger ce qui en contient. Sans
+  # eux, « --titre AIXAM tactile » arrivait en deux arguments et « tactile »
+  # passait pour une seconde url -- borne.exe refusait, a juste titre.
   $p = Start-Process $Exe -PassThru -ArgumentList @(
-    $url, "--ecran", "$X,$Y", "--titre", "AIXAM $Profil"
+    $url, "--ecran", "$X,$Y", "--titre", "`\"AIXAM $Profil`\""
   )
   $script:Lances += $p
   Write-Host "$Profil ($Libelle) : pid $($p.Id), ecran $X,$Y, $url"
