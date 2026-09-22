@@ -217,6 +217,41 @@ et sa page d'admin. Cote serveur, `SYNC_SERVER_ENABLED=true` ouvre le role.
 cote serveur (droit a l'effacement) reapparait si vous faites un « Tout
 renvoyer ». L'envoi incremental, lui, ne le ressuscite pas.
 
+## `borne.exe` : une page en plein écran, à nous
+
+Chrome en mode kiosque n'a aucune option pour le premier plan, ignore
+`--window-position` sous Windows et refait sa fenêtre en passant en plein
+écran — d'où un script qui le pose après coup et un veilleur qui réaffirme
+l'attribut chaque seconde. `borne.exe` remplace tout cela par une fenêtre qui
+est la nôtre, sur le même moteur (le WebView2 de Windows, déjà sur la machine).
+
+```
+borne.exe <url> [--ecran principal|N|x,y] [--titre <titre>]
+
+borne.exe http://localhost:8080/kiosk/
+borne.exe http://localhost:8080/kiosk/#/display --ecran 1
+borne.exe http://localhost:8080/kiosk/ --ecran 3840,0
+```
+
+Sans bord, plein écran, toujours au premier plan, sur l'écran demandé — par
+numéro, ou par la **position** que le back-office relève, qui survit à un
+moniteur renuméroté. Elle se repose d'elle-même si Windows recompose le bureau
+(capot d'un portable, câble rebranché), et reprend le focus quand quelque
+chose l'a pris — sauf tant que le clavier tactile est ouvert, sinon il se
+refermerait sous les doigts du visiteur. **Alt+F4 ferme et termine** : la
+sortie de secours reste celle de Windows. Une erreur d'usage s'affiche dans
+une boîte de message, l'exe n'ayant pas de console.
+
+Le source est dans `apps/borne/` (Tauri, un fichier Rust). La borne n'a pas de
+chaîne Rust : l'exe se compile sur le poste de développement et se dépose en
+`bin\win\borne.exe` (ignoré par git).
+
+```bash
+cargo install cargo-xwin                       # une fois : le SDK Windows pour le Mac
+cd apps/borne && PATH="/usr/local/opt/llvm/bin:$PATH" cargo xwin build --release --target x86_64-pc-windows-msvc
+scp target/x86_64-pc-windows-msvc/release/borne.exe durango@192.168.1.17:C:/aixam/bin/win/borne.exe
+```
+
 ## Reprendre la main sur le back-office
 
 Le compte d'administration n'est cree qu'au tout premier demarrage : modifier

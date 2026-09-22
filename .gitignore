@@ -48,3 +48,4 @@ materiels.json
 !.gitignore
 !README.md
 apps/borne/target/
+bin/win/borne.exe

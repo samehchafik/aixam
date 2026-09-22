@@ -190,14 +190,28 @@ fn reprendre_focus(fenetre: tauri::Window) {
     }
 }
 
+/// L'exe est en sous-systeme graphique -- pas de console qui clignote au
+/// demarrage de la borne --, donc rien de ce qu'il ecrirait sur stderr ne se
+/// verrait. Une erreur d'usage se dit dans une boite de message.
+#[cfg(windows)]
+fn dire(titre: &str, texte: &str) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
+    let en_utf16 = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let (t, x) = (en_utf16(titre), en_utf16(texte));
+    unsafe { MessageBoxW(std::ptr::null_mut(), x.as_ptr(), t.as_ptr(), MB_OK | MB_ICONERROR) };
+}
+
+#[cfg(not(windows))]
+fn dire(titre: &str, texte: &str) {
+    eprintln!("{titre} : {texte}");
+}
+
 fn main() {
     let options = match lire_options() {
         Ok(o) => o,
         Err(e) => {
-            if !e.is_empty() {
-                eprintln!("borne : {e}\n");
-            }
-            eprintln!("{USAGE}");
+            let texte = if e.is_empty() { USAGE.to_string() } else { format!("{e}\n\n{USAGE}") };
+            dire("borne", &texte);
             std::process::exit(2);
         }
     };
@@ -247,5 +261,8 @@ fn main() {
             _ => {}
         })
         .run(tauri::generate_context!())
-        .expect("borne : lancement impossible");
+        .unwrap_or_else(|e| {
+            dire("borne", &format!("lancement impossible : {e}"));
+            std::process::exit(1);
+        });
 }
