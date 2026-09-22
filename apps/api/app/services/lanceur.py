@@ -126,18 +126,40 @@ public static class AixamWin {{
 [AixamWin]::SetProcessDPIAware() | Out-Null
 
 $script:Fenetres = @{{}}
+# De quoi activer une fenetre a la fin, meme si aucune n'est sur l'ecran
+# principal -- c'est le cas des que la borne tourne sur des moniteurs annexes.
+$script:Tactile = [IntPtr]::Zero
+$script:Ordre = @()
 
 function Ouvrir-Fenetre {{
   param($Profil, $Chemin, $Peripherique, $X, $Y, $Largeur, $Hauteur)
 
-  # L'ecran d'aujourd'hui, retrouve par son nom : le releve ne sert que de
-  # secours si le nom a change depuis.
+  # L'ecran d'aujourd'hui, retrouve par son nom. Un moniteur debranche puis
+  # rebranche sur une autre prise change de numero, et le nom du releve ne
+  # designe plus rien : on cherche alors celui qui OCCUPE la position relevee.
+  # Tant que la disposition n'a pas bouge, c'est le bon ecran sous un autre
+  # nom. Sans ce repli, la fenetre partait sur des coordonnees qui n'existent
+  # plus -- hors de tout ecran, invisible, et le script annoncait « posee ».
   $ecran = [System.Windows.Forms.Screen]::AllScreens | Where-Object {{ $_.DeviceName -eq $Peripherique }}
+  if (-not $ecran) {{
+    $ecran = [System.Windows.Forms.Screen]::AllScreens |
+      Where-Object {{ $_.Bounds.X -eq $X -and $_.Bounds.Y -eq $Y }} | Select-Object -First 1
+    if ($ecran) {{
+      Write-Warning "$Peripherique introuvable : $($ecran.DeviceName) occupe la meme position ($X,$Y). Regenerer le script."
+    }}
+  }}
+  if (-not $ecran) {{
+    $ecran = [System.Windows.Forms.Screen]::AllScreens |
+      Where-Object {{ $_.Bounds.Contains($X, $Y) }} | Select-Object -First 1
+    if ($ecran) {{
+      Write-Warning "$Peripherique introuvable : $($ecran.DeviceName) contient $X,$Y. Regenerer le script."
+    }}
+  }}
   if ($ecran) {{
     $X = $ecran.Bounds.X; $Y = $ecran.Bounds.Y
     $Largeur = $ecran.Bounds.Width; $Hauteur = $ecran.Bounds.Height
   }} else {{
-    Write-Warning "$Peripherique introuvable : on prend les coordonnees du releve ($X,$Y). Regenerer le script."
+    Write-Warning "$Peripherique introuvable, et aucun ecran en $X,$Y : la fenetre risque de tomber hors de tout ecran. Regenerer le script depuis Reglages > Ecrans."
   }}
 
   # Un Chrome deja lance avec ce profil -- relance du script, fenetre fermee a
@@ -182,6 +204,8 @@ function Ouvrir-Fenetre {{
   # plan », une fenetre ordinaire ne passe jamais devant. Ctrl+Q reste le
   # geste qui ferme tout (scripts/arret-clavier.ps1), topmost ou non.
   $script:Fenetres[$Peripherique] = $h
+  $script:Ordre += $h
+  if ($Profil -eq "tactile") {{ $script:Tactile = $h }}
   $r = New-Object AixamWin+RECT
   for ($i = 0; $i -lt 10; $i++) {{
     if (-not [AixamWin]::SetWindowPos($h, [AixamWin]::TOPMOST, $X, $Y, $Largeur, $Hauteur, 0x0040)) {{
@@ -225,11 +249,36 @@ while ((Get-Date) -lt $fin) {
   }
   Start-Sleep -Milliseconds 500
 }
+# Le focus n'allait qu'a une fenetre posee sur l'ecran PRINCIPAL. Des que la
+# borne tourne sur des moniteurs annexes -- l'ecran principal restant celui du
+# portable -- aucune fenetre n'y est, le bloc etait saute sans un mot, et la
+# barre des taches gardait le dessus. C'est ce qui s'est vu le jour ou les
+# ecrans ont change : le journal disait « toujours au premier plan » alors que
+# le geste qui le rend vrai n'avait pas eu lieu.
+#
+# On active donc une fenetre dans tous les cas : celle de l'ecran principal si
+# l'on en a une -- c'est la que vit la barre --, sinon celle du tactile, qui
+# est l'ecran du visiteur.
+$cible = [IntPtr]::Zero
 if ($script:Fenetres.ContainsKey($principal)) {
-  $ok = [AixamWin]::Activer($script:Fenetres[$principal])
-  Write-Host "focus a la fenetre de l'ecran principal ($principal) : $ok"
+  $cible = $script:Fenetres[$principal]
+  $ou = "l'ecran principal ($principal)"
+} elseif ($script:Tactile -ne [IntPtr]::Zero) {
+  $cible = $script:Tactile
+  $ou = "le tactile (aucune fenetre sur l'ecran principal $principal)"
+} elseif ($script:Ordre.Count -gt 0) {
+  $cible = $script:Ordre[0]
+  $ou = "la premiere ouverte (ni ecran principal, ni tactile)"
 }
-Write-Host "Fenetres ouvertes, toujours au premier plan."
+if ($cible -ne [IntPtr]::Zero) {
+  $ok = [AixamWin]::Activer($cible)
+  Write-Host "focus a la fenetre de $ou : $ok"
+  Write-Host "Fenetres ouvertes, toujours au premier plan."
+} else {
+  # Ne jamais annoncer ce qui n'a pas eu lieu : c'est ce silence qui a fait
+  # chercher la panne du cote du topmost pendant des jours.
+  Write-Warning "aucune fenetre a activer : la barre des taches restera devant."
+}
 """,
 }
 

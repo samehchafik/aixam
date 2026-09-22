@@ -246,6 +246,34 @@ for systeme in ("Windows", "Darwin", "Linux"):
     check(f"{systeme} : l'attente precede l'ouverture",
           script.index("/healthz") < script.index("--app"))
 
+print("\n[4 quater] Le focus final ne depend plus de l'ecran principal")
+# Vu sur la borne : les deux fenetres posees sur des moniteurs annexes, aucune
+# sur l'ecran principal reste celui du portable. Le bloc qui donne le focus
+# etait alors saute SANS UN MOT, et la barre des taches gardait le dessus --
+# c'est le focus, pas l'attribut topmost, qui la fait passer derriere. Le
+# journal annoncait pourtant « toujours au premier plan ».
+script = construire_lanceur(LanceurIn(systeme="Windows", ecrans=ECRANS))
+check("une fenetre est retenue a l'ouverture",
+      "$script:Ordre += $h" in script and '$Profil -eq "tactile"' in script)
+check("le tactile prend le relais de l'ecran principal",
+      "elseif ($script:Tactile -ne [IntPtr]::Zero)" in script)
+check("et a defaut, la premiere ouverte", "$script:Ordre[0]" in script)
+check("l'echec est dit, pas tu",
+      'Write-Warning "aucune fenetre a activer' in script)
+check("le succes n'est annonce qu'apres un focus reel",
+      script.index("Activer($cible)") < script.index('Write-Host "Fenetres ouvertes'))
+
+print("\n[4 quinquies] Un ecran renomme est retrouve par sa position")
+# Un moniteur debranche puis rebranche sur une autre prise change de numero :
+# « \\.\DISPLAY5 introuvable » deux fois de suite dans le journal de la borne,
+# et les fenetres posees sur des coordonnees qui n'existaient plus.
+check("on cherche l'ecran a la position relevee",
+      "$_.Bounds.X -eq $X -and $_.Bounds.Y -eq $Y" in script)
+check("puis celui qui contient ce point", "$_.Bounds.Contains($X, $Y)" in script)
+check("et l'absence totale est dite",
+      "aucun ecran en $X,$Y" in script)
+
+
 print("\n[5] Ce qui n'est pas eprouve ici")
 if platform.system() != "Windows":
     print("      L'enumeration Windows (user32) demande Windows : non couverte sur ce poste.")
