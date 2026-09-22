@@ -31,15 +31,21 @@ set "HOTE=http://localhost:%PORT%"
 set "JOURNAL=%RACINE%\.run\demarrage.log"
 if not exist "%RACINE%\.run" mkdir "%RACINE%\.run"
 
-rem -b=tactile | -b=grand | -b=all. Le parametre est lu tel quel : pas de
-rem forme -b tactile, pour ne pas avoir deux syntaxes a documenter.
+rem -b=tactile | -b=grand | -b=all. Le signe = est un SEPARATEUR pour cmd :
+rem tape nu, -b=tactile arrive en %1=-b et %2=tactile ; entre guillemets, il
+rem arrive entier. On accepte les deux, et -b tactile par la meme occasion.
 set "B=all"
-if not "%~1"=="" (
+if "%~1"=="" goto choisi
+if /i "%~1"=="-b" (
+  set "B=%~2"
+) else (
   for /f "tokens=1,* delims==" %%a in ("%~1") do (
     if /i not "%%a"=="-b" goto usage
     set "B=%%b"
   )
 )
+if "%B%"=="" goto usage
+:choisi
 if /i "%B%"=="tactile" (set "ROLE=tactile" & set "CHEMIN=/kiosk/") else (
 if /i "%B%"=="grand"   (set "ROLE=grand-ecran" & set "CHEMIN=/kiosk/#/display") else (
 if /i not "%B%"=="all" goto usage))
