@@ -47,3 +47,4 @@ materiels.json
 # d'exclusion. Les regles du depot l'emportent sur le gitignore global.
 !.gitignore
 !README.md
+apps/borne/target/

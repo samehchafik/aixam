@@ -1,0 +1,27 @@
+[package]
+name = "borne"
+version = "0.1.0"
+edition = "2021"
+description = "Une page web en plein ecran, sans bord, toujours au premier plan, sur l'ecran choisi."
+default-run = "borne"
+
+[[bin]]
+name = "borne"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+# Pour savoir si le clavier tactile de Windows est au premier plan avant de
+# reprendre le focus : le lui reprendre pendant que le visiteur tape le
+# refermerait sous ses doigts.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
