@@ -19,9 +19,14 @@ const BLEED = { x: 14, top: 62, bottom: 86 }
 // un objet peut sortir de la zone de debordement sans etre coupe. La planche
 // est posee la ou la maquette la met.
 const STAGE = { width: 1920, height: 1080 }
-// Une case de panier. Quatre tiennent dans la carte, la cinquieme est coupee au
-// bord droit : c'est ce qui montre que le ruban continue.
+// Une case du panier des objets.
 const CELL = { width: 147, height: 93 }
+// Une vignette de fond. Plus large que celle d'un objet : trois et demie
+// tiennent dans la carte au lieu de quatre, ce qui rend les fonds lisibles et
+// montre mieux que le ruban continue -- la moitie coupee au bord droit appelle
+// le glissement. Sa hauteur est celle d'une case d'objet : au-dela, la
+// troisieme ligne deborderait de la carte.
+const CELL_FOND = { width: 163, height: 92 }
 // Au-dela, un objet tres allonge occuperait le panier a lui seul.
 const OBJECT_MAX_WIDTH = 210
 const ORIGIN = { x: (STAGE.width - SKIN_WIDTH) / 2, y: 92 + BLEED.top }
@@ -120,12 +125,16 @@ export function EditorStep() {
         {selected && selectedIndex !== null && (
           <Paper
             className="notch-panel"
-            radius="md"
+            // Le rayon vient de la feuille de style, pas de Mantine : il n'est
+            // pose qu'en haut, pour que le bas affleure le bord de la planche.
+            radius={0}
             style={{
               width: notchWidth - 24,
               height: notchHeight - 14,
               left: ORIGIN.x + notchLeft + 12,
-              top: ORIGIN.y + skinHeight - notchHeight + 10,
+              // Cinq pixels plus bas qu'au trace : le bas de la bulle tombe
+              // alors sur le bas de la ligne blanche du skin.
+              top: ORIGIN.y + skinHeight - notchHeight + 15,
             }}
           >
             <UnstyledButton className="notch-action" onClick={() => removeLayer(selectedIndex)}>
@@ -151,8 +160,8 @@ export function EditorStep() {
               items={backgroundTiles}
               rows={3}
               // 16:9, comme le demandent les notes du studio.
-              cellWidth={CELL.width}
-              cellHeight={Math.round(CELL.width * 9 / 16)}
+              cellWidth={CELL_FOND.width}
+              cellHeight={CELL_FOND.height}
               selectedId={backgroundTileId}
               resetKey={locale}
               onSelect={(tile) => {
@@ -239,7 +248,17 @@ export function EditorStep() {
         <Button className="cta" size="lg" radius="xl" disabled={layers.length === 0 || busy} onClick={submit}>
           {busy ? t('editor.sending') : t('editor.submit')}
         </Button>
-        <Anchor component="button" type="button" className="restart" onClick={clearDesign}>
+        {/* Rien a recommencer tant que la planche est nue. Masque plutot que
+            retire : sa place est gardee, et le bouton du dessus ne bouge pas
+            quand il parait. */}
+        <Anchor
+          component="button"
+          type="button"
+          className={`restart ${layers.length === 0 ? 'cache' : ''}`}
+          aria-hidden={layers.length === 0}
+          tabIndex={layers.length === 0 ? -1 : undefined}
+          onClick={clearDesign}
+        >
           {t('editor.restart')}
         </Anchor>
       </Box>

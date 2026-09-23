@@ -49,6 +49,16 @@ const FRAME_SHADOW = {
 const FRAME_DASH = [3, 9]
 
 /**
+ * Rayon des angles du cadre de selection.
+ *
+ * Le pointille ET les crochets d'angle le suivent : un crochet a angle droit
+ * pose sur un rectangle arrondi depasserait de la courbe, et l'on verrait
+ * deux tracés qui ne se rejoignent pas. C'est aussi le rayon des poignees
+ * (anchorCornerRadius), pour que tout le cadre ait la meme main.
+ */
+const FRAME_RADIUS = 14
+
+/**
  * Inclinaison maximale d'un fond, en degres.
  *
  * Un fond est dessine pour la planche : au-dela de quelques degres il faut
@@ -230,10 +240,13 @@ export function SkinCanvas({
       const y = -box.h / 2
       rect.setAttrs({ x, y, width: box.w, height: box.h })
       const arm = Math.min(FRAME_ARM, box.w / 3, box.h / 3)
+      // Le rayon se resserre sur les petits elements : un angle plus rond que
+      // la moitie du cote retournerait la courbe.
+      const rayon = Math.min(FRAME_RADIUS, box.w / 2, box.h / 2, arm)
       const corners = frameCorners(x, y, box.w, box.h)
       frameLines.current.forEach((line, i) => {
         const [cx, cy, dx, dy] = corners[i]
-        line?.points([cx, cy + dy * arm, cx, cy, cx + dx * arm, cy])
+        line?.points(crochet(cx, cy, dx, dy, arm, rayon))
       })
 
       // Les poignees du fond vivent sur un mandataire : on le pose sur le
@@ -565,7 +578,16 @@ export function SkinCanvas({
           {/* Cadre de selection (objet, fond), pilote par syncFrame. */}
           {interactive && (
             <Group ref={frameGroup} listening={false} visible={false}>
-              <Rect ref={frameRect} stroke={SELECT} strokeWidth={2} dash={FRAME_DASH} lineCap="round" listening={false} {...FRAME_SHADOW} />
+              <Rect
+                ref={frameRect}
+                stroke={SELECT}
+                strokeWidth={2}
+                dash={FRAME_DASH}
+                cornerRadius={FRAME_RADIUS}
+                lineCap="round"
+                listening={false}
+                {...FRAME_SHADOW}
+              />
               {[0, 1, 2, 3].map((i) => (
                 <Line
                   key={i}
@@ -620,6 +642,32 @@ const FRAME_PAD = 10
 const FRAME_ARM = 34
 
 /** Les quatre angles d'un rectangle et le sens de leurs bras : [x, y, dx, dy]. */
+/**
+ * Un crochet d'angle, l'angle arrondi.
+ *
+ * Deux segments qui se rejoignent par un quart de cercle : la branche
+ * verticale descend vers l'interieur, la courbe tourne, la branche
+ * horizontale repart. (dx, dy) valent ±1 et disent de quel cote est
+ * l'interieur du cadre.
+ */
+function crochet(cx: number, cy: number, dx: number, dy: number, bras: number, r: number): number[] {
+  if (r <= 0) return [cx, cy + dy * bras, cx, cy, cx + dx * bras, cy]
+  const centre = { x: cx + dx * r, y: cy + dy * r }
+  const depart = Math.atan2(0, -dx)
+  let balayage = Math.atan2(-dy, 0) - depart
+  // Ramene l'angle dans (-pi, pi] : sans cela l'arc ferait les trois quarts du
+  // cercle par l'exterieur au lieu du quart par l'interieur.
+  balayage = ((balayage % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI
+  const points = [cx, cy + dy * bras]
+  const PAS = 6
+  for (let i = 0; i <= PAS; i++) {
+    const a = depart + (balayage * i) / PAS
+    points.push(centre.x + r * Math.cos(a), centre.y + r * Math.sin(a))
+  }
+  points.push(cx + dx * bras, cy)
+  return points
+}
+
 function frameCorners(x: number, y: number, w: number, h: number): [number, number, number, number][] {
   return [
     [x, y, 1, 1],

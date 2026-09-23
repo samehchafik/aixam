@@ -32,13 +32,14 @@ body {
 }
 
 /* --- Scene ----------------------------------------------------------- */
-/* Le decor est l'image livree par le studio (Fond_borne_@2x.png, reduite en
-   1920x1080). Elle porte sur toute la fenetre, pas sur la scene 16/9 : sur un
-   ecran qui n'est pas exactement en 16/9, la marge de mise a l'echelle se fond
-   dans le decor au lieu de faire deux bandes sur les cotes. */
+/* Le decor est l'image livree par le studio, en PNG et non en JPEG : son
+   degrade perd beaucoup a la compression avec perte -- des bandes visibles la
+   ou le violet vire au rose. Elle porte sur toute la fenetre, pas sur la scene
+   16/9 : sur un ecran qui n'est pas exactement en 16/9, la marge de mise a
+   l'echelle se fond dans le decor au lieu de faire deux bandes sur les cotes. */
 .stage-viewport {
   position: fixed; inset: 0; overflow: clip;
-  background: var(--bleu-nuit) url('./assets/fond-borne.jpg') center / cover no-repeat;
+  background: var(--bleu-nuit) url('./assets/fond-borne.png') center / cover no-repeat;
 }
 .stage {
   position: absolute; left: 50%; top: 50%; overflow: clip;
@@ -85,8 +86,11 @@ body {
 .skin-stack .ribbon { z-index: 2; }
 .skin-front { z-index: 3; }
 
+/* Arrondie en haut seulement : le bas affleure le bord de la planche, et un
+   angle rond y laisserait paraitre un jour. */
 .notch-panel {
   position: absolute; z-index: 4; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  border-radius: 18px 18px 0 0;
   padding: 8px 18px; background: var(--bleu-interface) !important; color: var(--blanc);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
 }
@@ -111,14 +115,14 @@ body {
 }
 .panel { width: 655px; }
 .panel-title {
-  text-align: center; font-size: 28px; font-weight: 300; margin: 0 0 14px;
+  text-align: center; font-size: 28px; font-weight: 400; margin: 0 0 14px;
   color: var(--blanc); white-space: nowrap;
 }
 /* Aucune marge horizontale : le ruban part en coupe au bord droit. La marge
    de gauche est portee par le decalage du ruban, qui se resorbe au glissement. */
 .panel-card {
   height: 356px; padding: 20px 0 10px;
-  background: var(--card) !important; border: 1px solid var(--card-line);
+  background: var(--card) !important; border: none;
   backdrop-filter: blur(6px);
 }
 
@@ -135,9 +139,12 @@ body {
   padding: 0; border: none; background: none; cursor: pointer;
 }
 
+/* Pas de fond : il se voyait a travers le liseret transparent de 3 px et
+   cernait chaque vignette d'un gris bleute -- le « contour bleu fonce ». Les
+   objets s'en etaient deja affranchis, les fonds le gardaient. */
 .tile {
-  display: block; width: 100%; height: 100%; border-radius: 8px; overflow: hidden;
-  border: 3px solid transparent; background: rgba(0, 0, 0, 0.18); transition: border-color 120ms;
+  display: block; width: 100%; height: 100%; overflow: hidden;
+  border: 3px solid transparent; background: none; transition: border-color 120ms;
 }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* L'ombre detache le liseret des vignettes les plus claires. */
@@ -148,7 +155,7 @@ body {
 /* Un objet n'a ni cadre ni fond : sa case epouse sa largeur, il l'occupe en
    entier. Seuls les plus allonges sont ramenes a une largeur raisonnable, et
    paraissent alors moins hauts que la ligne. */
-.tile-object { background: none; border-radius: 0; }
+.tile-object { background: none; }
 .tile-object img { object-fit: contain; }
 
 .tile-color {
@@ -178,10 +185,13 @@ body {
 }
 .cta:hover { background: var(--bleu-survol) !important; color: var(--bleu-survol-texte) !important; }
 .cta:active { background: var(--bleu-actif) !important; color: var(--bleu-actif-texte) !important; }
-.cta:disabled { opacity: 0.4; }
+/* Le bouton grise garde une typo lisible : le bleu marine de la charte,
+   celui de l'etat actif. */
+.cta:disabled { opacity: 0.2; color: var(--bleu-marine) !important; }
 
 .restart { color: var(--bleu-interface) !important; font-size: 18px; }
 .restart:hover { color: var(--blanc) !important; }
+.restart.cache { opacity: 0; pointer-events: none; }
 
 /* --- Diaporama : une creation posee sur la planche de bord ------------- */
 .mockup { position: absolute; }

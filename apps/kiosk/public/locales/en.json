@@ -30,8 +30,8 @@
     "wrong": "Wrong code. {remaining} attempt(s) left."
   },
   "editor": {
-    "backgroundsTitle": "Pick a background for your skin",
-    "objectsTitle": "Pick one or more objects to place on your skin",
+    "backgroundsTitle": "Choose your background:",
+    "objectsTitle": "Add the elements you like:",
     "colorTile": "pick your colour",
     "colorPickerTitle": "Pick your colour",
     "hintEmpty": "Pick a background and objects to pimp your own skin.",
@@ -41,7 +41,7 @@
     "deleteObject": "Remove this object",
     "resetBackground": "Reset this background",
     "resetObject": "Reset this object",
-    "submit": "Confirm my skin",
+    "submit": "Validate your skin",
     "sending": "Sending…",
     "restart": "Start over",
     "submitError": "Could not send. Please try again in a moment."

@@ -30,8 +30,8 @@
     "wrong": "Code incorrect. {remaining} essai(s) restant(s)."
   },
   "editor": {
-    "backgroundsTitle": "Choisis un fond à ton skin",
-    "objectsTitle": "Choisis un ou des objets à poser sur ton skin",
+    "backgroundsTitle": "Choisis ton fond :",
+    "objectsTitle": "Ajoute les éléments de ton choix :",
     "colorTile": "choisis ta couleur",
     "colorPickerTitle": "Choisis ta couleur",
     "hintEmpty": "Choisis un fond et des objets pour pimper ton skin perso.",
@@ -41,7 +41,7 @@
     "deleteObject": "Supprime cet objet",
     "resetBackground": "Réinitialise ce fond",
     "resetObject": "Réinitialise cet objet",
-    "submit": "Valider mon skin",
+    "submit": "Valide ton skin",
     "sending": "Envoi…",
     "restart": "Recommencer",
     "submitError": "Envoi impossible. Réessaie dans un instant."
