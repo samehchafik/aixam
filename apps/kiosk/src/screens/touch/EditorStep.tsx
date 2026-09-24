@@ -4,6 +4,8 @@ import { IconRefresh, IconTrash } from '@tabler/icons-react'
 import { AssetSwiper } from '../../components/AssetSwiper'
 import { Ribbon } from '../../components/chrome/Ribbon'
 import { SkinCanvas } from '../../components/SkinCanvas'
+import { Fond } from '../../components/Stage16x9'
+import fondBorne from '../../assets/fond-borne.avif'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
@@ -43,13 +45,11 @@ export function EditorStep() {
   const { api, bus } = useApp()
   const { t, pick, locale } = useI18n()
   const {
-    catalog, layers, selectedIndex, sessionId, visitorId, firstName,
+    catalog, layers, selectedIndex, sessionId, firstName,
     setBackground, addObject, updateLayer, removeLayer, resetLayer, select, clearDesign,
-    setRenderUrl, setStep,
+    setStep,
   } = useSession()
 
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [colorOpen, setColorOpen] = useState(false)
 
   // Le grand ecran suit la composition en direct.
@@ -78,22 +78,6 @@ export function EditorStep() {
         ? t('editor.hintBackground')
         : t('editor.hintObject')
 
-  const submit = async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      const res = await api.saveDesign({ session_id: sessionId, visitor_id: visitorId, layers })
-      const url = res.render_url ? `${api.base}${res.render_url}` : null
-      setRenderUrl(url)
-      bus.send({ type: 'finished', renderUrl: url })
-      setStep('done')
-    } catch {
-      setError(t('editor.submitError'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   if (!catalog) return null
 
   const skinHeight = SKIN_WIDTH * (catalog.shape.height / catalog.shape.width)
@@ -105,6 +89,7 @@ export function EditorStep() {
 
   return (
     <div className="editor-screen">
+      <Fond src={fondBorne} />
       {/* --- La planche ------------------------------------------------- */}
       <div className="skin-area">
         <SkinCanvas
@@ -244,9 +229,10 @@ export function EditorStep() {
 
       {/* --- Actions ------------------------------------------------------ */}
       <Box className="editor-actions">
-        {error && <Text c="red.4" size="sm">{error}</Text>}
-        <Button className="cta" size="lg" radius="xl" disabled={layers.length === 0 || busy} onClick={submit}>
-          {busy ? t('editor.sending') : t('editor.submit')}
+        {/* Rien n'est encore envoye : l'ecran 7 montre d'abord le skin sur la
+            voiture, et c'est la que le visiteur valide. */}
+        <Button className="cta" size="lg" radius="xl" disabled={layers.length === 0} onClick={() => setStep('review')}>
+          {t('editor.submit')}
         </Button>
         {/* Rien a recommencer tant que la planche est nue. Masque plutot que
             retire : sa place est gardee, et le bouton du dessus ne bouge pas

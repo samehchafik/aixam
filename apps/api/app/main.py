@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import mimetypes
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,11 @@ from app.deps import require_kiosk_basic_auth
 from app.models import AdminUser, Kiosk
 from app.security import hash_secret
 from app.services import materiel
+
+# Python 3.12 ne connait ni l'une ni l'autre : les polices de la borne
+# partaient en text/plain, et une image AVIF sans type selon l'image Docker.
+mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("image/avif", ".avif")
 
 STATIC = Path(settings.static_dir)
 MEDIA = Path(settings.media_dir)

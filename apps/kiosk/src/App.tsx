@@ -7,6 +7,7 @@ import { Stage16x9 } from './components/Stage16x9'
 import { I18nProvider, useI18n } from './i18n'
 import { getRuntime, type KioskConfig, type ScreenRole } from './runtime'
 import { useSession } from './state/session'
+import { etapeDeDemo } from './state/etapeDeDemo'
 import { TouchScreen } from './screens/touch'
 import { DisplayScreen } from './screens/display'
 import { theme } from './theme'
@@ -34,6 +35,7 @@ export default function App() {
         const api = new ApiClient(config)
         const boot = await api.bootstrap()
         setCatalog(boot.catalog)
+        if (import.meta.env.DEV) etapeDeDemo(boot.catalog)
 
         bus = new ScreenBus(config, role)
         bus.connect()

@@ -32,6 +32,7 @@ Changer de coquille (Tauri → Electron → navigateur) ne touche que ce dossier
 ```bash
 make setup          # copie .env, npm install
 make assets         # importe les éléments de skin livrés par le studio (SVG)
+make ecrans ECRANS=~/Downloads/livraison_Sofi_260923   # et les écrans du parcours
 make up             # build des fronts + docker compose up
 ```
 
@@ -364,6 +365,16 @@ L'ordre du tableau est l'ordre des vignettes. Un fichier absent est ignoré
 (jamais d'écran cassé sur le stand). Format attendu : SVG. Le PNG et le JPEG restent acceptés. Le catalogue est relu à chaque démarrage
 de la borne, sans redéploiement.
 
+`make ecrans ECRANS=<livraison>` reprend une livraison d'écrans du studio (un
+dossier par écran, `01_…` à `08_…`). Il en tire le décor du diaporama —
+photo, masque et ombrage de la planche dans `apps/api/media/mockup/`, avec les
+quatre coins où poser un skin, calés sur le skin de test que le studio y a
+posé — et les images des écrans dans `apps/kiosk/src/assets/`. Photos et
+dégradés partent en AVIF 10 bits (`brew install libavif`) : sans bandes, pour
+une fraction du poids d'un PNG. Les positions, tailles et interlettrages des
+écrans sont relevés dans le fichier Illustrator (`260923_BorneEasy.ai`) et
+reportés dans `styles.css` et `components/chrome/Ribbon.tsx`.
+
 Une langue de plus = un fichier `locales/xx.json` + son code dans
 `LOCALES` (`apps/kiosk/src/i18n/index.tsx`).
 
@@ -404,7 +415,10 @@ resynchronise seul.
 **RGPD.** Les données nominatives sont isolées sur la table `visitors`.
 Supprimer un visiteur depuis l'admin efface ses données et anonymise ses
 créations (`ON DELETE SET NULL`). L'export CSV ne sort par défaut que les
-visiteurs ayant explicitement consenti.
+visiteurs ayant explicitement consenti. Le formulaire de septembre 2026 ne
+pose plus la question : sa case est l'acceptation du règlement, obligatoire
+pour participer, qu'on n'enregistre pas comme un accord commercial. Les
+nouveaux inscrits ne figurent donc pas dans l'export par défaut.
 
 ## Reste à faire
 

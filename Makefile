@@ -28,6 +28,9 @@ logs: ## Suit les logs api + worker
 assets: ## Importe les elements de skin livres par le studio (SVG)
 	python3 scripts/import_assets.py $(SOURCE)
 
+ecrans: ## Importe une livraison d'ecrans du studio (ECRANS=dossier) : decor du diaporama et images du front
+	python3 scripts/import_assets.py --ecrans $(ECRANS)
+
 assets-demo: ## Idem, plus des fonds F6+ et des variantes de teinte, pour montrer
 	python3 scripts/import_assets.py $(SOURCE) --demo
 

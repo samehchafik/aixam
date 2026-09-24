@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 export const LOCALES = ['fr', 'en', 'es'] as const
 export type Locale = (typeof LOCALES)[number]
@@ -11,6 +11,12 @@ type I18n = {
   setLocale: (locale: Locale) => void
   /** `t('editor.hintEmpty')`, `t('verify.wrong', { remaining: 2 })` */
   t: (key: string, vars?: Vars) => string
+  /**
+   * Comme `t`, mais un `{nom}` peut devenir un element : un lien, un mot mis
+   * en valeur. Le texte reste entier dans le fichier de traduction, ses retours
+   * a la ligne compris -- le traducteur voit la phrase, pas des morceaux.
+   */
+  rich: (key: string, nodes: Record<string, ReactNode>) => ReactNode
   /** Libelle multilingue d'un element de catalogue : `{ fr, en, es }`. */
   pick: (labels: Partial<Record<string, string>> | undefined) => string
 }
@@ -41,6 +47,14 @@ function lookup(dict: Dictionary, key: string): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
+/** Remplace chaque `{nom}` d'un texte par l'element fourni. */
+export function enrichir(texte: string, nodes: Record<string, ReactNode>): ReactNode {
+  return texte
+    .split(/\{(\w+)\}/)
+    // split avec un groupe : les noms tombent aux indices impairs.
+    .map((morceau, i) => <Fragment key={i}>{i % 2 ? (nodes[morceau] ?? `{${morceau}}`) : morceau}</Fragment>)
+}
+
 function interpolate(template: string, vars: Vars = {}): string {
   return template.replace(/\{(\w+)\}/g, (_, name: string) => String(vars[name] ?? `{${name}}`))
 }
@@ -67,6 +81,8 @@ export function I18nProvider({ initial, children }: { initial: string; children:
     [dict],
   )
 
+  const rich = useCallback((key: string, nodes: Record<string, ReactNode>) => enrichir(t(key), nodes), [t])
+
   const pick = useCallback(
     (labels: Partial<Record<string, string>> | undefined) =>
       labels?.[locale] ?? labels?.fr ?? Object.values(labels ?? {})[0] ?? '',
@@ -74,8 +90,8 @@ export function I18nProvider({ initial, children }: { initial: string; children:
   )
 
   const value = useMemo<I18n>(
-    () => ({ locale, setLocale: setLocaleState, t, pick }),
-    [locale, t, pick],
+    () => ({ locale, setLocale: setLocaleState, t, rich, pick }),
+    [locale, t, rich, pick],
   )
 
   if (!dict) return null

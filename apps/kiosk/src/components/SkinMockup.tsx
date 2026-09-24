@@ -3,6 +3,12 @@ import { matriceSkin } from '../skin/projection'
 import type { Mockup } from '../api/client'
 import type { SkinShape } from '../skin/shape'
 
+/** URL d'une image du mockup, avec l'empreinte qui dejoue les caches. */
+export function urlMockup(mockup: Mockup, mediaBase: string, fichier: string): string {
+  return `${mediaBase}/${fichier}${mockup.version ? `?v=${mockup.version}` : ''}`
+}
+
+
 type Props = {
   mockup: Mockup
   shape: SkinShape
@@ -35,7 +41,8 @@ type Props = {
 export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }: Props) {
   // Meme raison que pour le catalogue : ces trois images changent sous le meme
   // nom quand le studio livre un nouveau mockup, et un cache les garderait.
-  const v = mockup.version ? `?v=${mockup.version}` : ''
+  const url = (fichier: string) => urlMockup(mockup, mediaBase, fichier)
+  const [mx, my] = mockup.maskOrigin
 
   // Le rendu serveur entoure la planche d'un liseret. Sa largeur se lit sur
   // l'image elle-meme : inutile de la transporter dans une configuration, qui
@@ -72,7 +79,7 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
 
   return (
     <div className="mockup" style={{ width: w, height: h, left: x, top: y }}>
-      <img className="mockup-decor" src={`${mediaBase}/${mockup.decor}${v}`} alt="" />
+      <img className="mockup-decor" src={url(mockup.decor)} alt="" draggable={false} />
 
       {/* La zone est TOUJOURS posee. Elle etait conditionnee a la marge, donc
           au chargement du skin : tant qu'il n'etait pas la -- le temps du
@@ -83,11 +90,16 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
       <div
         className="mockup-zone"
         style={{
-          // Le masque est livre recadre : on le repose a sa place.
-          WebkitMaskImage: `url(${mediaBase}/${mockup.masque}${v})`,
-          maskImage: `url(${mediaBase}/${mockup.masque}${v})`,
-          WebkitMaskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
-          maskPosition: `${mockup.maskOrigin[0]}px ${mockup.maskOrigin[1]}px`,
+          // Le masque est livre recadre : on le repose a sa place, a sa taille
+          // de scene -- il est dessine en 4K.
+          WebkitMaskImage: `url(${url(mockup.masque)})`,
+          maskImage: `url(${url(mockup.masque)})`,
+          WebkitMaskPosition: `${mx}px ${my}px`,
+          maskPosition: `${mx}px ${my}px`,
+          ...(mockup.maskSize && {
+            WebkitMaskSize: `${mockup.maskSize[0]}px ${mockup.maskSize[1]}px`,
+            maskSize: `${mockup.maskSize[0]}px ${mockup.maskSize[1]}px`,
+          }),
         }}
       >
         {marge !== null && (src || children) && (
@@ -104,7 +116,7 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
         )}
       </div>
 
-      <img className="mockup-ombrage" src={`${mediaBase}/${mockup.ombrage}${v}`} alt="" />
+      <img className="mockup-ombrage" src={url(mockup.ombrage)} alt="" draggable={false} />
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Anchor, Button, Checkbox, Stack, Text, TextInput, Title } from '@mantine/core'
 import { ValidationError } from '../../api/client'
 import { useApp } from '../../app-context'
-import { useI18n } from '../../i18n'
+import { enrichir, useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
+import { Popin, TexteLong } from '../../components/Popin'
+import { EcranFormulaire } from './EcranFormulaire'
 
 const FIELDS = [
   { key: 'first_name', label: 'register.firstName', type: 'text' },
@@ -37,14 +38,26 @@ function valider(champ: string, valeur: string): string | null {
   return v.length >= 2 ? null : 'register.errors.name'
 }
 
+/** Les deux textes que les liens des mentions ouvrent dans la popin. */
+type Texte = 'policy' | 'rules'
+
+/**
+ * Ecran 2 : le formulaire, sur la carte bleue.
+ *
+ * Le bouton reste actif meme formulaire vide, comme le dessine le studio : le
+ * visiteur qui appuie trop tot voit ce qui manque (ecran 2c), plutot qu'un
+ * bouton grise dont il ne comprend pas le refus.
+ */
 export function RegisterStep() {
   const { api, config } = useApp()
   const { t } = useI18n()
-  const { sessionId, setVisitor, setStep } = useSession()
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [consent, setConsent] = useState(false)
+  const { sessionId, inscription: values, setInscription, setVisitor, setStep, reset } = useSession()
+  // Le reglement est une condition de participation, pas une option.
+  const [accepte, setAccepte] = useState(false)
+  const [caseOubliee, setCaseOubliee] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [texte, setTexte] = useState<Texte | null>(null)
   // Un champ ne signale sa faute qu'une fois quitte : corriger sous les doigts
   // du visiteur pendant qu'il tape serait plus penible qu'utile.
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -65,8 +78,10 @@ export function RegisterStep() {
   const submit = async () => {
     // Le serveur revalide de toute facon ; le faire ici evite au visiteur un
     // aller-retour reseau pour un point-virgule.
-    if (FIELDS.some((f) => erreurs[f.key])) {
+    const incomplet = FIELDS.some((f) => erreurs[f.key])
+    if (incomplet || !accepte) {
       setTouched(Object.fromEntries(FIELDS.map((f) => [f.key, true])))
+      setCaseOubliee(!accepte)
       return
     }
     setError(null)
@@ -78,7 +93,6 @@ export function RegisterStep() {
         last_name: values.last_name ?? '',
         email: values.email ?? '',
         postal_code: values.postal_code ?? '',
-        consent_marketing: consent,
         session_id: sessionId,
       })
       setVisitor(res.visitor_id, values.first_name ?? '')
@@ -104,69 +118,101 @@ export function RegisterStep() {
     }
   }
 
-  const complete = FIELDS.every((f) => !erreurs[f.key])
+  const lien = (quoi: Texte, libelle: string) => (
+    <button type="button" className="lien-mention" onClick={() => setTexte(quoi)}>
+      {t(libelle)}
+    </button>
+  )
 
   return (
-    <div className="form-screen">
+    <EcranFormulaire>
       {/* Un vrai formulaire : sur un ecran tactile, la touche de validation du
           clavier virtuel envoie alors la saisie. Sans cela elle est inerte, et
           le visiteur doit viser le bouton -- clavier ouvert par-dessus. */}
-      <Stack
-        component="form"
-        gap="lg"
-        className="form-card"
-        onSubmit={(e: React.FormEvent) => {
+      <form
+        className="carte carte-inscription"
+        noValidate
+        onSubmit={(e) => {
           e.preventDefault()
           submit()
         }}
       >
-        <div>
-          <Title order={1} className="form-title">{t('register.title')}</Title>
-          <Text c="dimmed" size="lg">{t('register.lead')}</Text>
+        {FIELDS.map((field) => {
+          const message = messageDuChamp(field.key)
+          const valeur = values[field.key] ?? ''
+          return (
+            <div key={field.key} className={`champ ${message ? 'en-erreur' : ''}`}>
+              <label htmlFor={`champ-${field.key}`}>{t(field.label)}*</label>
+              <div>
+                <input
+                  id={`champ-${field.key}`}
+                  className={valeur ? 'rempli' : ''}
+                  type={field.type}
+                  inputMode={field.type === 'email' ? 'email' : undefined}
+                  autoComplete="off"
+                  autoCapitalize={field.type === 'text' ? 'words' : 'off'}
+                  spellCheck={false}
+                  value={valeur}
+                  onBlur={() => setTouched((s) => ({ ...s, [field.key]: true }))}
+                  onChange={(e) => {
+                    setInscription({ ...values, [field.key]: e.currentTarget.value })
+                    // Le verdict du serveur portait sur l'ancienne valeur.
+                    setServeur((s) => (s[field.key] ? { ...s, [field.key]: '' } : s))
+                  }}
+                />
+                {message && <p className="message-erreur">{message}</p>}
+              </div>
+            </div>
+          )
+        })}
+
+        <p className="obligatoires">{t('register.required')}</p>
+        <div className="mentions">
+          {t('register.legal').split('\n').map((paragraphe, i) => (
+            <p key={i}>
+              {enrichir(paragraphe, {
+                politique: lien('policy', 'register.policyLink'),
+                reglement: lien('rules', 'register.rulesLink'),
+              })}
+            </p>
+          ))}
         </div>
 
-        {FIELDS.map((field) => (
-          <TextInput
-            key={field.key}
-            size="xl"
-            radius="md"
-            label={t(field.label)}
-            type={field.type}
-            inputMode={field.key === 'postal_code' ? 'numeric' : undefined}
-            autoComplete="off"
-            value={values[field.key] ?? ''}
-            error={messageDuChamp(field.key)}
-            onBlur={() => setTouched((s) => ({ ...s, [field.key]: true }))}
+        <label className={`case ${caseOubliee && !accepte ? 'en-erreur' : ''}`}>
+          <input
+            type="checkbox"
+            checked={accepte}
             onChange={(e) => {
-              // A lire avant setState : React 19 ne conserve pas currentTarget dans l'updater.
-              const value = e.currentTarget.value
-              setValues((v) => ({ ...v, [field.key]: value }))
-              // Le verdict du serveur portait sur l'ancienne valeur.
-              setServeur((s) => (s[field.key] ? { ...s, [field.key]: '' } : s))
+              setAccepte(e.currentTarget.checked)
+              setCaseOubliee(false)
             }}
           />
-        ))}
+          <span className="case-boite" aria-hidden="true" />
+          {t('register.rules')}
+        </label>
 
-        <Checkbox
-          size="md"
-          checked={consent}
-          onChange={(e) => setConsent(e.currentTarget.checked)}
-          label={<Text size="sm" c="dimmed">{t('register.consent')}</Text>}
-        />
+        {error && <p className="message-erreur">{error}</p>}
 
-        {error && <Text c="red.4">{error}</Text>}
-
-        <Button type="submit" className="cta" size="xl" radius="xl" disabled={!complete || busy}>
+        <button type="submit" className="bouton bouton-blanc bouton-carte" disabled={busy}>
           {busy ? t('register.sending') : t('register.submit')}
-        </Button>
+        </button>
+        <button type="button" className="lien lien-carte" onClick={reset}>
+          {t('register.cancel')}
+        </button>
 
         {/* Mode demo (config.json) : on saute l'inscription, sans visiteur rattache. */}
         {config.demoMode && (
-          <Anchor component="button" type="button" className="restart" ta="center" onClick={() => setStep('editor')}>
+          <button type="button" className="lien lien-carte" onClick={() => setStep('editor')}>
             {t('register.skip')}
-          </Anchor>
+          </button>
         )}
-      </Stack>
-    </div>
+      </form>
+
+      {texte && (
+        <Popin titre={t(`legal.${texte}.title`)} onClose={() => setTexte(null)}>
+          <TexteLong texte={t(`legal.${texte}.text`)} />
+        </Popin>
+      )}
+    </EcranFormulaire>
   )
 }

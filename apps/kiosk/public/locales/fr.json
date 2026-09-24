@@ -1,33 +1,46 @@
 {
   "ribbon": "Crée ta propre planche de bord",
   "attract": {
-    "title": "Crée ton propre skin EASY",
-    "cta": "Touche l'écran pour commencer"
+    "cta": "Crée ton skin"
   },
   "register": {
-    "title": "Crée ton propre design",
-    "lead": "Pour la collection SKIN EASY 2027.",
     "firstName": "Prénom",
     "lastName": "Nom",
-    "email": "Email",
+    "email": "E-mail",
     "postalCode": "Code postal",
-    "consent": "J'accepte de recevoir les actualités AIXAM. Mes données sont conservées 12 mois et je peux demander leur suppression à tout moment.",
-    "submit": "Continuer",
+    "submit": "Suivant",
     "sending": "Envoi…",
     "skip": "Je passe",
     "errors": {
-      "required": "Champ obligatoire.",
-      "name": "Au moins 2 caractères.",
-      "email": "Adresse email invalide. Vérifiez le « @ » et le point du domaine.",
-      "postalCode": "Code postal invalide."
+      "required": "Champ obligatoire",
+      "name": "Au moins 2 caractères",
+      "email": "Adresse invalide. Vérifiez le point du domaine",
+      "postalCode": "Code postal invalide"
+    },
+    "required": "* Champs obligatoires",
+    "legal": "En tant que responsable de traitement, AIXAM MEGA collecte vos données à caractère personnel aux fins notamment de la gestion administrative des inscriptions à l’animation, L’identification des Participants et la vérification de l’adresse e-mail du Participant, la création des accès à l’outil de création de SKIN EASY et l’envoi du visuel créé au format numérique, la prévention des fraudes, l’éventuelle prise de contact avec les Participants dont les créations auraient été présélectionnées pour étude dans le cadre de futurs développements produits et la réalisation de statistiques anonymisées relatives à l’Animation. Vos données sont destinées aux différents services administratifs et supports de AIXAM MEGA. Les données mentionnées par un astérisque (*) sont obligatoires.\nConformément à la Loi Informatique et Libertés n° 78-17 du 6 janvier 1978 modifiée et au Règlement Général sur la Protection des Données Règlement (UE) 2016/679 du Parlement européen et du Conseil du 27 avril 2016 dit RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation et d'opposition au traitement de vos données. Vous pouvez exercer vos droits en envoyant un mail à dpo@xx.fr ou par courrier à AIXAM MEGA, (56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS). Pour plus d’informations concernant le traitement de vos données à caractère personnel, vous pouvez consulter notre politique en {politique}.\nPour consulter le règlement du jeu concours {reglement}.",
+    "policyLink": "cliquant ici",
+    "rulesLink": "cliquez ici",
+    "rules": "Je reconnais avoir pris connaissance du règlement et l’accepte.",
+    "cancel": "Annuler"
+  },
+  "legal": {
+    "policy": {
+      "title": "Politique de traitement des données",
+      "text": "Texte à venir."
+    },
+    "rules": {
+      "title": "Règlement du jeu concours",
+      "text": "Texte à venir."
     }
   },
   "verify": {
-    "title": "Vérifie ton email",
-    "lead": "Saisis le code à 6 chiffres que nous venons de t'envoyer.",
-    "submit": "Valider",
+    "title": "Check ton mail\net tape ton code unique.",
+    "submit": "Commencer la création",
     "checking": "Vérification…",
-    "wrong": "Code incorrect. {remaining} essai(s) restant(s)."
+    "wrong": "Code incorrect. {remaining} essai(s) restant(s).",
+    "aside": "Dernière étape\npour commencer\nta création.",
+    "back": "Retour"
   },
   "editor": {
     "backgroundsTitle": "Choisis ton fond :",
@@ -42,19 +55,20 @@
     "resetBackground": "Réinitialise ce fond",
     "resetObject": "Réinitialise cet objet",
     "submit": "Valide ton skin",
+    "restart": "Recommencer"
+  },
+  "review": {
+    "submit": "C’est parfait,\nje valide !",
     "sending": "Envoi…",
-    "restart": "Recommencer",
+    "back": "Retour",
     "submitError": "Envoi impossible. Réessaie dans un instant."
   },
   "done": {
-    "title": "Merci {firstName} !",
-    "lead": "Ta création vient de t'être envoyée par email au format JPEG.",
-    "share": "Partage-la avec #EASYbyAIXAM — elle pourra être sélectionnée pour la future production de SKIN EASY.",
-    "finish": "Terminer"
+    "text": "Merci pour ta participation !\nEt pour connaitre le skin\nsélectionné par la team Aixam,\najoute-nous sur {compte}",
+    "account": "@aixam_officiel",
+    "restart": "Créer un nouveau skin"
   },
   "display": {
-    "attractTitle": "Crée ton propre SKIN EASY",
-    "attractCta": "Rendez-vous sur l'écran tactile",
     "creationOf": "La création de {firstName}",
     "shareCta": "Partage ta création #EASYbyAIXAM"
   },

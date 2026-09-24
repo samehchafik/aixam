@@ -1,7 +1,14 @@
 import { create } from 'zustand'
 import type { Catalog, Layer } from '../api/client'
 
-export type Step = 'attract' | 'register' | 'verify' | 'editor' | 'done'
+/**
+ * Le parcours, dans l'ordre des ecrans du studio : accueil (1), formulaire
+ * (2), code (3), creation (4 a 6), validation (7), remerciement (8).
+ */
+export type Step = 'attract' | 'register' | 'verify' | 'editor' | 'review' | 'done'
+
+/** Ce que le visiteur a saisi au formulaire, par champ. */
+export type Inscription = Record<string, string>
 
 /**
  * Hauteur d'un objet a sa pose, en fraction de la hauteur de la planche. Les
@@ -26,6 +33,12 @@ type State = {
   sessionId: string
   visitorId: string | null
   firstName: string
+  /**
+   * Le formulaire tel que le visiteur l'a laisse. Garde ici plutot que dans
+   * l'ecran : revenir du code au formulaire -- pour corriger une adresse --
+   * ne doit pas tout faire retaper.
+   */
+  inscription: Inscription
   layers: Layer[]
   selectedIndex: number | null
   catalog: Catalog | null
@@ -36,6 +49,7 @@ type State = {
   reset: () => void
   clearDesign: () => void
   setVisitor: (id: string, firstName: string) => void
+  setInscription: (inscription: Inscription) => void
   setCatalog: (catalog: Catalog) => void
   setRenderUrl: (url: string | null) => void
 
@@ -170,6 +184,7 @@ export const useSession = create<State>((set) => ({
   sessionId: newSessionId(),
   visitorId: null,
   firstName: '',
+  inscription: {},
   layers: [],
   selectedIndex: null,
   catalog: null,
@@ -183,12 +198,14 @@ export const useSession = create<State>((set) => ({
       sessionId: newSessionId(),
       visitorId: null,
       firstName: '',
+      inscription: {},
       layers: [],
       selectedIndex: null,
       renderUrl: null,
     }),
   clearDesign: () => set({ layers: [], selectedIndex: null }),
   setVisitor: (visitorId, firstName) => set({ visitorId, firstName }),
+  setInscription: (inscription) => set({ inscription }),
   setCatalog: (catalog) => set({ catalog }),
   setRenderUrl: (renderUrl) => set({ renderUrl }),
 

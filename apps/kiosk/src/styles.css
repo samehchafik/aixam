@@ -32,14 +32,18 @@ body {
 }
 
 /* --- Scene ----------------------------------------------------------- */
-/* Le decor est l'image livree par le studio, en PNG et non en JPEG : son
-   degrade perd beaucoup a la compression avec perte -- des bandes visibles la
-   ou le violet vire au rose. Elle porte sur toute la fenetre, pas sur la scene
-   16/9 : sur un ecran qui n'est pas exactement en 16/9, la marge de mise a
-   l'echelle se fond dans le decor au lieu de faire deux bandes sur les cotes. */
-.stage-viewport {
-  position: fixed; inset: 0; overflow: clip;
-  background: var(--bleu-nuit) url('./assets/fond-borne.png') center / cover no-repeat;
+/* Sur un ecran qui n'est pas exactement en 16/9, la scene laisse une marge.
+   Le fond de l'ecran en cours la comble (voir `useFondEcran`), etire en
+   « cover » et FLOUTE : net, il repetait dans la marge ce que la scene montre
+   deja -- un deuxieme « PIMP TON SKIN », un logo coupe. Flou, il n'en garde
+   que les couleurs. Sur les ecrans 16/9 du salon, il n'y a pas de marge.
+   Les images du studio sont en AVIF 10 bits : leurs degrades y restent sans
+   bandes, la ou un JPEG en marquait (voir scripts/import_assets.py). */
+.stage-viewport { position: fixed; inset: 0; overflow: clip; background: var(--bleu-nuit); }
+.stage-viewport::before {
+  content: ''; position: absolute; inset: -80px;
+  background: var(--fond) center / cover no-repeat;
+  filter: blur(40px) brightness(0.85);
 }
 /* La scene est mise a l'echelle ENTIERE dans la fenetre : sur un ecran qui
    n'est pas exactement en 16/9, elle est donc plus etroite ou plus courte que
@@ -59,23 +63,182 @@ body {
 .touch-root { position: relative; width: 100%; height: 100%; }
 
 .ribbon { position: absolute; top: 0; left: 0; z-index: 3; pointer-events: none; overflow: visible; }
-.ribbon text { font-family: Poppins, sans-serif; letter-spacing: 0.02em; }
+.ribbon text { font-family: Poppins, sans-serif; }
 
-/* « PIMP TON SKIN » et le logo easy font partie de l'image de fond livree
-   par le studio : rien a dessiner ici. */
+/* « PIMP TON SKIN » et les logos font partie des images de fond livrees par
+   le studio : rien a dessiner ici. */
 
 .lang-switch { position: absolute; top: 24px; left: 28px; z-index: 5; }
 
-/* --- Accueil / formulaires ------------------------------------------- */
-.attract {
-  position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
-  background: none; border: none; color: inherit; cursor: pointer; gap: 8px;
-}
-.attract-title { font-size: 84px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+/* --- Ecrans habilles : accueil, formulaire, code, validation, merci ---- */
+/* Les cotes sont relevees dans 260923_BorneEasy.ai, divisees par deux (il est
+   dessine en 3840x2160). Les textes sont cales sur leur LIGNE DE BASE : avec
+   une hauteur de ligne L, la Poppins pose la sienne a L/2 + 0,35 em du haut de
+   la ligne, l'Anton a L/2 + 0,42 em. L'interlettrage est celui du vectoriel,
+   mesure glyphe a glyphe : +0,02 em sur les boutons et les libelles, -0,03 em
+   sur les liens et la saisie. */
+.ecran { position: absolute; inset: 0; }
+.fond { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-.form-screen { position: absolute; inset: 0; display: grid; place-items: center; }
-.form-card { width: 720px; }
-.form-title { font-size: 52px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 6px; }
+/* Le bandeau de marque blanc de l'ecran 1 et du diaporama, pose sur la photo
+   plutot que peint dedans : la photo est ainsi la meme qu'a l'ecran 7. */
+.bandeau-marque { position: absolute; left: 0; bottom: 0; width: 1920px; display: block; }
+.logo-bas-droite { position: absolute; left: 1449px; top: 956.5px; width: 420px; display: block; }
+
+.texte-ecran { position: absolute; margin: 0; white-space: pre-line; color: var(--blanc); }
+.accent { color: var(--bleu-actif); }
+
+/* Boutons : l'Anton en capitales, dans une pilule. Les etats reprennent la
+   planche de notes du studio, comme `.cta` dans l'editeur. */
+.bouton {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  margin: 0; padding: 0; border: none; border-radius: 999px; cursor: pointer;
+  font-family: Anton, Impact, sans-serif; font-weight: 400; line-height: 1;
+  letter-spacing: 0.02em; text-transform: uppercase; white-space: pre-line;
+}
+.bouton-bleu { background: var(--bleu-interface); color: var(--blanc); }
+.bouton-blanc { background: var(--blanc); color: var(--bleu-actif); }
+.bouton:hover { background: var(--bleu-survol); color: var(--bleu-survol-texte); }
+.bouton:active { background: var(--bleu-actif); color: var(--bleu-actif-texte); }
+.bouton:disabled { cursor: default; opacity: 0.6; }
+
+.lien {
+  display: block; margin: 0; padding: 0; border: none; background: none; cursor: pointer;
+  font-family: Poppins, sans-serif; font-weight: 400; text-align: center; letter-spacing: -0.03em;
+}
+.lien:disabled { cursor: default; opacity: 0.6; }
+
+.message-erreur {
+  margin: 4px 0 -4px; color: #b90000;
+  font-size: 12.5px; line-height: 14px; font-weight: 700; font-style: italic;
+}
+
+/* Ecran 1. Le texte se pose 1,5 px plus haut que le centre de la pilule, le
+   logo 6 px plus bas. */
+.bouton-accueil {
+  left: 657.55px; top: 894.65px; width: 604.9px; height: 120.45px;
+  gap: 18.3px; padding-bottom: 3px; font-size: 49.75px; letter-spacing: 0.018em;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.35);
+}
+.bouton-accueil img { width: 163.94px; height: 62.65px; margin-top: 12px; }
+
+/* Ecrans 2 et 3 : la carte bleue. */
+.carte {
+  position: absolute; left: 647.45px; width: 645.15px;
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--bleu-actif); color: var(--bleu-marine);
+}
+.carte .bouton { position: static; height: 50.8px; font-size: 27.5px; flex: none; }
+.lien-carte { color: #d8f0fa; }
+
+.carte-inscription { top: 117.1px; padding: 48.25px 0 34.3px; border-radius: 29.65px; }
+.champ {
+  display: grid; grid-template-columns: 139.1px 362.4px; column-gap: 12.05px;
+  width: 513.55px;
+}
+.champ + .champ { margin-top: 19.25px; }
+.champ label {
+  align-self: start; height: 43.25px; line-height: 43.25px; margin-top: -2px;
+  text-align: right; color: var(--blanc); font-size: 20px; font-weight: 700; letter-spacing: 0.02em;
+}
+.champ input {
+  display: block; width: 100%; height: 43.25px; margin: 0; padding: 0 12.4px;
+  border: 2px solid var(--bleu-actif); border-radius: 4.5px; outline: none;
+  background: #d8f0fa; color: var(--bleu-marine);
+  font-family: Poppins, sans-serif; font-size: 17.5px; letter-spacing: -0.03em; user-select: text;
+}
+.champ input.rempli, .champ input:focus { background: var(--blanc); border-color: var(--blanc); }
+.champ.en-erreur label { color: #cc0000; }
+.champ.en-erreur input { background: var(--blanc); border-color: #b90000; color: #b90000; font-size: 15px; font-weight: 700; }
+
+.obligatoires { align-self: flex-start; margin: 12.5px 0 0 68.15px; font-size: 15px; line-height: 21px; letter-spacing: 0.02em; }
+/* La mention la plus petite qui reste lisible, comme le demande le studio.
+   Chaque paragraphe a son interlettrage dans le vectoriel : avec les memes,
+   chaque ligne s'y coupe au meme mot. */
+.mentions { align-self: flex-start; width: 516.5px; margin: 0 0 0 68.15px; font-size: 10.5px; line-height: 12.6px; }
+.mentions p { margin: 0 0 2.5px; }
+.mentions p:nth-child(1) { letter-spacing: 0.011em; }
+.mentions p:nth-child(2) { letter-spacing: -0.008em; }
+.lien-mention {
+  display: inline; margin: 0; padding: 0; border: none; background: none; cursor: pointer;
+  font: inherit; font-weight: 500; color: var(--blanc);
+}
+
+/* La case du reglement : une vraie case a cocher, dessinee a la charte. */
+.case {
+  align-self: flex-start; display: flex; align-items: center; gap: 8.1px;
+  margin: 16px 0 0 68.8px; font-size: 15px; line-height: 21px; cursor: pointer;
+}
+.case input { position: absolute; opacity: 0; pointer-events: none; }
+.case-boite {
+  flex: none; width: 24.2px; height: 24.2px; border-radius: 4.5px;
+  border: 1px solid var(--bleu-actif); background: #d8f0fa;
+}
+.case input:checked + .case-boite {
+  background: var(--blanc) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23283371' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>") center / 80% no-repeat;
+}
+.case.en-erreur { color: #b90000; font-weight: 700; }
+.case.en-erreur .case-boite { border: 2px solid #b90000; background-color: var(--blanc); }
+
+.bouton-carte { width: 507.3px; margin-top: 19.3px; }
+.carte-inscription .lien-carte { margin-top: 1.9px; font-size: 17.5px; line-height: 24px; }
+.carte-inscription .message-erreur { margin: 8px 0 -4px; }
+
+/* Ecran 3. */
+.texte-derniere-etape { left: 79.49px; top: 190.78px; font-size: 50px; line-height: 65px; }
+.carte-code { top: 370.95px; padding: 52.37px 0 54.84px; border-radius: 22px; }
+.carte-titre { margin: 0; text-align: center; white-space: pre-line; color: var(--blanc); font-size: 25px; line-height: 30px; font-weight: 700; }
+.code { display: flex; gap: 25.5px; margin-top: 26.08px; }
+.code-case {
+  width: 75.65px; height: 73.5px; padding: 0; margin: 0; text-align: center;
+  border: 1.2px solid var(--bleu-actif); border-radius: 15px; outline: none;
+  background: var(--blanc); color: var(--bleu-marine);
+  font-family: Poppins, sans-serif; font-size: 45px; font-weight: 700; caret-color: transparent;
+  -moz-appearance: textfield;
+}
+.code-case::-webkit-outer-spin-button, .code-case::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.code-case:placeholder-shown { background: #d8f0fa; }
+.code-case:focus { box-shadow: 0 0 0 3px var(--blanc); }
+.carte-code .message-erreur { margin: 10px 0 -14px; }
+.bouton-code { width: 551.65px; margin-top: 39.45px; }
+.carte-code .lien-carte { margin-top: 5.2px; font-size: 20px; line-height: 24px; }
+
+/* Ecran 2b : la fenetre des textes longs. */
+.popin-voile { position: absolute; inset: 0; z-index: 20; }
+.popin {
+  position: absolute; left: 532.65px; top: 39.9px; width: 854.8px; height: 1004.6px;
+  border-radius: 31px; background: var(--blanc); color: var(--bleu-nuit);
+}
+.popin-fermer {
+  position: absolute; left: 779.1px; top: 34.75px; width: 27.85px; height: 27.85px;
+  padding: 0; border: none; background: none; cursor: pointer;
+}
+.popin-fermer img { display: block; width: 100%; height: 100%; }
+.popin-corps {
+  position: absolute; left: 118.8px; top: 108px; right: 54px; bottom: 36px;
+  padding-right: 58px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  font-size: 15px; line-height: 20px; user-select: text;
+}
+.popin-corps h2 { margin: 0 0 12px; font-size: 20px; line-height: 28px; font-weight: 700; }
+.popin-corps h3 { margin: 12px 0 0; font-size: 20px; line-height: 28px; font-weight: 700; }
+.popin-corps p { margin: 0 0 20px; white-space: pre-line; }
+/* La barre de defilement de la maquette : un rail bleu pale, un curseur bleu. */
+.popin-corps::-webkit-scrollbar { width: 9px; }
+.popin-corps::-webkit-scrollbar-track { background: #d8f0fa; border-radius: 5px; }
+.popin-corps::-webkit-scrollbar-thumb { background: var(--bleu-actif); border-radius: 5px; }
+
+/* Ecran 7. */
+.revue-planche { position: absolute; z-index: 1; }
+.bouton-valider {
+  left: 841.55px; top: 850.65px; width: 241.4px; height: 99.5px; z-index: 2;
+  border-radius: 14.85px; font-size: 27.5px; line-height: 32px;
+}
+.lien-retour { position: absolute; left: 841.55px; top: 958.85px; width: 241.4px; z-index: 2; color: var(--bleu-interface); font-size: 20px; line-height: 24px; }
+.revue-erreur { position: absolute; left: 0; right: 0; top: 1000px; margin: 0; text-align: center; z-index: 2; }
+
+/* Ecran 8. */
+.texte-merci { left: 556.5px; top: 266.2px; font-size: 50px; line-height: 65px; letter-spacing: -0.011em; }
+.bouton-merci { left: 806.3px; top: 566.55px; width: 307.4px; height: 51.55px; font-size: 27.36px; letter-spacing: 0.018em; }
 
 /* --- Editeur ----------------------------------------------------------- */
 .editor-screen { position: absolute; inset: 0; }
@@ -223,14 +386,8 @@ body {
 
 /* --- Grand ecran ------------------------------------------------------ */
 .display-root { position: absolute; inset: 0; display: grid; place-items: center; }
-.display-root.attract img, .display-root.finished img { width: 100%; height: 100%; object-fit: cover; }
-.display-root.finished img { object-fit: contain; background: #181628; }
+.display-root.finished img { width: 100%; height: 100%; object-fit: contain; background: #181628; }
 .display-who { position: absolute; top: 140px; font-size: 36px; color: var(--muted); }
-.attract-overlay {
-  position: absolute; inset: auto 0 0 0; padding: 80px; text-align: center;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
-}
-.display-title { font-size: 96px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 8px; }
 .display-cta {
   position: absolute; bottom: 72px; left: 0; right: 0; text-align: center;
   font-family: Anton, Impact, sans-serif; font-size: 56px; letter-spacing: 0.04em;

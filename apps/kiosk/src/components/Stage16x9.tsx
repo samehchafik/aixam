@@ -1,7 +1,37 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import fondBorne from '../assets/fond-borne.avif'
 
 export const STAGE_W = 1920
 export const STAGE_H = 1080
+
+/** Change le decor de la fenetre entiere ; voir `useFondEcran`. */
+const FondContext = createContext<(url: string) => void>(() => {})
+
+/**
+ * Pose `url` en decor de la fenetre, derriere la scene.
+ *
+ * Sur un ecran qui n'est pas exactement en 16/9, la scene laisse une marge ;
+ * c'est ce decor, etire en « cover », qui la comble. Chaque ecran y met son
+ * propre fond -- sans quoi la marge d'un ecran photo montrerait le degrade de
+ * l'editeur.
+ */
+export function useFondEcran(url: string) {
+  const poser = useContext(FondContext)
+  // Rien a poser tant que l'image n'est pas connue (le decor vient du
+  // catalogue) : on garde alors le fond precedent plutot qu'un vide.
+  useEffect(() => {
+    if (url) poser(url)
+  }, [poser, url])
+}
+
+/**
+ * Un fond d'ecran : dessine dans la scene, au pixel pres avec ce qui s'y pose,
+ * et repris en decor de la fenetre pour en combler les marges.
+ */
+export function Fond({ src }: { src: string }) {
+  useFondEcran(src)
+  return <img className="fond" src={src} alt="" draggable={false} />
+}
 
 /**
  * Scene 16/9 a l'echelle : tout l'ecran est dessine en 1920x1080 puis mis a
@@ -10,11 +40,12 @@ export const STAGE_H = 1080
  *
  * L'echelle « contient » la scene plutot que de la rogner : sur un ecran qui
  * n'est pas en 16/9, mieux vaut une marge qu'un bouton « Valider » coupe. Le
- * decor du fond, lui, couvre toute la fenetre (voir `.stage-viewport`), donc
- * cette marge ne se voit pas.
+ * fond de l'ecran, floute, couvre toute la fenetre (voir `.stage-viewport`) :
+ * la marge en prend les couleurs.
  */
 export function Stage16x9({ children }: { children: ReactNode }) {
   const [scale, setScale] = useState(() => fit() ?? 1)
+  const [fond, setFond] = useState(fondBorne)
   const viewport = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -36,7 +67,7 @@ export function Stage16x9({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <div className="stage-viewport" ref={viewport}>
+    <div className="stage-viewport" ref={viewport} style={{ '--fond': `url(${fond})` } as CSSProperties}>
       <div
         className="stage"
         style={{
@@ -45,7 +76,7 @@ export function Stage16x9({ children }: { children: ReactNode }) {
           transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
-        {children}
+        <FondContext.Provider value={setFond}>{children}</FondContext.Provider>
       </div>
     </div>
   )

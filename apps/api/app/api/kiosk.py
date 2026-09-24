@@ -84,6 +84,8 @@ def bootstrap(kiosk: Kiosk = Depends(current_kiosk), db: Session = Depends(get_d
             ),
             "idle_timeout_seconds": int(get_setting(db, "idle_timeout_seconds", 90)),
             "attract_interval_seconds": int(get_setting(db, "attract_interval_seconds", 6)),
+            # La borne dessine autant de cases que le code a de chiffres.
+            "verification_code_length": settings.verification_code_length,
         },
     }
 
@@ -148,7 +150,7 @@ def _enregistrer(payload: RegisterIn, kiosk: Kiosk, db: Session) -> RegisterOut:
         ):
             ancien.consumed_at = now
 
-        code = generate_numeric_code()
+        code = generate_numeric_code(settings.verification_code_length)
         db.add(
             VerificationCode(
                 visitor_id=visitor.id,

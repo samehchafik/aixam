@@ -1,29 +1,33 @@
 {
   "width": 1920,
   "height": 1080,
-  "decor": "Mockup_Skin.png",
-  "masque": "Mockup_masque_Skin.png",
-  "ombrage": "Mockup_Skin_ombrage.png",
+  "decor": "decor.avif",
+  "masque": "masque.svg",
+  "ombrage": "ombrage.avif",
   "maskOrigin": [
-    764,
-    430
+    759.05,
+    433.74
+  ],
+  "maskSize": [
+    1166.26,
+    153.44
   ],
   "corners": [
     [
-      718.21,
-      417.71
+      756.0,
+      424.99
     ],
     [
-      1956.82,
-      451.06
+      1927.3,
+      447.8
     ],
     [
-      1933.24,
-      596.15
+      1931.79,
+      588.1
     ],
     [
-      719.71,
-      517.25
+      733.31,
+      530.22
     ]
   ]
 }

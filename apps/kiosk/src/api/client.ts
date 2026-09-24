@@ -54,6 +54,11 @@ export type Mockup = {
   ombrage: string
   /** Coin haut-gauche du masque dans la photo : il est livre recadre. */
   maskOrigin: [number, number]
+  /**
+   * Taille du masque dans la scene. Absente, le masque est pose a sa taille
+   * d'image ; presente, il est mis a l'echelle -- le studio le dessine en 4K.
+   */
+  maskSize?: [number, number]
   /** Les quatre coins de la planche dans la photo, dans l'ordre hg, hd, bd, bg. */
   corners: [number, number][]
   /** Empreinte du decor, collee aux URL des trois images. */
@@ -72,6 +77,8 @@ export type KioskSettings = {
   verification_bypass: boolean
   idle_timeout_seconds: number
   attract_interval_seconds: number
+  /** Chiffres du code envoye par email. Absent d'une API plus ancienne : 6. */
+  verification_code_length?: number
 }
 
 /**
@@ -175,7 +182,6 @@ export class ApiClient {
     last_name: string
     email: string
     postal_code: string
-    consent_marketing: boolean
     session_id: string
   }) {
     return this.request<{ visitor_id: string; verification_required: boolean }>(

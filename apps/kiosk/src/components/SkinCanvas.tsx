@@ -94,6 +94,12 @@ type Props = {
    * la place du bandeau du haut dans la maquette.
    */
   middle?: ReactNode
+  /**
+   * Epaisseur du contour blanc de la planche. L'ecran 7 l'epaissit un peu,
+   * pour la detacher de la photo ; posee sur la photo elle-meme, la planche
+   * n'en a pas (0).
+   */
+  contour?: number
   interactive?: boolean
   selectedIndex?: number | null
   onSelect?: (index: number | null) => void
@@ -129,6 +135,7 @@ export function SkinCanvas({
   stage,
   origin: originProp,
   middle,
+  contour = 3,
   interactive = false,
   selectedIndex = null,
   onSelect,
@@ -488,17 +495,19 @@ export function SkinCanvas({
           </Group>
 
           {/* Contour blanc de la maquette. */}
-          <Shape
-            x={origin.x}
-            y={origin.y}
-            listening={false}
-            sceneFunc={(ctx, node) => {
-              traceSkin(ctx, shape, skinWidth, skinHeight)
-              ctx.fillStrokeShape(node)
-            }}
-            stroke="#ffffff"
-            strokeWidth={3}
-          />
+          {contour > 0 && (
+            <Shape
+              x={origin.x}
+              y={origin.y}
+              listening={false}
+              sceneFunc={(ctx, node) => {
+                traceSkin(ctx, shape, skinWidth, skinHeight)
+                ctx.fillStrokeShape(node)
+              }}
+              stroke="#ffffff"
+              strokeWidth={contour}
+            />
+          )}
         </KLayer>
       </Stage>
 

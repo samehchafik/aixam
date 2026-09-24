@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Text, Title } from '@mantine/core'
 import { SkinCanvas } from '../../components/SkinCanvas'
-import { SkinMockup } from '../../components/SkinMockup'
+import { PlancheDefilante } from '../../components/PlancheDefilante'
+import { Ribbon } from '../../components/chrome/Ribbon'
+import { Fond, useFondEcran } from '../../components/Stage16x9'
+import { useDecorVoiture } from '../../components/voiture'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import type { Layer } from '../../api/client'
+import fondBorne from '../../assets/fond-borne.avif'
+import bandeauMarque from '../../assets/bandeau-marque.png'
 
 type Mode =
   | { kind: 'attract' }
@@ -15,11 +20,11 @@ type Mode =
 const SKIN_WIDTH = 1760
 
 /**
- * Grand ecran. Deux etats : slideshow d'attente quand personne ne joue,
+ * Grand ecran. Deux etats : diaporama d'attente quand personne ne joue,
  * miroir de la composition en cours sinon.
  */
 export function DisplayScreen() {
-  const { api, bus, settings } = useApp()
+  const { api, bus } = useApp()
   const { t } = useI18n()
   const { catalog } = useSession()
   const [mode, setMode] = useState<Mode>({ kind: 'attract' })
@@ -36,29 +41,32 @@ export function DisplayScreen() {
     }
   }, [bus])
 
-  // Apres une creation terminee, on repart sur le slideshow tout seul.
+  // Apres une creation terminee, on repart sur le diaporama tout seul.
   useEffect(() => {
     if (mode.kind !== 'finished') return
     const id = window.setTimeout(() => setMode({ kind: 'attract' }), 20_000)
     return () => window.clearTimeout(id)
   }, [mode.kind])
 
+  const diaporama = mode.kind === 'attract' || (mode.kind === 'finished' && !mode.renderUrl)
+  const decor = useDecorVoiture()
+  useFondEcran(diaporama ? decor : '')
+
   if (!catalog) return <div className="display-root" />
+  if (diaporama) return <Diaporama />
 
   if (mode.kind === 'finished') {
-    if (!mode.renderUrl) return <Slideshow intervalSeconds={settings.attract_interval_seconds} />
     return (
       <div className="display-root finished">
-        <img src={mode.renderUrl} alt="" />
+        <img src={mode.renderUrl!} alt="" />
         <Title order={2} className="display-cta">{t('display.shareCta')}</Title>
       </div>
     )
   }
 
-  if (mode.kind === 'attract') return <Slideshow intervalSeconds={settings.attract_interval_seconds} />
-
   return (
     <div className="display-root live">
+      <Fond src={fondBorne} />
       {mode.firstName && <Text className="display-who">{t('display.creationOf', { firstName: mode.firstName })}</Text>}
       <SkinCanvas catalog={catalog} layers={mode.layers} mediaBase={api.mediaBase} skinWidth={SKIN_WIDTH} bleed={20} />
     </div>
@@ -66,75 +74,15 @@ export function DisplayScreen() {
 }
 
 /**
- * L'attente : les creations des visiteurs defilent, posees sur la planche de
- * bord. Tant qu'aucune n'a ete approuvee -- au debut du salon, par exemple --
- * la planche reste noire. La voiture est la des la premiere minute, et un
- * skin noir est une planche neuve : on ne le prend ni pour une panne, ni pour
- * la creation de quelqu'un.
+ * L'attente : l'ecran 1 du tactile, sans ce qui ne sert qu'au doigt -- ni
+ * bouton, ni fleche qui y mene.
  */
-function Slideshow({ intervalSeconds }: { intervalSeconds: number }) {
-  const { api } = useApp()
-  const { t } = useI18n()
-  const { catalog } = useSession()
-  const [liste, setListe] = useState<{ id: string; render_url: string }[]>([])
-  // Un rendu peut disparaitre entre la reponse de l'API et son affichage. On
-  // retient celui qui a echoue pour ne pas y revenir a chaque tour.
-  const [manquants, setManquants] = useState<Set<string>>(new Set())
-  const [index, setIndex] = useState(0)
-
-  // La liste est relue de temps en temps : une creation approuvee pendant le
-  // salon doit rejoindre le defilement sans qu'on redemarre l'ecran.
-  useEffect(() => {
-    let vivant = true
-    const charger = () =>
-      api
-        .creationsRecentes()
-        .then((recues) => vivant && setListe(recues))
-        .catch(() => {})
-    charger()
-    const id = window.setInterval(charger, 60_000)
-    return () => {
-      vivant = false
-      window.clearInterval(id)
-    }
-  }, [api])
-
-  const creations = useMemo(
-    () => liste.filter((c) => !manquants.has(c.id)),
-    [liste, manquants],
-  )
-  const total = creations.length
-
-  useEffect(() => {
-    if (total < 2) return
-    const id = window.setInterval(() => setIndex((i) => (i + 1) % total), intervalSeconds * 1000)
-    return () => window.clearInterval(id)
-  }, [total, intervalSeconds])
-
-  const courante = creations[index % Math.max(1, creations.length)]
-  const mockup = catalog?.mockup
-
+function Diaporama() {
   return (
-    <div className="display-root attract">
-      {mockup && catalog && (
-        // Sans creation approuvee, aucun skin n'est pose : la zone du mockup
-        // laisse voir son fond noir, et la planche parait neuve.
-        <SkinMockup
-          key={courante?.id ?? 'vide'}
-          mockup={mockup}
-          shape={catalog.shape}
-          mediaBase={api.mediaBase}
-          src={courante ? `${api.base}${courante.render_url}` : undefined}
-          onErreur={() =>
-            courante &&
-            setManquants((vus) => new Set(vus).add(courante.id))
-          }
-        />
-      )}
-      <div className="attract-overlay">
-        <Title order={1} className="display-title">{t('display.attractTitle')}</Title>
-        <Text size="xl">{t('display.attractCta')}</Text>
-      </div>
+    <div className="ecran">
+      <PlancheDefilante />
+      <img className="bandeau-marque" src={bandeauMarque} alt="" draggable={false} />
+      <Ribbon modele="diaporama" />
     </div>
   )
 }

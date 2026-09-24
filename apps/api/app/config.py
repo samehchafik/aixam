@@ -97,6 +97,9 @@ class Settings(BaseSettings):
 
     # Duree de vie du code de verification et garde-fous anti-abus.
     verification_code_ttl_seconds: int = 15 * 60
+    # Cinq cases sur l'ecran 3 de la maquette. Avec cinq essais au plus, on a
+    # une chance sur vingt mille de tomber juste au hasard.
+    verification_code_length: int = 5
     verification_max_attempts: int = 5
 
     @property

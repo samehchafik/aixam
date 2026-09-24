@@ -56,17 +56,17 @@ export function mockApi(): Plugin {
               backgrounds: index('backgrounds'),
               objects: index('objects'),
             },
-            settings: { verification_bypass: true, idle_timeout_seconds: 600, attract_interval_seconds: 6 },
+            settings: { verification_bypass: false, idle_timeout_seconds: 600, attract_interval_seconds: 6, verification_code_length: 5 },
           })
         }
-        if (url.startsWith('/api/kiosk/register')) return json({ visitor_id: '00000000-0000-0000-0000-000000000000', verification_required: false })
+        if (url.startsWith('/api/kiosk/register')) return json({ visitor_id: '00000000-0000-0000-0000-000000000000', verification_required: true })
         if (url.startsWith('/api/kiosk/verify')) return json({ verified: true, remaining_attempts: 5 })
         // En developpement, les creations approuvees sont simplement les
         // rendus presents sur le disque : de quoi voir le diaporama sans base.
         if (url.startsWith('/api/kiosk/designs/recent')) {
           const dossier = join(media, 'renders')
           const fichiers = existsSync(dossier)
-            ? readdirSync(dossier).filter((f) => f.endsWith('.jpg')).slice(0, 24)
+            ? readdirSync(dossier).filter((f) => /\.(jpg|png)$/.test(f)).slice(0, 24)
             : []
           return json(fichiers.map((f) => ({ id: f, render_url: `/media/renders/${f}` })))
         }
@@ -82,6 +82,7 @@ export function mockApi(): Plugin {
               jpg: 'image/jpeg',
               jpeg: 'image/jpeg',
               webp: 'image/webp',
+              avif: 'image/avif',
               json: 'application/json',
             }
             const ext = (file.split('.').pop() ?? '').toLowerCase()

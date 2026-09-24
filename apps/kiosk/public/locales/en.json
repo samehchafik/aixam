@@ -1,33 +1,46 @@
 {
   "ribbon": "Create your own dashboard",
   "attract": {
-    "title": "Create your own EASY skin",
-    "cta": "Touch the screen to start"
+    "cta": "Create your skin"
   },
   "register": {
-    "title": "Create your own design",
-    "lead": "For the SKIN EASY 2027 collection.",
     "firstName": "First name",
     "lastName": "Last name",
-    "email": "Email",
-    "postalCode": "Postal code",
-    "consent": "I agree to receive AIXAM news. My data is kept for 12 months and I can request its deletion at any time.",
-    "submit": "Continue",
+    "email": "E-mail",
+    "postalCode": "Postcode",
+    "submit": "Next",
     "sending": "Sending…",
     "skip": "Skip",
     "errors": {
-      "required": "Required field.",
-      "name": "At least 2 characters.",
-      "email": "Invalid email address. Check the “@” and the dot in the domain.",
-      "postalCode": "Invalid postcode."
+      "required": "Required field",
+      "name": "At least 2 characters",
+      "email": "Invalid address. Check the dot in the domain",
+      "postalCode": "Invalid postcode"
+    },
+    "required": "* Required fields",
+    "legal": "As data controller, AIXAM MEGA collects your personal data for the purposes of, in particular, the administrative management of registrations to the event, the identification of Participants and the verification of the Participant’s e-mail address, the creation of access to the SKIN EASY design tool and the sending of the created visual in digital format, fraud prevention, possibly contacting Participants whose creations have been shortlisted for study as part of future product developments, and producing anonymised statistics about the event. Your data is intended for the administrative and support departments of AIXAM MEGA. Data marked with an asterisk (*) is mandatory.\nIn accordance with the amended French Data Protection Act no. 78-17 of 6 January 1978 and the General Data Protection Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 (GDPR), you have the right to access, rectify, erase, restrict and object to the processing of your data. You can exercise your rights by e-mailing dpo@xx.fr or by post to AIXAM MEGA, (56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS). For more information about the processing of your personal data, you can read our policy by {politique}.\nTo read the contest rules, {reglement}.",
+    "policyLink": "clicking here",
+    "rulesLink": "click here",
+    "rules": "I have read the rules and accept them.",
+    "cancel": "Cancel"
+  },
+  "legal": {
+    "policy": {
+      "title": "Data processing policy",
+      "text": "Text to come."
+    },
+    "rules": {
+      "title": "Contest rules",
+      "text": "Text to come."
     }
   },
   "verify": {
-    "title": "Verify your email",
-    "lead": "Enter the 6-digit code we just sent you.",
-    "submit": "Confirm",
+    "title": "Check your e-mail\nand enter your unique code.",
+    "submit": "Start creating",
     "checking": "Checking…",
-    "wrong": "Wrong code. {remaining} attempt(s) left."
+    "wrong": "Wrong code. {remaining} attempt(s) left.",
+    "aside": "Last step\nbefore you start\nyour creation.",
+    "back": "Back"
   },
   "editor": {
     "backgroundsTitle": "Choose your background:",
@@ -42,19 +55,20 @@
     "resetBackground": "Reset this background",
     "resetObject": "Reset this object",
     "submit": "Validate your skin",
+    "restart": "Start over"
+  },
+  "review": {
+    "submit": "It’s perfect,\nI confirm!",
     "sending": "Sending…",
-    "restart": "Start over",
+    "back": "Back",
     "submitError": "Could not send. Please try again in a moment."
   },
   "done": {
-    "title": "Thank you {firstName}!",
-    "lead": "Your creation has just been emailed to you as a JPEG.",
-    "share": "Share it with #EASYbyAIXAM — it could be selected for the next SKIN EASY production.",
-    "finish": "Finish"
+    "text": "Thanks for taking part!\nTo find out which skin\nthe Aixam team picks,\nfollow us on {compte}",
+    "account": "@aixam_officiel",
+    "restart": "Create a new skin"
   },
   "display": {
-    "attractTitle": "Create your own SKIN EASY",
-    "attractCta": "Head to the touch screen",
     "creationOf": "{firstName}'s creation",
     "shareCta": "Share your creation #EASYbyAIXAM"
   },

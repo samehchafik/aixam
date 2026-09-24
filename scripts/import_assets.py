@@ -1,6 +1,7 @@
 """Importe les elements de skin livres par le studio.
 
     python3 scripts/import_assets.py [dossier] [--demo]
+    python3 scripts/import_assets.py --ecrans <livraison des ecrans>
 
 Le dossier attendu est `elements_creation_skins`, tel que le studio le livre :
 
@@ -19,6 +20,10 @@ Le script ecrit dans apps/api/media/ :
 
 Les libelles sont generes en « Fond 1 », « Objet 1 » : le studio n'en fournit
 pas. Ils se corrigent directement dans index.json, sans toucher au code.
+
+--ecrans prend une livraison d'ecrans (un dossier par ecran, 01_... a 08_...)
+et en tire le decor du diaporama (media/mockup) et les images du front
+(apps/kiosk/src/assets). Voir `importer_ecrans`.
 
 --demo ajoute des complements FABRIQUES, pour avoir de quoi montrer en
 attendant la livraison complete : des fonds F6 a F12 batis sur le meme modele
@@ -707,60 +712,205 @@ def coins_planche(masque_img, forme: dict) -> tuple[list, float]:
     return coins, note(coins)[1]
 
 
-def importer_mockup(source: Path) -> None:
+# ------------------------------------------------------ les ecrans du studio
+#
+# Le studio livre chaque ecran dans son dossier, en 3840x2160 (plus un pixel de
+# trop sur chaque bord). On en tire deux choses :
+#
+#   le decor du diaporama     apps/api/media/mockup/   (partage par le grand
+#                             ecran et les ecrans 1 et 7 du tactile)
+#   les images des ecrans     apps/kiosk/src/assets/   (embarquees dans le front)
+#
+# Les photos et les degrades partent en AVIF 10 bits 4:4:4 : le ciel violet
+# des photos et le degrade de l'ecran 8 y restent aussi lisses qu'en PNG, pour
+# une fraction du poids (11,8 Mo -> 0,6 Mo pour la photo, 1,4 Mo -> 32 Ko pour
+# un degrade). Un JPEG ou un WebP de meme poids y laissent des bandes. Ce qui a
+# des aplats nets et de la transparence (logos, bandeau de marque) reste en
+# PNG, et les pictos restent en SVG.
+
+KIOSK_ASSETS = RACINE / "apps" / "kiosk" / "src" / "assets"
+ECRAN = (3840, 2160)
+# Le decor est mis a l'echelle de la scene (1920x1080) : les coordonnees que
+# lit la borne sont en pixels de scene, pas en pixels d'image.
+SCENE = (1920, 1080)
+
+# Image du front <- fichier de la livraison. Les .avif sont convertis, le reste
+# est copie tel quel (recadre au besoin).
+ECRANS_KIOSK = {
+    "fond-borne.avif": "04_05_06_creationduskin/Fond_borne.png",
+    "fond-formulaire.avif": "02_formulaire/fond_02a_formulaire.png",
+    "fond-merci.avif": "08_skin_valid/fond_08_skin_valid.png",
+    "bandeau-marque.png": "01_slideshow_Et_ecran1/fond_bis/logo.png",
+    "logo-bas-droite.png": "07_validation_ou_modification/fond_bis_avec_fond01/logo_enbasdroite.png",
+    "logo-easy.svg": "01_slideshow_Et_ecran1/Bouton_LogoEasy.svg",
+    "fermer.svg": "02_formulaire/fermeture_popin.svg",
+}
+
+
+def vers_avif(source: Path, sortie: Path, qualite: int = 70) -> None:
+    """Convertit une image du studio en AVIF 10 bits 4:4:4, recadree en 16/9.
+
+    Le 10 bits est ce qui garde les degrades sans bandes ; le 4:4:4 garde net
+    le bord des lettres « PIMP TON SKIN » peintes dans les fonds. `avifenc`
+    (brew install libavif) et non Pillow : Pillow n'ecrit que du 8 bits.
+    """
     from PIL import Image
 
-    # Le studio ne range pas toujours les deux dossiers au meme niveau : on
-    # remonte de quelques crans plutot que d'imposer une arborescence.
-    dossier = next(
-        (d for d in (source.parent, source.parent.parent, source.parent.parent.parent)
-         if (d / "mock_up_slideshow").is_dir()),
-        None,
-    )
-    if dossier is None:
-        print("  pas de mock_up_slideshow a cote : diaporama inchange")
-        return
-    dossier = dossier / "mock_up_slideshow"
+    image = Image.open(source)
+    if image.size[0] >= ECRAN[0] and image.size[1] >= ECRAN[1]:
+        image = image.crop((0, 0, *ECRAN))
+    tampon = sortie.with_suffix(".tmp.png")
+    image.save(tampon)
+    try:
+        subprocess.run(
+            ["avifenc", "-q", str(qualite), "-d", "10", "-y", "444", "-s", "4", str(tampon), str(sortie)],
+            check=True, capture_output=True,
+        )
+    finally:
+        tampon.unlink(missing_ok=True)
+
+
+def _premier_point(svg: str) -> tuple[float, float]:
+    """Le point de depart du premier trace : il sert de repere commun."""
+    m = re.search(r'\sd="M\s*([\d.+-]+)[ ,]+([\d.+-]+)', svg)
+    if not m:
+        raise SystemExit("masque : aucun trace")
+    return float(m.group(1)), float(m.group(2))
+
+
+def coins_sur_pose(dossier: Path, forme: dict) -> list | None:
+    """Les coins de la planche, lus sur l'ecran ou le studio a pose un skin.
+
+    La livraison contient l'ecran compose (`01_slideshow.png`) et le skin qui
+    y est pose (`skin_pour_test.svg`). Des points apparies entre les deux
+    donnent la projection exacte que le studio a appliquee -- la ou le masque
+    seul laisse flotter les coins de droite, hors du cadre photo.
+
+    Rend None si ces deux fichiers manquent, ou si OpenCV n'est pas installe.
+    """
+    compose, skin_svg = dossier / "01_slideshow.png", dossier / "skin_pour_test.svg"
+    if not (compose.is_file() and skin_svg.is_file()):
+        return None
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return None
+    import cairosvg
+    from PIL import Image
+
+    L, H = int(forme["width"]), int(forme["height"])
+    skin = Image.open(io.BytesIO(cairosvg.svg2png(url=str(skin_svg), output_width=L, output_height=H)))
+    gris = lambda im: cv2.cvtColor(np.asarray(im.convert("RGB")), cv2.COLOR_RGB2GRAY)
+    a, b = gris(skin), gris(Image.open(compose).crop((0, 0, *ECRAN)))
+
+    sift = cv2.SIFT_create(nfeatures=20000)
+    ka, da = sift.detectAndCompute(a, None)
+    kb, db = sift.detectAndCompute(b, None)
+    paires = [m for m, n in cv2.BFMatcher().knnMatch(da, db, k=2) if m.distance < 0.75 * n.distance]
+    if len(paires) < 12:
+        return None
+    pa = np.float32([ka[m.queryIdx].pt for m in paires])
+    pb = np.float32([kb[m.trainIdx].pt for m in paires])
+    projection, retenus = cv2.findHomography(pa, pb, cv2.RANSAC, 3.0)
+    if projection is None or int(retenus.sum()) < 12:
+        return None
+    coins = cv2.perspectiveTransform(np.float32([[[0, 0], [L, 0], [L, H], [0, H]]]), projection)[0]
+    return [(float(x), float(y)) for x, y in coins]
+
+
+def importer_mockup(dossier: Path) -> None:
+    """Le decor du diaporama : la photo, le masque de la planche, l'ombrage.
+
+    Le studio livre le masque deux fois : recadre sur la planche, et place dans
+    le cadre complet. Le premier est celui qu'on sert (plus petit) ; le second
+    dit ou le poser -- l'ecart entre leurs premiers points.
+    """
+    import cairosvg
+    from PIL import Image
 
     fichiers = {
-        "decor": "Mockup_Skin.png",
-        "masque": "Mockup_masque_Skin.png",
-        "ombrage": "Mockup_Skin_ombrage.png",
+        "decor": dossier / "fond_bis" / "fondbis.png",
+        "masque": dossier / "masque_skin.svg",
+        "placement": dossier / "masque_skin_placement.svg",
+        "ombrage": dossier / "effet_sur_skin.png",
     }
-    if not all((dossier / f).is_file() for f in fichiers.values()):
-        print("  mock_up_slideshow incomplet : diaporama inchange")
-        return
+    absents = [f.name for f in fichiers.values() if not f.is_file()]
+    if absents:
+        raise SystemExit(f"{dossier} : il manque {', '.join(absents)}")
 
     cible = MEDIA / "mockup"
     if cible.exists():
         shutil.rmtree(cible)
     cible.mkdir(parents=True)
-    for nom in fichiers.values():
-        shutil.copy2(dossier / nom, cible / nom)
 
-    decor = Image.open(cible / fichiers["decor"])
-    ombrage = Image.open(cible / fichiers["ombrage"])
-    masque = Image.open(cible / fichiers["masque"]).getchannel("A")
+    vers_avif(fichiers["decor"], cible / "decor.avif")
+    vers_avif(fichiers["ombrage"], cible / "ombrage.avif", qualite=75)
+    masque_svg = fichiers["masque"].read_text(encoding="utf-8")
+    (cible / "masque.svg").write_text(masque_svg, encoding="utf-8")
 
-    # Le masque est livre recadre sur la zone : l'ombrage, lui, est au cadre
-    # complet, et son etendue opaque donne exactement ou poser le masque.
-    boite = ombrage.getchannel("A").getbbox()
-    origine = (boite[0], boite[1]) if boite else (0, 0)
+    (px, py), (mx, my) = _premier_point(fichiers["placement"].read_text(encoding="utf-8")), _premier_point(masque_svg)
+    origine = (px - mx, py - my)
+    largeur, hauteur = dimensions(fichiers["masque"])
 
     forme = json.loads((MEDIA / "base" / "shape.json").read_text(encoding="utf-8"))
-    coins, couverture = coins_planche(masque, forme)
+    coins = coins_sur_pose(dossier, forme)
+    if coins:
+        print("   planche calee sur la pose du skin de test du studio")
+    else:
+        # Repli : la silhouette seule. Elle cale bien la gauche, mais la
+        # planche sort du cadre a droite, et les deux coins de ce cote y sont
+        # mal tenus.
+        masque = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=masque_svg.encode()))).getchannel("A")
+        coins, couverture = coins_planche(masque, forme)
+        coins = [(x + origine[0], y + origine[1]) for x, y in coins]
+        print(f"   planche calee sur le masque (couvert a {couverture * 100:.1f} %)")
 
+    echelle = SCENE[0] / ECRAN[0]
+    a_la_scene = lambda x, y: [round(x * echelle, 2), round(y * echelle, 2)]
     (cible / "index.json").write_text(json.dumps({
-        "width": decor.size[0], "height": decor.size[1],
-        "decor": fichiers["decor"], "masque": fichiers["masque"], "ombrage": fichiers["ombrage"],
-        "maskOrigin": list(origine),
-        "corners": [[round(x + origine[0], 2), round(y + origine[1], 2)] for x, y in coins],
+        "width": SCENE[0], "height": SCENE[1],
+        "decor": "decor.avif", "masque": "masque.svg", "ombrage": "ombrage.avif",
+        "maskOrigin": a_la_scene(*origine),
+        "maskSize": a_la_scene(largeur, hauteur),
+        "corners": [a_la_scene(x, y) for x, y in coins],
     }, indent=2), encoding="utf-8")
-    print(f"   mockup {decor.size[0]}x{decor.size[1]} -> {cible}"
-          f"  (masque couvert a {couverture * 100:.1f} %)")
+    print(f"   mockup -> {cible}")
+
+
+def importer_ecrans(livraison: Path) -> None:
+    """Toute une livraison d'ecrans : le decor du diaporama, puis les images du front."""
+    importer_mockup(livraison / "01_slideshow_Et_ecran1")
+    from PIL import Image
+
+    for nom, relatif in ECRANS_KIOSK.items():
+        source, sortie = livraison / relatif, KIOSK_ASSETS / nom
+        if not source.is_file():
+            raise SystemExit(f"livraison incomplete : {relatif}")
+        if sortie.suffix == ".avif":
+            vers_avif(source, sortie)
+        elif sortie.suffix == ".png":
+            # Les PNG livres debordent d'un pixel et portent des marges
+            # transparentes : on garde l'emprise utile, bornee au cadre.
+            image = Image.open(source)
+            boite = image.getchannel("A").getbbox() if image.mode == "RGBA" else None
+            if boite:
+                boite = (boite[0], boite[1], min(boite[2], ECRAN[0]), min(boite[3], ECRAN[1]))
+                image = image.crop(boite)
+            image.save(sortie, optimize=True)
+        else:
+            shutil.copy2(source, sortie)
+        print(f"   {nom:22s} {sortie.stat().st_size // 1024:5d} Ko")
 
 
 def main() -> None:
+    if "--ecrans" in sys.argv:
+        i = sys.argv.index("--ecrans")
+        if i + 1 >= len(sys.argv):
+            raise SystemExit("--ecrans <dossier de la livraison du studio>")
+        importer_ecrans(Path(sys.argv[i + 1]))
+        return
+
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     demo = "--demo" in sys.argv
     source = Path(args[0]) if args else DEFAUT
@@ -776,7 +926,6 @@ def main() -> None:
     importer(source / "objets_skin", "objet", "objet_*.svg", "objects", recadrer=True)
     if demo:
         completer(source)
-    importer_mockup(source)
     ecrire_note("backgrounds", "Fonds de skin", "fonds")
     ecrire_note("objects", "Objets de skin", "objets")
 

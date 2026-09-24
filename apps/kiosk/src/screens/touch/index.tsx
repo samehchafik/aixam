@@ -1,14 +1,23 @@
-import { useEffect, useRef } from 'react'
-import { Text, Title } from '@mantine/core'
+import { useEffect, useRef, type ComponentType } from 'react'
 import { useApp } from '../../app-context'
-import { useI18n } from '../../i18n'
-import { useSession } from '../../state/session'
-import { Ribbon } from '../../components/chrome/Ribbon'
+import { useSession, type Step } from '../../state/session'
 import { LangSwitch } from '../../components/chrome/LangSwitch'
+import { AttractStep } from './AttractStep'
 import { RegisterStep } from './RegisterStep'
 import { VerifyStep } from './VerifyStep'
 import { EditorStep } from './EditorStep'
+import { ReviewStep } from './ReviewStep'
 import { DoneStep } from './DoneStep'
+
+/** Un ecran par etape du parcours ; chacun pose son propre decor. */
+const ECRANS: Record<Step, ComponentType> = {
+  attract: AttractStep,
+  register: RegisterStep,
+  verify: VerifyStep,
+  editor: EditorStep,
+  review: ReviewStep,
+  done: DoneStep,
+}
 
 /**
  * Ecran tactile. Remet la session a zero apres inactivite : sur un salon,
@@ -16,8 +25,7 @@ import { DoneStep } from './DoneStep'
  */
 export function TouchScreen() {
   const { bus, settings } = useApp()
-  const { t } = useI18n()
-  const { step, startSession, reset } = useSession()
+  const { step, reset } = useSession()
   const timer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
@@ -43,24 +51,11 @@ export function TouchScreen() {
     if (step === 'attract') bus.send({ type: 'idle' })
   }, [step, bus])
 
+  const Ecran = ECRANS[step]
   return (
     <div className="touch-root">
-      {/* Sur l'editeur, le bandeau est rendu ENTRE les deux canvas de la
-          planche (au-dessus du fond, sous les objets) : c'est SkinCanvas qui
-          le place. Ailleurs, il n'a rien a traverser. */}
-      {step !== 'editor' && <Ribbon />}
+      <Ecran />
       <LangSwitch />
-
-      {step === 'attract' && (
-        <button type="button" className="attract" onClick={startSession}>
-          <Title order={1} className="attract-title">{t('attract.title')}</Title>
-          <Text size="xl" c="dimmed">{t('attract.cta')}</Text>
-        </button>
-      )}
-      {step === 'register' && <RegisterStep />}
-      {step === 'verify' && <VerifyStep />}
-      {step === 'editor' && <EditorStep />}
-      {step === 'done' && <DoneStep />}
     </div>
   )
 }
