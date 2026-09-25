@@ -8,8 +8,8 @@ import bandeauMarque from '../../assets/bandeau-marque.png'
 import logoEasy from '../../assets/logo-easy.svg'
 
 /**
- * Ecran 1 : le diaporama du grand ecran, plus le bouton « Cree ton skin
- * easy », qui n'existe qu'ici.
+ * Ecran 1 : le diaporama du grand ecran, habille pour le tactile -- le
+ * bandeau de marque, la fleche et le bouton n'existent qu'ici.
  *
  * Tout l'ecran lance la partie, pas seulement le bouton : sur un salon, on
  * touche la ou l'on regarde.

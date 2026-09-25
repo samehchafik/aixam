@@ -113,11 +113,12 @@ export const RUBANS = {
     epaisseur: 50,
     taille: 25,
   },
-  // Ecran 1 et diaporama du grand ecran : la vague descend vers le bas de
-  // l'ecran, la ou le tactile pose son bouton « Cree ton skin ».
+  // Ecran 1 : la vague descend jusqu'au bouton « Cree ton skin ».
   accueil: { ...VAGUE, traces: [HAUT, BAS_ACCUEIL], fleche: FLECHE_ACCUEIL },
   // Ecrans 2 et 3 : la fleche vise le formulaire.
   formulaire: { ...VAGUE, traces: [HAUT, BAS_FORMULAIRE], fleche: FLECHE_FORMULAIRE },
+  // Grand ecran : le bouton n'y existe pas, le bas du bandeau non plus.
+  diaporama: { ...VAGUE, traces: [HAUT] },
 } satisfies Record<string, Modele>
 
 export type NomRuban = keyof typeof RUBANS
