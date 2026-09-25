@@ -5,8 +5,6 @@ import { useSession } from '../../state/session'
 import { Ribbon } from '../../components/chrome/Ribbon'
 import { SkinCanvas } from '../../components/SkinCanvas'
 import { SkinMockup } from '../../components/SkinMockup'
-import { useFondEcran } from '../../components/Stage16x9'
-import { useDecorVoiture } from '../../components/voiture'
 import logoBasDroite from '../../assets/logo-bas-droite.png'
 
 /**
@@ -25,7 +23,6 @@ export function ReviewStep() {
   const { api, bus } = useApp()
   const { t } = useI18n()
   const { catalog, layers, sessionId, visitorId, setRenderUrl, setStep } = useSession()
-  useFondEcran(useDecorVoiture())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

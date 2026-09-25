@@ -32,30 +32,11 @@ body {
 }
 
 /* --- Scene ----------------------------------------------------------- */
-/* Sur un ecran qui n'est pas exactement en 16/9, la scene laisse une marge.
-   Le fond de l'ecran en cours la comble (voir `useFondEcran`), etire en
-   « cover » et FLOUTE : net, il repetait dans la marge ce que la scene montre
-   deja -- un deuxieme « PIMP TON SKIN », un logo coupe. Flou, il n'en garde
-   que les couleurs. Sur les ecrans 16/9 du salon, il n'y a pas de marge.
+/* La scene couvre la fenetre (voir Stage16x9) : ce qui en deborde est rogne.
    Les images du studio sont en AVIF 10 bits : leurs degrades y restent sans
    bandes, la ou un JPEG en marquait (voir scripts/import_assets.py). */
 .stage-viewport { position: fixed; inset: 0; overflow: clip; background: var(--bleu-nuit); }
-.stage-viewport::before {
-  content: ''; position: absolute; inset: -80px;
-  background: var(--fond) center / cover no-repeat;
-  filter: blur(40px) brightness(0.85);
-}
-/* La scene est mise a l'echelle ENTIERE dans la fenetre : sur un ecran qui
-   n'est pas exactement en 16/9, elle est donc plus etroite ou plus courte que
-   la fenetre, et son bord tombe en plein champ. Le decor comble la difference,
-   mais ce qui est dessine pour filer jusqu'au bord de l'ecran -- le bandeau --
-   s'arretait la, en plein vide. `overflow-clip-margin` laisse ce debord
-   peindre au-dela du bord de la scene, sans rendre la scene defilante. */
-.stage {
-  position: absolute; left: 50%; top: 50%; overflow: clip; overflow-clip-margin: 340px;
-  transform-origin: center;
-  background: transparent;
-}
+.stage { position: absolute; left: 50%; top: 50%; overflow: clip; transform-origin: center; }
 
 .boot { height: 100%; display: grid; place-content: center; text-align: center; gap: 8px; }
 

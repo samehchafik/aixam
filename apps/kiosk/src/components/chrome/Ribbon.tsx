@@ -1,12 +1,5 @@
 import { useI18n } from '../../i18n'
 
-/**
- * Debord de la scene, en pixels de scene : c'est `overflow-clip-margin` sur
- * `.stage`. Le bandeau se dessine jusque-la, pour filer jusqu'au bord de
- * l'ecran quand la fenetre n'est pas exactement en 16/9.
- */
-const DEBORD = 340
-
 /** Un trace du bandeau : la courbe, et ou y commence le texte. */
 type Trace = {
   /**
@@ -43,13 +36,8 @@ type Modele = {
  * scene en 1920x1080. Le texte y est cale lettre a lettre : chaque glyphe du
  * vectoriel est projete sur la courbe, et le depart, l'interlettrage et la
  * ligne de base sont ceux qui y posent le mieux les lettres du navigateur (a
- * 4 px pres sur tout le bandeau).
- *
- * Chaque courbe qui sort du cadre est PROLONGEE hors champ le long de sa
- * tangente : elle ne change pas a l'ecran en 16/9, mais atteint le bord de la
- * fenetre quand la scene ne la remplit pas. Le depart du texte tient compte de
- * ce prolongement -- d'ou des longueurs en pixels et non en pourcentage, qu'un
- * trace allonge aurait decales.
+ * 4 px pres sur tout le bandeau). Les departs sont en pixels le long de la
+ * courbe, comme dans le vectoriel.
  */
 
 // Le bandeau du haut des ecrans 1 a 3 : il sort de derriere le tableau de
@@ -59,7 +47,7 @@ const HAUT: Trace = {
     'M 1406.99 503.35 C 1406.99 503.35, 1393.67 428.4, 1432.26 379.64' +
     ' C 1508.08 283.87, 1553.25 447.18, 1652.6 385.08 C 1698.37 356.48, 1689.87 269.0, 1663.12 173.15' +
     ' C 1654.84 143.49, 1654.15 109.68, 1672.09 89.67 C 1694.17 65.04, 1737.56 65.92, 1770.75 68.97' +
-    ' C 1838.37 75.18, 1901.48 131.66, 1940.05 156.35 L 2280 373.95',
+    ' C 1838.37 75.18, 1901.48 131.66, 1940.05 156.35',
   debut: 104.4,
   espacement: 0.4,
   base: 7.4,
@@ -101,10 +89,9 @@ export const RUBANS = {
     traces: [
       {
         d:
-          'M 428.3 -422.05 L 780.45 -22.05 C 780.45 -22.05, 932.83 151.06, 1226.13 147.07' +
-          ' C 1519.43 143.08, 1575.28 50.43, 1697.25 50.43 C 1786.26 50.43, 1814.23 112.74, 1927.4 112.74 L 2280 112.74',
-        // 68 sur le trace du studio, plus les 532,9 du prolongement.
-        debut: 600.9,
+          'M 780.45 -22.05 C 780.45 -22.05, 932.83 151.06, 1226.13 147.07' +
+          ' C 1519.43 143.08, 1575.28 50.43, 1697.25 50.43 C 1786.26 50.43, 1814.23 112.74, 1927.4 112.74',
+        debut: 68,
         espacement: -0.27,
         base: 9.05,
       },
@@ -133,10 +120,9 @@ export function Ribbon({ modele = 'editeur' }: { modele?: NomRuban }) {
   return (
     <svg
       className="ribbon"
-      viewBox={`${-DEBORD} ${-DEBORD} ${1920 + DEBORD * 2} ${1080 + DEBORD * 2}`}
-      width={1920 + DEBORD * 2}
-      height={1080 + DEBORD * 2}
-      style={{ left: -DEBORD, top: -DEBORD }}
+      viewBox="0 0 1920 1080"
+      width={1920}
+      height={1080}
       aria-hidden="true"
     >
       <defs>
@@ -147,7 +133,7 @@ export function Ribbon({ modele = 'editeur' }: { modele?: NomRuban }) {
           (trace, i) =>
             trace.coupe !== undefined && (
               <clipPath key={i} id={`${id}-${i}-coupe`}>
-                <rect x={-DEBORD} y={-DEBORD} width={1920 + DEBORD * 2} height={trace.coupe + DEBORD} />
+                <rect x={0} y={0} width={1920} height={trace.coupe} />
               </clipPath>
             ),
         )}

@@ -1,9 +1,7 @@
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
-import { useFondEcran } from '../../components/Stage16x9'
 import { PlancheDefilante } from '../../components/PlancheDefilante'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { useDecorVoiture } from '../../components/voiture'
 import bandeauMarque from '../../assets/bandeau-marque.png'
 import logoEasy from '../../assets/logo-easy.svg'
 
@@ -17,7 +15,6 @@ import logoEasy from '../../assets/logo-easy.svg'
 export function AttractStep() {
   const { t } = useI18n()
   const startSession = useSession((s) => s.startSession)
-  useFondEcran(useDecorVoiture())
 
   return (
     <div className="ecran" onClick={startSession}>
