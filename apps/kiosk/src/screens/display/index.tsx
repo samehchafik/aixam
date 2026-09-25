@@ -73,16 +73,13 @@ export function DisplayScreen() {
   )
 }
 
-/**
- * L'attente : l'ecran 1 du tactile, sans ce qui ne sert qu'au doigt -- ni
- * bouton, ni fleche qui y mene.
- */
+/** L'attente : l'ecran 1 du tactile, sans le bouton qui ne sert qu'au doigt. */
 function Diaporama() {
   return (
     <div className="ecran">
       <PlancheDefilante />
       <img className="bandeau-marque" src={bandeauMarque} alt="" draggable={false} />
-      <Ribbon modele="diaporama" />
+      <Ribbon modele="accueil" />
     </div>
   )
 }
