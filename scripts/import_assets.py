@@ -819,6 +819,56 @@ def coins_sur_pose(dossier: Path, forme: dict) -> list | None:
     return [(float(x), float(y)) for x, y in coins]
 
 
+def ajuster_sur_masque(coins: list, masque_4k, forme: dict) -> tuple[list, int]:
+    """Affine la pose pour que le skin couvre tout le masque, sans s'en eloigner.
+
+    La pose du studio donne la bonne perspective, mais son skin de test n'a pas
+    d'encoche : a la console, il tombait 35 px trop a droite du trou du masque,
+    et le skin s'arretait quelques pixels au-dessus du bas de la planche. Sous
+    le masque il n'y a que la photo, donc chaque pixel decouvert est du
+    plastique gris a la place du skin.
+
+    On descend donc coin par coin vers la couverture complete, avec une
+    penalite sur l'ecart a la pose de depart : sans elle, le bord droit de la
+    planche sortant de la photo, rien ne tiendrait les coins de droite, et le
+    reglage etirerait le skin (c'est ce qui a deforme les objets le 28/09).
+    Ici, la pose ne bouge que de quelques pixels, sur deux coins.
+    """
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    dedans = np.asarray(masque_4k) > 127
+    W4, H4 = masque_4k.size
+    silhouette = _silhouette(forme)
+
+    def decouvert(c) -> int:
+        im = Image.new("L", (W4, H4), 0)
+        ImageDraw.Draw(im).polygon(_projeter(c, silhouette), fill=255)
+        return int((dedans & ~(np.asarray(im) > 0)).sum())
+
+    # Un pixel d'ecart a la pose du studio vaut soixante pixels decouverts :
+    # on ne bouge que si ca couvre beaucoup.
+    PENALITE = 60
+    depart = [list(c) for c in coins]
+    cout = lambda c: decouvert(c) + PENALITE * sum(abs(c[i][a] - depart[i][a]) for i in range(4) for a in (0, 1))
+
+    c = [list(p) for p in depart]
+    meilleur = cout(c)
+    for pas in (16, 8, 4, 2):
+        bouge = True
+        while bouge:
+            bouge = False
+            for i in range(4):
+                for a in (0, 1):
+                    for signe in (1, -1):
+                        essai = [list(p) for p in c]
+                        essai[i][a] += signe * pas
+                        v = cout(essai)
+                        if v < meilleur - 1e-9:
+                            c, meilleur, bouge = essai, v, True
+    return [(float(x), float(y)) for x, y in c], decouvert(c)
+
+
 def importer_mockup(dossier: Path) -> None:
     """Le decor du diaporama : la photo, le masque de la planche, l'ombrage.
 
@@ -857,6 +907,11 @@ def importer_mockup(dossier: Path) -> None:
     coins = coins_sur_pose(dossier, forme)
     if coins:
         print("   planche calee sur la pose du skin de test du studio")
+        masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
+            url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
+        ))).getchannel("A")
+        coins, decouvert = ajuster_sur_masque(coins, masque_4k, forme)
+        print(f"   puis ajustee sur le masque : {decouvert} px decouverts")
     else:
         # Repli : la silhouette seule. Elle cale bien la gauche, mais la
         # planche sort du cadre a droite, et les deux coins de ce cote y sont
