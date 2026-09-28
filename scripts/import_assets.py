@@ -819,54 +819,73 @@ def coins_sur_pose(dossier: Path, forme: dict) -> list | None:
     return [(float(x), float(y)) for x, y in coins]
 
 
-def ajuster_sur_masque(coins: list, masque_4k, forme: dict) -> tuple[list, int]:
-    """Affine la pose pour que le skin couvre tout le masque, sans s'en eloigner.
+def coins_sur_bords(masque_4k, forme: dict, depart: list) -> tuple[list, float]:
+    """Les coins de la planche, cales sur les bords visibles du tableau de bord.
 
-    La pose du studio donne la bonne perspective, mais son skin de test n'a pas
-    d'encoche : a la console, il tombait 35 px trop a droite du trou du masque,
-    et le skin s'arretait quelques pixels au-dessus du bas de la planche. Sous
-    le masque il n'y a que la photo, donc chaque pixel decouvert est du
-    plastique gris a la place du skin.
+    Sur le grand ecran, la planche est projetee en perspective sur la photo :
+    si sa projection ne suit pas le tableau de bord, le dessin se deforme. La
+    pose du studio ne le suit pas -- son skin de test deborde du tableau de
+    bord de 15 % en hauteur a droite, et le masque le rogne : les objets y
+    paraissaient etires, la rangee du bas coupee. On cale donc le CONTOUR du
+    gabarit sur le BORD du masque : le haut, le bas, les murs de la console,
+    le bout gauche.
 
-    On descend donc coin par coin vers la couverture complete, avec une
-    penalite sur l'ecart a la pose de depart : sans elle, le bord droit de la
-    planche sortant de la photo, rien ne tiendrait les coins de droite, et le
-    reglage etirerait le skin (c'est ce qui a deforme les objets le 28/09).
-    Ici, la pose ne bouge que de quelques pixels, sur deux coins.
+    Deux precautions tiennent le calage :
+      - un ecart plafonne (16 puis 8 px d'image 4K) : les bords que le volant
+        decoupe dans le masque, loin du contour de la planche, ne la tirent
+        pas ;
+      - des verticales paralleles : le bord droit sort de la photo, et seuls
+        les murs de la console, hauts de 70 px, fixeraient leur inclinaison --
+        extrapolee sur 600 px, elle cisaillait les objets de droite. On garde
+        la perspective qui fait grandir la planche vers la droite, pas ce
+        cisaillement.
+
+    `depart` est une premiere pose (celle du studio, ou celle du masque).
+    Rend les coins en pixels d'image et la part du bord du masque tenue a
+    moins de 4 px d'image.
     """
+    import cv2
     import numpy as np
-    from PIL import Image, ImageDraw
+    from scipy.optimize import minimize
+    from scipy.spatial import cKDTree
 
-    dedans = np.asarray(masque_4k) > 127
-    W4, H4 = masque_4k.size
-    silhouette = _silhouette(forme)
+    mk = (np.asarray(masque_4k) > 127).astype(np.uint8)
+    h4, w4 = mk.shape
+    contours, _ = cv2.findContours(mk, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    bord = np.vstack([c[:, 0, :] for c in contours]).astype(np.float64)
+    # La coupure du cadre n'est pas un bord du tableau de bord.
+    bord = bord[(bord[:, 0] < w4 - 4) & (bord[:, 1] > 2) & (bord[:, 1] < h4 - 3)]
 
-    def decouvert(c) -> int:
-        im = Image.new("L", (W4, H4), 0)
-        ImageDraw.Draw(im).polygon(_projeter(c, silhouette), fill=255)
-        return int((dedans & ~(np.asarray(im) > 0)).sum())
+    L, H = forme["width"], forme["height"]
+    pts = np.float64(forme["points"])
+    morceaux = []
+    for a, b in zip(pts, np.roll(pts, -1, axis=0)):
+        n = max(2, int(np.linalg.norm(b - a) / 4))
+        morceaux.append(a + (b - a) * np.linspace(0, 1, n, endpoint=False)[:, None])
+    gabarit = np.vstack(morceaux).astype(np.float32)
+    source = np.float32([[0, 0], [L, 0], [L, H], [0, H]])
 
-    # Un pixel d'ecart a la pose du studio vaut soixante pixels decouverts :
-    # on ne bouge que si ca couvre beaucoup.
-    PENALITE = 60
-    depart = [list(c) for c in coins]
-    cout = lambda c: decouvert(c) + PENALITE * sum(abs(c[i][a] - depart[i][a]) for i in range(4) for a in (0, 1))
+    def coins(q):
+        # Trois coins libres ; le bord droit, parallele au bord gauche.
+        hg, hd, bg, s = q[0:2], q[2:4], q[4:6], q[6]
+        return np.array([hg, hd, hd + s * (bg - hg), bg])
 
-    c = [list(p) for p in depart]
-    meilleur = cout(c)
-    for pas in (16, 8, 4, 2):
-        bouge = True
-        while bouge:
-            bouge = False
-            for i in range(4):
-                for a in (0, 1):
-                    for signe in (1, -1):
-                        essai = [list(p) for p in c]
-                        essai[i][a] += signe * pas
-                        v = cout(essai)
-                        if v < meilleur - 1e-9:
-                            c, meilleur, bouge = essai, v, True
-    return [(float(x), float(y)) for x, y in c], decouvert(c)
+    def ecarts(c):
+        m = cv2.getPerspectiveTransform(source, np.float32(c))
+        projete = cv2.perspectiveTransform(gabarit[None], m)[0]
+        return cKDTree(projete).query(bord)[0]
+
+    d = np.float64(depart)
+    q = np.r_[d[0], d[1], d[3], np.linalg.norm(d[2] - d[1]) / np.linalg.norm(d[3] - d[0])]
+    # Du plus large au plus serre (pixels d'image 4K ; 8 = 4 px de scene) : un
+    # plafond serre d'emblee accroche le premier creux venu.
+    for plafond in (16.0, 8.0):
+        def cout(q, plafond=plafond):
+            return float(np.mean(np.minimum(ecarts(coins(q)), plafond) ** 2))
+        q = minimize(cout, q, method="Powell", options={"maxiter": 40000, "xtol": 1e-3, "ftol": 1e-10}).x
+        q = minimize(cout, q, method="Nelder-Mead", options={"maxiter": 40000, "xatol": 1e-4, "fatol": 1e-11}).x
+    c = coins(q)
+    return [(float(x), float(y)) for x, y in c], float((ecarts(c) < 4).mean())
 
 
 def importer_mockup(dossier: Path) -> None:
@@ -904,22 +923,17 @@ def importer_mockup(dossier: Path) -> None:
     largeur, hauteur = dimensions(fichiers["masque"])
 
     forme = json.loads((MEDIA / "base" / "shape.json").read_text(encoding="utf-8"))
-    coins = coins_sur_pose(dossier, forme)
-    if coins:
-        print("   planche calee sur la pose du skin de test du studio")
-        masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
-            url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
-        ))).getchannel("A")
-        coins, decouvert = ajuster_sur_masque(coins, masque_4k, forme)
-        print(f"   puis ajustee sur le masque : {decouvert} px decouverts")
-    else:
-        # Repli : la silhouette seule. Elle cale bien la gauche, mais la
-        # planche sort du cadre a droite, et les deux coins de ce cote y sont
-        # mal tenus.
+    # Une premiere pose -- celle du studio, sinon celle que la silhouette seule
+    # donne --, puis le calage sur les bords du tableau de bord.
+    depart = coins_sur_pose(dossier, forme)
+    if not depart:
         masque = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=masque_svg.encode()))).getchannel("A")
-        coins, couverture = coins_planche(masque, forme)
-        coins = [(x + origine[0], y + origine[1]) for x, y in coins]
-        print(f"   planche calee sur le masque (couvert a {couverture * 100:.1f} %)")
+        depart = [(x + origine[0], y + origine[1]) for x, y in coins_planche(masque, forme)[0]]
+    masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
+        url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
+    ))).getchannel("A")
+    coins, tenu = coins_sur_bords(masque_4k, forme, depart)
+    print(f"   planche calee sur les bords du tableau de bord ({tenu * 100:.0f} % du bord a moins de 2 px)")
 
     echelle = SCENE[0] / ECRAN[0]
     a_la_scene = lambda x, y: [round(x * echelle, 2), round(y * echelle, 2)]

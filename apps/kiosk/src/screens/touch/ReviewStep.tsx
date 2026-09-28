@@ -3,7 +3,7 @@ import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { PlancheEnDirect } from '../../components/PlancheEnDirect'
+import { TableauDeBord } from '../../components/TableauDeBord'
 import { SkinCanvas } from '../../components/SkinCanvas'
 import { useFondEcran } from '../../components/Stage16x9'
 import { useDecorVoiture } from '../../components/voiture'
@@ -53,7 +53,7 @@ export function ReviewStep() {
 
   return (
     <div className="ecran">
-      <PlancheEnDirect layers={layers} />
+      <TableauDeBord layers={layers} />
       <img className="logo-bas-droite" src={logoBasDroite} alt="" draggable={false} />
       <Ribbon modele="editeur" />
 

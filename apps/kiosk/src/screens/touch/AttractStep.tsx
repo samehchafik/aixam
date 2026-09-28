@@ -1,7 +1,7 @@
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { useFondEcran } from '../../components/Stage16x9'
-import { PlancheDefilante } from '../../components/PlancheDefilante'
+import { TableauDeBord } from '../../components/TableauDeBord'
 import { Ribbon } from '../../components/chrome/Ribbon'
 import { useDecorVoiture } from '../../components/voiture'
 import bandeauMarque from '../../assets/bandeau-marque.png'
@@ -21,7 +21,7 @@ export function AttractStep() {
 
   return (
     <div className="ecran" onClick={startSession}>
-      <PlancheDefilante />
+      <TableauDeBord />
       <img className="bandeau-marque" src={bandeauMarque} alt="" draggable={false} />
       <Ribbon modele="accueil" />
       <button type="button" className="bouton bouton-bleu bouton-accueil">

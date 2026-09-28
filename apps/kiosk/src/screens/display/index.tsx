@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { PlancheDefilante } from '../../components/PlancheDefilante'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { PlancheEnDirect } from '../../components/PlancheEnDirect'
+import { TableauDeBord } from '../../components/TableauDeBord'
 import { useFondEcran } from '../../components/Stage16x9'
 import { useDecorVoiture } from '../../components/voiture'
 import { useApp } from '../../app-context'
@@ -54,7 +53,7 @@ export function DisplayScreen() {
   // fleche qui y mene.
   return (
     <div className="ecran">
-      {mode.kind === 'attract' ? <PlancheDefilante /> : <PlancheEnDirect layers={mode.layers} />}
+      <TableauDeBord layers={mode.kind === 'attract' ? undefined : mode.layers} />
       <img className="bandeau-marque" src={bandeauMarque} alt="" draggable={false} />
       <Ribbon modele="diaporama" />
     </div>
