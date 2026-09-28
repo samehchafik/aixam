@@ -3,8 +3,7 @@ import { Text, Title } from '@mantine/core'
 import { SkinCanvas } from '../../components/SkinCanvas'
 import { PlancheDefilante } from '../../components/PlancheDefilante'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { Fond, useFondEcran } from '../../components/Stage16x9'
-import { useDecorVoiture } from '../../components/voiture'
+import { Fond } from '../../components/Stage16x9'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
@@ -49,8 +48,6 @@ export function DisplayScreen() {
   }, [mode.kind])
 
   const diaporama = mode.kind === 'attract' || (mode.kind === 'finished' && !mode.renderUrl)
-  const decor = useDecorVoiture()
-  useFondEcran(diaporama ? decor : '')
 
   if (!catalog) return <div className="display-root" />
   if (diaporama) return <Diaporama />
