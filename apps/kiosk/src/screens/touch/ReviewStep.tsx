@@ -5,6 +5,8 @@ import { useSession } from '../../state/session'
 import { Ribbon } from '../../components/chrome/Ribbon'
 import { PlancheEnDirect } from '../../components/PlancheEnDirect'
 import { SkinCanvas } from '../../components/SkinCanvas'
+import { useFondEcran } from '../../components/Stage16x9'
+import { useDecorVoiture } from '../../components/voiture'
 import logoBasDroite from '../../assets/logo-bas-droite.png'
 
 /**
@@ -25,6 +27,7 @@ export function ReviewStep() {
   const { catalog, layers, sessionId, visitorId, setRenderUrl, setStep } = useSession()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  useFondEcran(useDecorVoiture())
 
   const valider = async () => {
     setBusy(true)

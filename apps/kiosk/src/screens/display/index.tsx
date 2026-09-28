@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { PlancheDefilante } from '../../components/PlancheDefilante'
 import { Ribbon } from '../../components/chrome/Ribbon'
 import { PlancheEnDirect } from '../../components/PlancheEnDirect'
+import { useFondEcran } from '../../components/Stage16x9'
+import { useDecorVoiture } from '../../components/voiture'
 import { useApp } from '../../app-context'
 import type { Layer } from '../../api/client'
 import bandeauMarque from '../../assets/bandeau-marque.png'
@@ -25,6 +27,7 @@ const APRES_VALIDATION_MS = 20_000
 export function DisplayScreen() {
   const { bus } = useApp()
   const [mode, setMode] = useState<Mode>({ kind: 'attract' })
+  useFondEcran(useDecorVoiture())
 
   useEffect(() => {
     const off = bus.on((message) => {
