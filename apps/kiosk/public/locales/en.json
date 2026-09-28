@@ -68,10 +68,6 @@
     "account": "@aixam_officiel",
     "restart": "Create a new skin"
   },
-  "display": {
-    "creationOf": "{firstName}'s creation",
-    "shareCta": "Share your creation #EASYbyAIXAM"
-  },
   "boot": {
     "loading": "Loading…",
     "unavailable": "Kiosk unavailable",

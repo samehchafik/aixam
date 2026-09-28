@@ -68,10 +68,6 @@
     "account": "@aixam_officiel",
     "restart": "Crear un nuevo skin"
   },
-  "display": {
-    "creationOf": "La creación de {firstName}",
-    "shareCta": "Comparte tu creación #EASYbyAIXAM"
-  },
   "boot": {
     "loading": "Cargando…",
     "unavailable": "Terminal no disponible",

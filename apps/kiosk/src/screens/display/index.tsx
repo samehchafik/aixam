@@ -1,73 +1,51 @@
 import { useEffect, useState } from 'react'
-import { Text, Title } from '@mantine/core'
-import { SkinCanvas } from '../../components/SkinCanvas'
 import { PlancheDefilante } from '../../components/PlancheDefilante'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { Fond } from '../../components/Stage16x9'
+import { SceneVoiture } from '../../components/SceneVoiture'
 import { useApp } from '../../app-context'
-import { useI18n } from '../../i18n'
-import { useSession } from '../../state/session'
 import type { Layer } from '../../api/client'
-import fondBorne from '../../assets/fond-borne.avif'
 import bandeauMarque from '../../assets/bandeau-marque.png'
 
-type Mode =
-  | { kind: 'attract' }
-  | { kind: 'live'; layers: Layer[]; firstName?: string }
-  | { kind: 'finished'; renderUrl: string | null }
+/**
+ * Ce que montre le grand ecran. `layers` garde la derniere composition recue :
+ * apres la validation, la creation reste sur la voiture le temps que le
+ * visiteur la voie, puis le diaporama reprend.
+ */
+type Mode = { kind: 'attract' } | { kind: 'live' | 'finished'; layers: Layer[] }
 
-const SKIN_WIDTH = 1760
+/** Duree pendant laquelle une creation validee reste affichee. */
+const APRES_VALIDATION_MS = 20_000
 
 /**
- * Grand ecran. Deux etats : diaporama d'attente quand personne ne joue,
- * miroir de la composition en cours sinon.
+ * Grand ecran. Le diaporama quand personne ne joue ; des qu'un visiteur
+ * compose, sa creation en direct sur la voiture, comme a l'ecran 7.
  */
 export function DisplayScreen() {
-  const { api, bus } = useApp()
-  const { t } = useI18n()
-  const { catalog } = useSession()
+  const { bus } = useApp()
   const [mode, setMode] = useState<Mode>({ kind: 'attract' })
 
   useEffect(() => {
     const off = bus.on((message) => {
       if (message.type === 'idle') setMode({ kind: 'attract' })
-      if (message.type === 'state')
-        setMode({ kind: 'live', layers: message.layers as Layer[], firstName: message.firstName })
-      if (message.type === 'finished') setMode({ kind: 'finished', renderUrl: message.renderUrl })
+      if (message.type === 'state') setMode({ kind: 'live', layers: message.layers as Layer[] })
+      // La validation n'apporte pas de calques : on garde ceux qu'on montrait.
+      // Un ecran redemarre entre-temps n'a rien a montrer, et repart sur le
+      // diaporama.
+      if (message.type === 'finished')
+        setMode((avant) => (avant.kind === 'attract' ? avant : { kind: 'finished', layers: avant.layers }))
     })
     return () => {
       off()
     }
   }, [bus])
 
-  // Apres une creation terminee, on repart sur le diaporama tout seul.
   useEffect(() => {
     if (mode.kind !== 'finished') return
-    const id = window.setTimeout(() => setMode({ kind: 'attract' }), 20_000)
+    const id = window.setTimeout(() => setMode({ kind: 'attract' }), APRES_VALIDATION_MS)
     return () => window.clearTimeout(id)
   }, [mode.kind])
 
-  const diaporama = mode.kind === 'attract' || (mode.kind === 'finished' && !mode.renderUrl)
-
-  if (!catalog) return <div className="display-root" />
-  if (diaporama) return <Diaporama />
-
-  if (mode.kind === 'finished') {
-    return (
-      <div className="display-root finished">
-        <img src={mode.renderUrl!} alt="" />
-        <Title order={2} className="display-cta">{t('display.shareCta')}</Title>
-      </div>
-    )
-  }
-
-  return (
-    <div className="display-root live">
-      <Fond src={fondBorne} />
-      {mode.firstName && <Text className="display-who">{t('display.creationOf', { firstName: mode.firstName })}</Text>}
-      <SkinCanvas catalog={catalog} layers={mode.layers} mediaBase={api.mediaBase} skinWidth={SKIN_WIDTH} bleed={20} />
-    </div>
-  )
+  return mode.kind === 'attract' ? <Diaporama /> : <SceneVoiture layers={mode.layers} />
 }
 
 /**
