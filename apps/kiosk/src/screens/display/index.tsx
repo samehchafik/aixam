@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PlancheDefilante } from '../../components/PlancheDefilante'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import { SceneVoiture } from '../../components/SceneVoiture'
+import { PlancheEnDirect } from '../../components/PlancheEnDirect'
 import { useApp } from '../../app-context'
 import type { Layer } from '../../api/client'
 import bandeauMarque from '../../assets/bandeau-marque.png'
@@ -17,8 +17,10 @@ type Mode = { kind: 'attract' } | { kind: 'live' | 'finished'; layers: Layer[] }
 const APRES_VALIDATION_MS = 20_000
 
 /**
- * Grand ecran. Le diaporama quand personne ne joue ; des qu'un visiteur
- * compose, sa creation en direct sur la voiture, comme a l'ecran 7.
+ * Grand ecran. Il garde toujours son habillage -- la photo, le bandeau de
+ * marque, la vague du haut. Sur la planche de bord, les creations approuvees
+ * defilent quand personne ne joue ; des qu'un visiteur compose, c'est la
+ * sienne, en direct.
  */
 export function DisplayScreen() {
   const { bus } = useApp()
@@ -45,17 +47,11 @@ export function DisplayScreen() {
     return () => window.clearTimeout(id)
   }, [mode.kind])
 
-  return mode.kind === 'attract' ? <Diaporama /> : <SceneVoiture layers={mode.layers} />
-}
-
-/**
- * L'attente : l'ecran 1 du tactile, sans ce qui ne sert qu'au doigt -- ni
- * bouton, ni fleche qui y mene.
- */
-function Diaporama() {
+  // L'ecran 1 du tactile, sans ce qui ne sert qu'au doigt -- ni bouton, ni
+  // fleche qui y mene.
   return (
     <div className="ecran">
-      <PlancheDefilante />
+      {mode.kind === 'attract' ? <PlancheDefilante /> : <PlancheEnDirect layers={mode.layers} />}
       <img className="bandeau-marque" src={bandeauMarque} alt="" draggable={false} />
       <Ribbon modele="diaporama" />
     </div>
