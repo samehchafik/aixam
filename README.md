@@ -368,9 +368,8 @@ de la borne, sans redéploiement.
 `make ecrans ECRANS=<livraison>` reprend une livraison d'écrans du studio (un
 dossier par écran, `01_…` à `08_…`). Il en tire le décor du diaporama —
 photo, masque et ombrage de la planche dans `apps/api/media/mockup/`, avec les
-quatre coins où poser un skin, calés sur le masque encoche comprise pour que
-le skin couvre toute la planche — et les images des écrans dans
-`apps/kiosk/src/assets/`. Photos et
+quatre coins où poser un skin, calés sur le skin de test que le studio y a
+posé — et les images des écrans dans `apps/kiosk/src/assets/`. Photos et
 dégradés partent en AVIF 10 bits (`brew install libavif`) : sans bandes, pour
 une fraction du poids d'un PNG. Les positions, tailles et interlettrages des
 écrans sont relevés dans le fichier Illustrator (`260923_BorneEasy.ai`) et

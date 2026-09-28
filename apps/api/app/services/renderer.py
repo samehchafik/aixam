@@ -40,7 +40,6 @@ MEDIA = Path(settings.media_dir)
 # declarer une route de plus dans le reverse proxy.
 RENDERS = MEDIA / "renders"
 
-BACKDROP = (24, 22, 40)  # fond du JPEG autour de la planche
 
 
 @lru_cache(maxsize=64)
@@ -264,6 +263,12 @@ def render_design(layers: dict, *, padding: float = 0.04) -> Path:
     Appele une seule fois, quand le visiteur valide. Le fichier produit est la
     creation : ses calques citent le catalogue par identifiant, et un element
     renomme les rendrait illisibles. On ne re-rend donc jamais.
+
+    Le PNG est TRANSPARENT hors de la planche -- autour, et dans l'encoche de
+    la console. Il se pose ainsi tel quel sur la photo du tableau de bord :
+    un fond peint dans l'encoche y faisait une bande sombre a droite de la
+    console, la ou le masque du studio est un peu plus large que le skin.
+    L'e-mail, qui veut un cadre autour, le met dans sa mise en page.
     """
     catalog = load_catalog()
     shape = catalog["shape"]
@@ -295,8 +300,8 @@ def render_design(layers: dict, *, padding: float = 0.04) -> Path:
     canvas.putalpha(build_mask(shape, width, height))
 
     pad = int(width * padding)
-    out_img = Image.new("RGB", (width + 2 * pad, height + 2 * pad), BACKDROP)
-    out_img.paste(canvas, (pad, pad), canvas)
+    out_img = Image.new("RGBA", (width + 2 * pad, height + 2 * pad), (0, 0, 0, 0))
+    out_img.alpha_composite(canvas, (pad, pad))
 
     # PNG : le skin part en fabrication, il ne doit pas trainer les artefacts
     # d'une compression avec perte sur des aplats et du texte.

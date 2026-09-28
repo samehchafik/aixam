@@ -368,15 +368,15 @@ body {
 .mockup-decor, .mockup-ombrage { width: 100%; height: 100%; }
 /* La zone porte le masque : ce qui deborde de la planche, ou ce que le volant
    cache, est retenu ici. */
-/* Le noir de la zone sert deux fois. C'est l'etat d'attente, avant qu'une
-   creation soit approuvee : une planche neuve, qu'on ne prend ni pour une
-   panne ni pour le skin de quelqu'un. Et c'est la securite qui couvre la
-   plaque verte « Placer le design ici » que le mockup du studio porte sous le
-   skin -- elle ne doit jamais paraitre sur le stand. Le masque borne cette
-   couleur a la silhouette de la planche. */
+/* Aucun fond sous le skin : la ou il ne couvre pas, c'est la photo qui
+   parait. Avec la livraison du 23 septembre, la planche de bord y est nue --
+   du plastique gris, plus la plaque verte « Placer le design ici » de
+   l'ancienne photo, qu'un fond noir devait cacher. Ce noir faisait aussi la
+   bande sombre pres de la console : le masque du studio y est un peu plus
+   large que le skin, et l'ecart se voyait en noir. Il se voit desormais en
+   gris, comme une marge de plastique avant la console. */
 .mockup-zone {
   position: absolute; inset: 0;
-  background: #000;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
 .mockup-skin { position: absolute; top: 0; left: 0; transform-origin: 0 0; }

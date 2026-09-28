@@ -81,12 +81,10 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
     <div className="mockup" style={{ width: w, height: h, left: x, top: y }}>
       <img className="mockup-decor" src={url(mockup.decor)} alt="" draggable={false} />
 
-      {/* La zone est TOUJOURS posee. Elle etait conditionnee a la marge, donc
-          au chargement du skin : tant qu'il n'etait pas la -- le temps du
-          reseau, ou pour toujours s'il manquait -- la planche du mockup restait
-          nue et laissait paraitre, en public, sa plaque verte « Placer le
-          design ici ». Le noir doit couvrir cette plaque du premier instant, et
-          quoi qu'il arrive au skin. */}
+      {/* La zone porte le masque : ce qui deborde de la planche, ou ce que le
+          volant cache, est retenu ici. Sans skin -- le temps du reseau, ou
+          tant qu'aucune creation n'est approuvee -- elle est vide, et la
+          planche de bord nue de la photo parait. */}
       <div
         className="mockup-zone"
         style={{

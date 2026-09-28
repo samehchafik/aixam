@@ -125,4 +125,17 @@ objet = catalogue["objects"][0]["id"]
 img = rendre(Layer(type="background", hex="#FFFFFF"), Layer(type="object", assetId=objet, scale=0.05, z=1))
 check("l'objet n'a pas envahi la planche", proche(couleur(img, 0.02), BLANC), couleur(img, 0.02))
 
+print("\n[6] Hors de la planche, le rendu est transparent")
+# Pose sur la photo du tableau de bord, un fond peint dans l'encoche faisait
+# une bande sombre a droite de la console : l'e-mail met son cadre lui-meme.
+rgba = Image.open(render_design({"layers": [Layer(type="background", hex="#FFFFFF").model_dump(exclude_none=True)]}))
+alpha = rgba.getchannel("A")
+n = forme["notch"]
+check("le tour est transparent", alpha.getpixel((2, 2)) == 0, alpha.getpixel((2, 2)))
+check("l'encoche est transparente",
+      alpha.getpixel((PAD + int(n["x"] + n["width"] / 2), PAD + H - 4)) == 0,
+      alpha.getpixel((PAD + int(n["x"] + n["width"] / 2), PAD + H - 4)))
+check("la planche est opaque", alpha.getpixel((PAD + W // 4, PAD + H // 4)) == 255,
+      alpha.getpixel((PAD + W // 4, PAD + H // 4)))
+
 sys.exit(report())

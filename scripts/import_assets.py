@@ -677,12 +677,6 @@ def coins_planche(masque_img, forme: dict) -> tuple[list, float]:
     On part de la projection tiree des droites, puis on l'affine par petits
     pas : le contour du gabarit est arrondi et l'ajustement des droites porte
     sur quelques pixels d'erreur, que ce reglage final rattrape.
-
-    Le reglage fait passer la COUVERTURE du masque avant tout. Sous le masque,
-    la zone est noire : un coin de planche que le skin ne couvre pas s'y voit
-    en noir -- c'etait la bande a droite de la console, la ou l'encoche du
-    skin tombait trop loin. Deborder du masque, en revanche, ne se voit pas :
-    le masque rogne. Un pixel decouvert pese donc cinquante pixels de debord.
     """
     from PIL import Image, ImageDraw
 
@@ -697,8 +691,8 @@ def coins_planche(masque_img, forme: dict) -> tuple[list, float]:
         ImageDraw.Draw(im).polygon(_projeter(coins, pts), fill=255)
         r = im.load()
         couvre = sum(1 for x, y in dedans if r[x, y]) / max(1, len(dedans))
-        deborde = sum(1 for x, y in dehors if r[x, y]) / max(1, len(dedans))
-        return couvre - 0.02 * deborde, couvre
+        deborde = sum(1 for x, y in dehors if r[x, y]) / max(1, len(dehors))
+        return couvre - 0.25 * deborde, couvre
 
     coins = _depart(masque_img, forme)
     meilleure = note(coins)[0]
@@ -784,6 +778,47 @@ def _premier_point(svg: str) -> tuple[float, float]:
     return float(m.group(1)), float(m.group(2))
 
 
+def coins_sur_pose(dossier: Path, forme: dict) -> list | None:
+    """Les coins de la planche, lus sur l'ecran ou le studio a pose un skin.
+
+    La livraison contient l'ecran compose (`01_slideshow.png`) et le skin qui
+    y est pose (`skin_pour_test.svg`). Des points apparies entre les deux
+    donnent la projection exacte que le studio a appliquee -- la ou le masque
+    seul laisse flotter les coins de droite, hors du cadre photo.
+
+    Rend None si ces deux fichiers manquent, ou si OpenCV n'est pas installe.
+    """
+    compose, skin_svg = dossier / "01_slideshow.png", dossier / "skin_pour_test.svg"
+    if not (compose.is_file() and skin_svg.is_file()):
+        return None
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return None
+    import cairosvg
+    from PIL import Image
+
+    L, H = int(forme["width"]), int(forme["height"])
+    skin = Image.open(io.BytesIO(cairosvg.svg2png(url=str(skin_svg), output_width=L, output_height=H)))
+    gris = lambda im: cv2.cvtColor(np.asarray(im.convert("RGB")), cv2.COLOR_RGB2GRAY)
+    a, b = gris(skin), gris(Image.open(compose).crop((0, 0, *ECRAN)))
+
+    sift = cv2.SIFT_create(nfeatures=20000)
+    ka, da = sift.detectAndCompute(a, None)
+    kb, db = sift.detectAndCompute(b, None)
+    paires = [m for m, n in cv2.BFMatcher().knnMatch(da, db, k=2) if m.distance < 0.75 * n.distance]
+    if len(paires) < 12:
+        return None
+    pa = np.float32([ka[m.queryIdx].pt for m in paires])
+    pb = np.float32([kb[m.trainIdx].pt for m in paires])
+    projection, retenus = cv2.findHomography(pa, pb, cv2.RANSAC, 3.0)
+    if projection is None or int(retenus.sum()) < 12:
+        return None
+    coins = cv2.perspectiveTransform(np.float32([[[0, 0], [L, 0], [L, H], [0, H]]]), projection)[0]
+    return [(float(x), float(y)) for x, y in coins]
+
+
 def importer_mockup(dossier: Path) -> None:
     """Le decor du diaporama : la photo, le masque de la planche, l'ombrage.
 
@@ -818,22 +853,18 @@ def importer_mockup(dossier: Path) -> None:
     origine = (px - mx, py - my)
     largeur, hauteur = dimensions(fichiers["masque"])
 
-    # La planche se cale sur le masque, encoche comprise : ses deux murs
-    # epousent la console de la photo. Pas sur le skin de test que le studio
-    # pose dans l'ecran compose -- il n'a pas d'encoche, et s'y fier laissait
-    # une bande noire a droite de la console sur les vraies creations.
     forme = json.loads((MEDIA / "base" / "shape.json").read_text(encoding="utf-8"))
-    masque = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=masque_svg.encode()))).getchannel("A")
-    # Une marge vide autour du masque : le debord n'est compte que dans
-    # l'image, et le masque livre est recadre au ras de la planche. Sans elle,
-    # deborder a gauche -- derriere le volant, hors du cadre -- ne coutait
-    # rien, et le reglage elargissait le skin de 50 px de ce cote.
-    marge = 200
-    cadre = Image.new("L", (masque.width + 2 * marge, masque.height + 2 * marge), 0)
-    cadre.paste(masque, (marge, marge))
-    coins, couverture = coins_planche(cadre, forme)
-    coins = [(x - marge + origine[0], y - marge + origine[1]) for x, y in coins]
-    print(f"   planche calee sur le masque (couvert a {couverture * 100:.2f} %)")
+    coins = coins_sur_pose(dossier, forme)
+    if coins:
+        print("   planche calee sur la pose du skin de test du studio")
+    else:
+        # Repli : la silhouette seule. Elle cale bien la gauche, mais la
+        # planche sort du cadre a droite, et les deux coins de ce cote y sont
+        # mal tenus.
+        masque = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=masque_svg.encode()))).getchannel("A")
+        coins, couverture = coins_planche(masque, forme)
+        coins = [(x + origine[0], y + origine[1]) for x, y in coins]
+        print(f"   planche calee sur le masque (couvert a {couverture * 100:.1f} %)")
 
     echelle = SCENE[0] / ECRAN[0]
     a_la_scene = lambda x, y: [round(x * echelle, 2), round(y * echelle, 2)]

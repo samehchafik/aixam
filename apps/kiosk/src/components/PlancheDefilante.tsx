@@ -9,9 +9,9 @@ import { SkinMockup } from './SkinMockup'
  * tactile.
  *
  * Tant qu'aucune n'a ete approuvee -- au debut du salon, par exemple -- la
- * planche reste noire. La voiture est la des la premiere minute, et un skin
- * noir est une planche neuve : on ne le prend ni pour une panne, ni pour la
- * creation de quelqu'un.
+ * planche de bord reste nue, telle que la photo du studio la montre. La
+ * voiture est la des la premiere minute, et on ne prend pas un tableau de
+ * bord gris pour une panne, ni pour la creation de quelqu'un.
  */
 export function PlancheDefilante() {
   const { api, settings } = useApp()
@@ -53,8 +53,8 @@ export function PlancheDefilante() {
 
   return (
     <SkinMockup
-      // Sans creation approuvee, aucun skin n'est pose : la zone du mockup
-      // laisse voir son fond noir, et la planche parait neuve.
+      // Sans creation approuvee, aucun skin n'est pose : la planche de bord
+      // nue de la photo parait.
       key={courante?.id ?? 'vide'}
       mockup={catalog.mockup}
       shape={catalog.shape}
