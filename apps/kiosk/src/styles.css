@@ -316,10 +316,11 @@ body {
   border: 3px solid transparent; background: none; transition: border-color 120ms;
 }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* L'ombre detache le liseret des vignettes les plus claires. */
+/* Le halo detache le liseret des vignettes les plus claires. Sans l'anneau
+   bleu nuit d'un pixel qui le cernait : la graphiste le trouvait de trop. */
 .tile.selected {
   border-color: var(--select);
-  box-shadow: 0 0 0 1px var(--bleu-nuit), 0 0 6px rgba(31, 40, 71, 0.9);
+  box-shadow: 0 0 6px rgba(31, 40, 71, 0.9);
 }
 /* Un objet n'a ni cadre ni fond : sa case epouse sa largeur, il l'occupe en
    entier. Seuls les plus allonges sont ramenes a une largeur raisonnable, et
