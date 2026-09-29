@@ -151,4 +151,20 @@ r = c.get("/api/admin/designs", params={"sort": "'; DROP TABLE designs; --"}, he
 check("422", r.status_code == 422, r.status_code)
 check("la table est toujours la", lister()["total"] == 6)
 
+print("\n[9] L'export Excel reprend les memes filtres")
+import io
+import zipfile
+
+r = c.get("/api/admin/designs.xlsx", params={"search": "alvarez", "sort": "name_asc"}, headers=H)
+check("200", r.status_code == 200, (r.status_code, r.text[:200]))
+check("un classeur xlsx", r.headers["content-type"].startswith(
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), r.headers["content-type"])
+check("en piece jointe datee", 'filename="creations-' in r.headers.get("content-disposition", ""))
+partages = zipfile.ZipFile(io.BytesIO(r.content)).read("xl/sharedStrings.xml").decode("utf-8")
+check("le meme nombre de lignes que la liste", "Une ligne par création (2)" in partages,
+      lister(search="alvarez")["total"])
+check("les deux Alvarez, pas les autres", "Bruno" in partages and "Chloe" in partages and "Zoe" not in partages)
+check("le filtre rappele en tete", "recherche « alvarez »" in partages)
+check("sans session, refuse", c.get("/api/admin/designs.xlsx").status_code == 401)
+
 sys.exit(report())

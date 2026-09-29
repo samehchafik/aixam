@@ -5,8 +5,8 @@ import io
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -37,6 +37,7 @@ from app.schemas import (
 )
 from app.security import generate_relay_token, generate_token, hash_secret, token_indice
 from app.services import mailer
+from app.services.export_creations import ExportIndisponible, classeur_creations
 from app.services.renderer import skin_present, skin_url, skins_stockes
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
@@ -167,15 +168,12 @@ DESIGN_SORTS: dict[str, tuple] = {
 }
 
 
-@router.get("/designs")
-def designs(
-    limit: int = Query(60, le=300),
-    offset: int = 0,
-    search: str = "",
-    sort: str = Query("date_desc", pattern="^(date_desc|date_asc|name_asc|name_desc)$"),
-    moderation: str = Query("", description="verdicts separes par des virgules"),
-    db: Session = Depends(get_db),
-) -> dict:
+def _requete_designs(search: str, moderation: str):
+    """La requete des creations (avec leur auteur) et son comptage, filtres.
+
+    Partagee par la liste de l'ecran et par l'export Excel : l'export contient
+    exactement ce que l'animateur a sous les yeux.
+    """
     # Jointure externe : une creation peut n'avoir plus de visiteur -- une
     # suppression RGPD l'anonymise (ON DELETE SET NULL) sans l'effacer. Une
     # jointure interne la ferait disparaitre de l'admin.
@@ -205,6 +203,22 @@ def designs(
             )
         filtre_verdict = Design.moderation.in_(verdicts)
         stmt, compte = stmt.where(filtre_verdict), compte.where(filtre_verdict)
+    return stmt, compte
+
+
+TRI_DESIGNS = Query("date_desc", pattern="^(date_desc|date_asc|name_asc|name_desc)$")
+
+
+@router.get("/designs")
+def designs(
+    limit: int = Query(60, le=300),
+    offset: int = 0,
+    search: str = "",
+    sort: str = TRI_DESIGNS,
+    moderation: str = Query("", description="verdicts separes par des virgules"),
+    db: Session = Depends(get_db),
+) -> dict:
+    stmt, compte = _requete_designs(search, moderation)
 
     # Le total suit le filtre : sinon l'entete annoncerait 800 creations pour
     # trois lignes affichees.
@@ -228,6 +242,45 @@ def designs(
         ],
     }
 
+
+
+@router.get("/designs.xlsx")
+def designs_xlsx(
+    request: Request,
+    search: str = "",
+    sort: str = TRI_DESIGNS,
+    moderation: str = Query("", description="verdicts separes par des virgules"),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Les creations filtrees, en classeur Excel : l'auteur, le nom du fichier,
+    et l'apercu de la creation dans la cellule."""
+    stmt, _ = _requete_designs(search, moderation)
+    lignes = db.execute(stmt.order_by(*DESIGN_SORTS[sort])).all()
+    # Les filtres de l'ecran, rappeles en tete de feuille.
+    libelles = {"pending": "en attente", "approved": "validées", "rejected": "rejetées"}
+    filtres = []
+    if moderation:
+        filtres.append("créations " + ", ".join(libelles.get(v, v) for v in moderation.split(",") if v))
+    if search:
+        filtres.append(f"recherche « {search} »")
+    # L'adresse publique : celle par laquelle l'admin nous parle. Derriere un
+    # proxy, c'est l'hote transmis ; en local, celui de la requete.
+    hote = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    schema = request.headers.get("x-forwarded-proto") or request.url.scheme
+    try:
+        contenu = classeur_creations(
+            lignes,
+            adresse_images=f"{schema}://{hote}/media/renders/",
+            filtres=("Filtres : " + " ; ".join(filtres)) if filtres else "",
+        )
+    except ExportIndisponible as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    nom = f"creations-{datetime.now(UTC):%Y-%m-%d}.xlsx"
+    return Response(
+        contenu,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{nom}"'},
+    )
 
 
 def _vignette(design) -> str | None:

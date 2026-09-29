@@ -4,7 +4,7 @@ import {
   Text,
   TextInput, Title, UnstyledButton,
 } from '@mantine/core'
-import { api } from '../lib/api'
+import { api, telecharger } from '../lib/api'
 
 type Verdict = 'pending' | 'approved' | 'rejected'
 
@@ -77,6 +77,8 @@ export function Designs() {
   const [nouvelles, setNouvelles] = useState(0)
   const [rafraichir, setRafraichir] = useState(0)
   const [agrandie, setAgrandie] = useState<number | null>(null)
+  const [exportEnCours, setExportEnCours] = useState(false)
+  const [erreurExport, setErreurExport] = useState<string | null>(null)
 
   // Aucune case cochee : on n'invente pas un filtre que l'animateur vient de
   // retirer. La liste se vide, et un message le dit.
@@ -213,7 +215,28 @@ export function Designs() {
             </Group>
           </Checkbox.Group>
         )}
+        {/* Exporte ce qui est affiche : memes filtres, meme tri, toutes les
+            pages. Une ligne par creation, avec son auteur, le nom de son
+            fichier et son apercu. */}
+        <Button
+          variant="light"
+          ml="auto"
+          loading={exportEnCours}
+          disabled={aucunVerdict}
+          onClick={() => {
+            const q = new URLSearchParams({ search, sort, moderation })
+            const jour = new Date().toISOString().slice(0, 10)
+            setErreurExport(null)
+            setExportEnCours(true)
+            telecharger(`/api/admin/designs.xlsx?${q}`, `creations-${jour}.xlsx`)
+              .catch((e) => setErreurExport(e.message))
+              .finally(() => setExportEnCours(false))
+          }}
+        >
+          Export Excel
+        </Button>
       </Group>
+      {erreurExport && <Text c="red" fz="sm">Export impossible : {erreurExport}</Text>}
 
       {/* Le guet n'agit pas, il previent. L'animateur choisit son moment :
           entre deux visiteurs, pas au milieu d'une decision. */}

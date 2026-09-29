@@ -122,6 +122,23 @@ if [ $SANS_DOCKER -eq 1 ]; then
   [ -x "$VENV/uvicorn" ] || [ -x "$VENV/uvicorn.exe" ] \
     || die "$VENV/uvicorn introuvable -- creer l'environnement : python -m venv .venv && .venv/$VENV_BIN/pip install -r apps/api/requirements.txt"
 
+  # Les dependances Python suivent requirements.txt : reinstallees quand il a
+  # change depuis la derniere fois (un temoin dans .venv s'en souvient). Sans
+  # cela, une borne mise a jour par `git pull` gardait son ancien
+  # environnement, et le code qui demandait un paquet neuf echouait. Sans
+  # reseau, on previent et l'on demarre quand meme.
+  REQUIS="$ROOT/apps/api/requirements.txt"
+  TEMOIN="$ROOT/.venv/.requirements-installes"
+  if [ ! -f "$TEMOIN" ] || [ "$REQUIS" -nt "$TEMOIN" ]; then
+    PYTHON="$VENV/python"; [ -x "$PYTHON" ] || PYTHON="$VENV/python.exe"
+    say "dependances Python : mise a jour (requirements.txt a change)"
+    if "$PYTHON" -m pip install -q -r "$REQUIS"; then
+      touch "$TEMOIN"
+    else
+      warn "pip install a echoue (reseau ?) : l'API demarre avec les paquets deja la."
+    fi
+  fi
+
   # Sur le stand, le back-office de l'equipe se consulte depuis un portable :
   # l'API ecoute sur ce que dit API_BIND, pas sur la boucle locale seule.
   BIND="$(grep -E '^API_BIND=' "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '\r' || true)"

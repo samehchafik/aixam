@@ -108,7 +108,12 @@ export async function telecharger(path: string, nom: string): Promise<void> {
     auth.clear('expiration')
     throw new Unauthorized('Session expiree')
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) {
+    // L'API dit pourquoi dans `detail` (« XlsxWriter manque… ») : mieux qu'un
+    // simple code HTTP sous le bouton.
+    const detail = await res.json().then((c) => c?.detail).catch(() => null)
+    throw new Error(typeof detail === 'string' ? detail : `HTTP ${res.status}`)
+  }
   const url = URL.createObjectURL(await res.blob())
   const lien = document.createElement('a')
   lien.href = url
