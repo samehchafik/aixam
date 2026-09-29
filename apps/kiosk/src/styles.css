@@ -381,5 +381,9 @@ body {
 }
 .mockup-skin { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .mockup-skin img { width: 100%; height: 100%; display: block; object-fit: cover; }
+/* Le filtre s'applique au skin a plat, avant la perspective : les trente
+   pixels de fond perdu sont des pixels du skin, pas de l'ecran. */
+.mockup-fond-perdu { width: 100%; height: 100%; filter: url(#skin-fond-perdu); }
+.mockup-filtres { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* L'ombrage repose sur le skin : il lui donne la lumiere de la photo. */
 .mockup-ombrage { pointer-events: none; }

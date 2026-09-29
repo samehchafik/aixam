@@ -109,10 +109,35 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
               transform: matriceSkin(shape, mockup.corners, marge),
             }}
           >
-            {src ? <img src={src} alt="" onError={onErreur} /> : children}
+            <div className="mockup-fond-perdu">
+              {src ? <img src={src} alt="" onError={onErreur} /> : children}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Fond perdu : sous le skin net, une copie floutee puis rendue opaque,
+          qui prolonge ses couleurs de bord d'une trentaine de pixels au-dela
+          de son contour. Le gabarit du skin et le masque dessine par le studio
+          different de quelques pixels par endroits -- mur droit de la
+          console, bout gauche pres du volant, coin bas droit. Sans ce fond
+          perdu, ces filets laissaient voir le plastique gris de la photo. Le
+          skin n'est ni agrandi ni deplace : c'est toujours le masque qui
+          decoupe, comme dans le fichier du studio, ou le skin debordait. */}
+      <svg className="mockup-filtres" aria-hidden="true">
+        <filter id="skin-fond-perdu" x="-5%" y="-25%" width="110%" height="150%" colorInterpolationFilters="sRGB">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="flou" />
+          {/* Alpha tout ou rien : a peine touche par le flou, le pixel devient
+              opaque et prend la couleur moyenne des bords voisins. */}
+          <feComponentTransfer in="flou" result="plein">
+            <feFuncA type="discrete" tableValues={'0 ' + '1 '.repeat(19).trim()} />
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="plein" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </svg>
 
       <img className="mockup-ombrage" src={url(mockup.ombrage)} alt="" draggable={false} />
     </div>
