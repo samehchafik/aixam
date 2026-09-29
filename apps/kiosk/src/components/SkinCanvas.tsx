@@ -555,10 +555,15 @@ export function SkinCanvas({
           )}
 
           {/* Copie non decoupee : c'est elle qui ecoute, sur toute l'etendue de
-              l'objet. Dessinee en premier, donc sous la copie nette. */}
-          <Group x={origin.x} y={origin.y} opacity={0.32}>
-            {renderLayers(true, 'object')}
-          </Group>
+              l'objet. Dessinee en premier, donc sous la copie nette. Seulement
+              sur une planche qu'on manipule : ailleurs -- ecran 7, tableau de
+              bord du grand ecran -- elle n'attrape rien, et on la voyait
+              deborder du contour. */}
+          {interactive && (
+            <Group x={origin.x} y={origin.y} opacity={0.32}>
+              {renderLayers(true, 'object')}
+            </Group>
+          )}
 
           {/* Copie nette, decoupee par la planche : purement decorative. Elle
               recouvre la precedente sans intercepter les gestes, qui la
