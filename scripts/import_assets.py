@@ -770,14 +770,6 @@ def vers_avif(source: Path, sortie: Path, qualite: int = 70) -> None:
         tampon.unlink(missing_ok=True)
 
 
-def _premier_point(svg: str) -> tuple[float, float]:
-    """Le point de depart du premier trace : il sert de repere commun."""
-    m = re.search(r'\sd="M\s*([\d.+-]+)[ ,]+([\d.+-]+)', svg)
-    if not m:
-        raise SystemExit("masque : aucun trace")
-    return float(m.group(1)), float(m.group(2))
-
-
 def coins_sur_pose(dossier: Path, forme: dict) -> list | None:
     """Les coins de la planche, lus sur l'ecran ou le studio a pose un skin.
 
@@ -888,19 +880,152 @@ def coins_sur_bords(masque_4k, forme: dict, depart: list) -> tuple[list, float]:
     return [(float(x), float(y)) for x, y in c], float((ecarts(c) < 4).mean())
 
 
+def recaler_masque(dossier: Path, masque_4k) -> tuple[float, float, float]:
+    """Le decalage et l'elargissement qui posent le masque livre la ou le
+    studio l'a reellement applique.
+
+    Le masque livre (`masque_skin_placement.svg`) ne tombe pas tout a fait la
+    ou le studio a decoupe le skin dans l'ecran compose, valide par le client :
+    3 px trop a droite et trop bas, et un peu serre (en pixels 4K). Pose tel
+    quel, il laissait voir, au bord haut de la planche, le sillon sombre sous
+    le rebord -- un liseret noir « typique d'un mauvais calage ».
+
+    On compare donc l'ecran compose (`01_slideshow.png`) a la photo nue : ce
+    qui differe est le skin du studio. Bord par bord (haut, bas, gauche,
+    droite), on mesure l'ecart median entre le masque et ce skin : la mediane
+    ecarte d'elle-meme le bandeau et le volant, qui ne touchent que quelques
+    colonnes. Rend (dx, dy, elargissement), en pixels d'image ; (0, 0, 0) si
+    l'ecran compose manque.
+    """
+    import cv2
+    import numpy as np
+    from PIL import Image
+
+    compose, photo = dossier / "01_slideshow.png", dossier / "fond_bis" / "fondbis.png"
+    if not (compose.is_file() and photo.is_file()):
+        return 0, 0, 0
+    lire = lambda f: np.asarray(Image.open(f).convert("RGB").crop((0, 0, *ECRAN))).astype(np.int16)
+    skin_studio = np.abs(lire(compose) - lire(photo)).max(axis=2) > 25
+
+    mk = np.asarray(masque_4k) > 127
+
+    def ecarts_des_bords(m, st):
+        """Pour chaque bord du masque le long d'une ligne, l'ecart au bord du
+        meme sens du skin du studio le plus proche (a 10 px au plus). Rend
+        les ecarts des bords montants (entree dans le masque) et descendants."""
+        montants, descendants = [], []
+        for ligne_m, ligne_s in zip(m, st):
+            if not ligne_m.any():
+                continue
+            dm = np.diff(ligne_m.astype(np.int8))
+            ds = np.diff(ligne_s.astype(np.int8))
+            for signe, sortie in ((1, montants), (-1, descendants)):
+                bords_s = np.nonzero(ds == signe)[0]
+                if not len(bords_s):
+                    continue
+                for x in np.nonzero(dm == signe)[0]:
+                    e = bords_s[np.argmin(np.abs(bords_s - x))] - x
+                    if abs(e) <= 10:
+                        sortie.append(e)
+        return np.median(montants), np.median(descendants)
+
+    # Colonnes : bords haut (montants) et bas ; lignes : bords gauche et droit.
+    haut, bas = ecarts_des_bords(mk.T, skin_studio.T)
+    gauche, droite = ecarts_des_bords(mk, skin_studio)
+    # Le decalage est la moyenne des deux bords opposes ; leur ecartement,
+    # l'elargissement (negatif : le studio a coupe plus serre, on n'y touche pas).
+    # Pas d'arrondi : le masque est un SVG, il prend les demi-pixels, et
+    # arrondir perdait justement le pixel du bord haut.
+    dx, dy = (gauche + droite) / 2, (haut + bas) / 2
+    elargi = max(0.0, ((droite - gauche) + (bas - haut)) / 4)
+    return float(dx), float(dy), float(elargi)
+
+
+def elargir_svg(svg: str, elargi: float) -> str:
+    """Epaissit chaque trace du masque de `elargi` px, et agrandit la vue d'autant."""
+    if not elargi:
+        return svg
+    vb = re.search(r'viewBox="\s*([\d.eE+-]+)[ ,]+([\d.eE+-]+)[ ,]+([\d.eE+-]+)[ ,]+([\d.eE+-]+)"', svg)
+    x, y, w, h = (float(v) for v in vb.groups())
+    e = round(elargi, 2)
+    svg = svg.replace(vb.group(0), f'viewBox="{x - e:g} {y - e:g} {w + 2 * e:g} {h + 2 * e:g}"', 1)
+    svg = re.sub(r'(<svg[^>]*?)\swidth="[\d.]+"', lambda m: f'{m.group(1)} width="{w + 2 * e:g}"', svg, count=1)
+    svg = re.sub(r'(<svg[^>]*?)\sheight="[\d.]+"', lambda m: f'{m.group(1)} height="{h + 2 * e:g}"', svg, count=1)
+    trait = f"<style>path{{stroke:#00cc2a;stroke-width:{2 * e:g}px;stroke-linejoin:round}}</style>"
+    return svg.replace("</svg>", f"{trait}</svg>", 1)
+
+
+def remonter_bord_haut(masque_4k, photo: Path, sombre: int = 45, jusqua: int = 8):
+    """Fait remonter le bord haut du masque a travers le sillon sombre.
+
+    Sous le rebord du tableau de bord, la photo a un sillon d'ombre de 3 a 8 px
+    (en 4K) juste au-dessus du creux de la planche. Le masque du studio
+    s'arrete sous ce sillon : le skin laissait voir un liseret noir le long de
+    son bord haut. Colonne par colonne, on inclut les pixels sombres au-dessus
+    du bord, jusqu'a la lumiere du rebord -- jamais le rebord lui-meme.
+    """
+    import numpy as np
+    from PIL import Image
+
+    lum = np.asarray(Image.open(photo).convert("L").crop((0, 0, *ECRAN))).astype(np.int16)
+    m = np.asarray(masque_4k) > 127
+    colonnes = np.nonzero(m.any(axis=0))[0]
+    hauts = np.argmax(m[:, colonnes], axis=0)
+    remonte = np.zeros(len(colonnes), dtype=np.int16)
+    for i, (x, haut) in enumerate(zip(colonnes, hauts)):
+        while remonte[i] < jusqua and haut - remonte[i] - 1 >= 0 and lum[haut - remonte[i] - 1, x] < sombre:
+            remonte[i] += 1
+    # La profondeur du sillon varie d'une colonne a l'autre : sans lissage, le
+    # bord remonte etait dentele. Mediane glissante sur 41 colonnes.
+    demi = 20
+    bornes = np.pad(remonte, demi, mode="edge")
+    lisse = np.array([int(np.median(bornes[i:i + 2 * demi + 1])) for i in range(len(remonte))])
+    sortie = m.copy()
+    for x, haut, k in zip(colonnes, hauts, lisse):
+        sortie[max(0, haut - k):haut, x] = True
+    return Image.fromarray((sortie * 255).astype(np.uint8))
+
+
+def prolonger_ombrage(source: Path, masque_4k, sortie: Path) -> None:
+    """L'ombrage du studio, prolonge a tout le masque.
+
+    L'ombrage s'arrete au bord du masque livre. La ou le masque a ete recale ou
+    remonte, le skin n'etait pas assombri comme le reste : une bande plus
+    claire sous le rebord. Chaque pixel du masque sans ombrage prend celui du
+    premier pixel ombre en dessous, dans la meme colonne.
+    """
+    import numpy as np
+    from PIL import Image
+
+    o = np.array(Image.open(source).convert("RGBA").crop((0, 0, *ECRAN)))
+    m = np.asarray(masque_4k) > 127
+    for x in np.nonzero(m.any(axis=0))[0]:
+        ombres = np.nonzero(o[:, x, 3] > 0)[0]
+        if not len(ombres):
+            continue
+        premier = ombres[0]
+        trous = np.nonzero(m[:premier, x])[0]
+        o[trous, x] = o[premier, x]
+    tampon = sortie.with_name("ombrage.tmp.png")
+    Image.fromarray(o).save(tampon)
+    try:
+        vers_avif(tampon, sortie, qualite=75)
+    finally:
+        tampon.unlink(missing_ok=True)
+
+
 def importer_mockup(dossier: Path) -> None:
     """Le decor du diaporama : la photo, le masque de la planche, l'ombrage.
 
-    Le studio livre le masque deux fois : recadre sur la planche, et place dans
-    le cadre complet. Le premier est celui qu'on sert (plus petit) ; le second
-    dit ou le poser -- l'ecart entre leurs premiers points.
+    Le masque vient de `masque_skin_placement.svg`, pose dans le cadre complet :
+    recale sur l'ecran compose du studio, remonte a travers le sillon du bord
+    haut, puis servi en PNG recadre sur la planche.
     """
     import cairosvg
     from PIL import Image
 
     fichiers = {
         "decor": dossier / "fond_bis" / "fondbis.png",
-        "masque": dossier / "masque_skin.svg",
         "placement": dossier / "masque_skin_placement.svg",
         "ombrage": dossier / "effet_sur_skin.png",
     }
@@ -914,32 +1039,47 @@ def importer_mockup(dossier: Path) -> None:
     cible.mkdir(parents=True)
 
     vers_avif(fichiers["decor"], cible / "decor.avif")
-    vers_avif(fichiers["ombrage"], cible / "ombrage.avif", qualite=75)
-    masque_svg = fichiers["masque"].read_text(encoding="utf-8")
-    (cible / "masque.svg").write_text(masque_svg, encoding="utf-8")
+    # Le masque livre, recale sur l'ecran du studio (decale, elargi), puis
+    # remonte a travers le sillon sombre du bord haut. Le resultat n'est plus
+    # un simple trace : il est servi en PNG 4K, recadre sur la planche.
+    masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
+        url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
+    ))).getchannel("A")
+    dx, dy, elargi = recaler_masque(dossier, masque_4k)
+    print(f"   masque recale sur l'ecran du studio : decale de ({dx:+.2f}, {dy:+.2f}), elargi de {elargi:.2f} px")
+    placement = elargir_svg(fichiers["placement"].read_text(encoding="utf-8"), elargi)
+    placement = re.sub(r'viewBox="[^"]*"', f'viewBox="{-dx:g} {-dy:g} {ECRAN[0]} {ECRAN[1]}"', placement, count=1)
+    masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
+        bytestring=placement.encode(), output_width=ECRAN[0], output_height=ECRAN[1],
+    ))).getchannel("A")
+    # La planche se cale sur ce masque-ci : le sillon est de l'ombre, pas de la
+    # planche, et le fond perdu du skin suffit a le couvrir.
+    masque_planche = masque_4k
+    masque_4k = remonter_bord_haut(masque_4k, fichiers["decor"])
 
-    (px, py), (mx, my) = _premier_point(fichiers["placement"].read_text(encoding="utf-8")), _premier_point(masque_svg)
-    origine = (px - mx, py - my)
-    largeur, hauteur = dimensions(fichiers["masque"])
+    prolonger_ombrage(fichiers["ombrage"], masque_4k, cible / "ombrage.avif")
+
+    boite = masque_4k.getbbox()
+    boite = (max(0, boite[0] - 2), max(0, boite[1] - 2), min(ECRAN[0], boite[2] + 2), min(ECRAN[1], boite[3] + 2))
+    recadre = masque_4k.crop(boite)
+    Image.merge("LA", (Image.new("L", recadre.size, 255), recadre)).save(cible / "masque.png", optimize=True)
+    origine = (boite[0], boite[1])
+    largeur, hauteur = recadre.size
 
     forme = json.loads((MEDIA / "base" / "shape.json").read_text(encoding="utf-8"))
     # Une premiere pose -- celle du studio, sinon celle que la silhouette seule
     # donne --, puis le calage sur les bords du tableau de bord.
     depart = coins_sur_pose(dossier, forme)
     if not depart:
-        masque = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=masque_svg.encode()))).getchannel("A")
-        depart = [(x + origine[0], y + origine[1]) for x, y in coins_planche(masque, forme)[0]]
-    masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
-        url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
-    ))).getchannel("A")
-    coins, tenu = coins_sur_bords(masque_4k, forme, depart)
+        depart = [(x + origine[0], y + origine[1]) for x, y in coins_planche(recadre, forme)[0]]
+    coins, tenu = coins_sur_bords(masque_planche, forme, depart)
     print(f"   planche calee sur les bords du tableau de bord ({tenu * 100:.0f} % du bord a moins de 2 px)")
 
     echelle = SCENE[0] / ECRAN[0]
     a_la_scene = lambda x, y: [round(x * echelle, 2), round(y * echelle, 2)]
     (cible / "index.json").write_text(json.dumps({
         "width": SCENE[0], "height": SCENE[1],
-        "decor": "decor.avif", "masque": "masque.svg", "ombrage": "ombrage.avif",
+        "decor": "decor.avif", "masque": "masque.png", "ombrage": "ombrage.avif",
         "maskOrigin": a_la_scene(*origine),
         "maskSize": a_la_scene(largeur, hauteur),
         "corners": [a_la_scene(x, y) for x, y in coins],
