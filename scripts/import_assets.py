@@ -1069,6 +1069,39 @@ def enregistrer_ombrage(ombrage, sortie: Path) -> None:
         tampon.unlink(missing_ok=True)
 
 
+def couper_au_volant(masque, reference) -> "Image.Image":
+    """Coupe un masque au masque de reference, a gauche de la console seulement.
+
+    Le masque de la graphiste deborde de 3 a 8 px (en 4K) sur le moyeu du volant
+    et sur le levier des commodos : son trace y est plus large que la photo.
+    Celui du studio, lui, epouse le volant. A gauche du mur gauche de la
+    console, on ne garde donc du masque que ce que la reference couvre aussi
+    -- plus ce qui est AU-DESSUS de son bord haut, pour garder le sillon sous
+    le rebord que la graphiste a voulu couvrir. Ailleurs, rien ne change.
+    """
+    import numpy as np
+    from PIL import Image
+
+    m = np.asarray(masque) > 127
+    ref = np.asarray(reference) > 127
+    colonnes = np.nonzero(ref.any(axis=0))[0]
+    # Le mur gauche de la console : la plus forte remontee du bord bas de la
+    # reference, dans le tiers central de la planche.
+    bas = {x: np.nonzero(ref[:, x])[0].max() for x in colonnes}
+    g, d = colonnes.min(), colonnes.max()
+    milieu = [x for x in colonnes if g + (d - g) / 4 < x < g + (d - g) / 2 and x + 1 in bas]
+    mur = max(milieu, key=lambda x: bas[x] - bas[x + 1])
+
+    garde = m.copy()
+    for x in range(0, min(mur + 10, m.shape[1])):
+        if not m[:, x].any():
+            continue
+        haut = np.nonzero(ref[:, x])[0].min() if ref[:, x].any() else m.shape[0]
+        dessus = np.arange(m.shape[0]) < haut
+        garde[:, x] = m[:, x] & (ref[:, x] | dessus)
+    return Image.fromarray((garde * 255).astype(np.uint8))
+
+
 def importer_mockup(dossier: Path) -> None:
     """Le decor du diaporama : la photo, le masque de la planche, l'ombrage.
 
@@ -1116,13 +1149,15 @@ def importer_mockup(dossier: Path) -> None:
     recadre_graphiste = next(iter(sorted(dossier.glob("ombrage_skin.*"))), None)
     if recadre_graphiste:
         # Livres par la graphiste en un seul calque, recadre : sa forme est le
-        # masque, son contenu l'ombrage. Appliques TELS QUELS -- ni recalage,
+        # masque, son contenu l'ombrage. Appliques tels quels -- ni recalage,
         # ni elargissement, ni remontee du bord haut. Il est plus petit que le
         # masque d'origine, et c'est voulu : le skin y est coupe plus court.
         # Seule sa pose est cherchee, sur le masque livre : l'image n'en dit
         # rien.
         print(f"   masque et ombrage : {recadre_graphiste.name}, tels que livres")
         ombrage, masque_4k = poser_recadre(Image.open(recadre_graphiste), placement_brut)
+        # Sauf autour du volant et du levier, ou son trace deborde de la photo.
+        masque_4k = couper_au_volant(masque_4k, masque_planche)
         enregistrer_ombrage(ombrage, cible / "ombrage.avif")
     else:
         # Le masque du studio, remonte a travers le sillon sombre du bord haut,
