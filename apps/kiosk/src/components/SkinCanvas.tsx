@@ -567,6 +567,27 @@ export function SkinCanvas({
             {renderLayers(false, 'object')}
           </Group>
 
+          {/* Le contour, repeint PAR-DESSUS les objets. Celui du canvas du fond
+              passe sous eux : un objet a cheval sur le bord en recouvrait la
+              moitie interieure, et le trait paraissait deux fois plus fin
+              au-dessus de l'objet -- le « decroche » que la graphiste a vu.
+              `source-atop` ne le peint que la ou un objet est deja dessine :
+              ailleurs, le bandeau qui survole la planche reste intact. */}
+          {contour > 0 && (
+            <Shape
+              x={origin.x}
+              y={origin.y}
+              listening={false}
+              globalCompositeOperation="source-atop"
+              sceneFunc={(ctx, node) => {
+                traceSkin(ctx, shape, skinWidth, skinHeight)
+                ctx.fillStrokeShape(node)
+              }}
+              stroke="#ffffff"
+              strokeWidth={contour}
+            />
+          )}
+
           {/* Mandataire des poignees du fond : invisible, pas de detection. */}
           {interactive && (
             <Rect
