@@ -1,4 +1,7 @@
+import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
+import { useSession } from '../../state/session'
+import { urlMockup } from '../SkinMockup'
 
 /**
  * Debord de la scene, en pixels de scene : c'est `overflow-clip-margin` sur
@@ -21,11 +24,13 @@ type Trace = {
   /** Ecart entre la courbe et la ligne de base du texte, qui la centre sur le bandeau. */
   base: number
   /**
-   * Le bandeau passe DERRIERE le tableau de bord de la photo : il est coupe
-   * net a cette hauteur, celle du rebord. Un ordre de calques n'y suffirait
-   * pas -- aux ecrans 2 et 3, le tableau de bord est peint dans l'image.
+   * Le bandeau sort de DERRIERE la planche de bord : il passe devant le
+   * rebord du tableau de bord et disparait sous la planche, dont on retire la
+   * silhouette (le masque du studio, celui qui decoupe deja les skins). Un
+   * ordre de calques n'y suffirait pas -- aux ecrans 2 et 3, la planche est
+   * peinte dans l'image de fond.
    */
-  coupe?: number
+  derrierePlanche?: boolean
 }
 
 type Modele = {
@@ -52,8 +57,9 @@ type Modele = {
  * trace allonge aurait decales.
  */
 
-// Le bandeau du haut des ecrans 1 a 3 : il sort de derriere le tableau de
-// bord et quitte l'ecran a droite. Le texte part du tableau de bord.
+// Le bandeau du haut des ecrans 1 a 3 : il sort de derriere la planche de
+// bord, passe devant le rebord et quitte l'ecran a droite. Le texte part de
+// la planche.
 const HAUT: Trace = {
   d:
     'M 1406.99 503.35 C 1406.99 503.35, 1393.67 428.4, 1432.26 379.64' +
@@ -63,9 +69,7 @@ const HAUT: Trace = {
   debut: 104.4,
   espacement: 0.4,
   base: 7.4,
-  // Releve sur les ecrans 1 et 2 du studio : le bleu s'arrete la, a
-  // l'horizontale, sur toute la largeur du bandeau.
-  coupe: 395.5,
+  derrierePlanche: true,
 }
 
 // Les bandeaux du bas ressortent sous le tableau de bord -- leur trace s'y
@@ -129,6 +133,16 @@ export function Ribbon({ modele = 'editeur' }: { modele?: NomRuban }) {
   const { traces, couleur, epaisseur, taille, ...reste } = RUBANS[modele] as Modele
   const texte = `${t('ribbon')} * `.repeat(6)
   const id = `ruban-${modele}`
+  const { api } = useApp()
+  const mockup = useSession((s) => s.catalog?.mockup)
+  // Sans decor livre, pas de planche a contourner : le bandeau est entier.
+  const planche = mockup?.maskSize && {
+    url: urlMockup(mockup, api.mediaBase, mockup.masque),
+    x: mockup.maskOrigin[0],
+    y: mockup.maskOrigin[1],
+    width: mockup.maskSize[0],
+    height: mockup.maskSize[1],
+  }
 
   return (
     <svg
@@ -143,17 +157,23 @@ export function Ribbon({ modele = 'editeur' }: { modele?: NomRuban }) {
         {traces.map((trace, i) => (
           <path key={i} id={`${id}-${i}`} d={trace.d} />
         ))}
-        {traces.map(
-          (trace, i) =>
-            trace.coupe !== undefined && (
-              <clipPath key={i} id={`${id}-${i}-coupe`}>
-                <rect x={-DEBORD} y={-DEBORD} width={1920 + DEBORD * 2} height={trace.coupe + DEBORD} />
-              </clipPath>
-            ),
+        {planche && (
+          <>
+            {/* Tout le masque en noir opaque : en luminance, noir = cache. */}
+            <filter id={`${id}-noir`}>
+              <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" />
+            </filter>
+            <mask id={`${id}-planche`} maskUnits="userSpaceOnUse"
+              x={-DEBORD} y={-DEBORD} width={1920 + DEBORD * 2} height={1080 + DEBORD * 2}>
+              <rect x={-DEBORD} y={-DEBORD} width={1920 + DEBORD * 2} height={1080 + DEBORD * 2} fill="#fff" />
+              <image href={planche.url} x={planche.x} y={planche.y} width={planche.width} height={planche.height}
+                preserveAspectRatio="none" filter={`url(#${id}-noir)`} />
+            </mask>
+          </>
         )}
       </defs>
       {traces.map((trace, i) => (
-        <g key={i} clipPath={trace.coupe !== undefined ? `url(#${id}-${i}-coupe)` : undefined}>
+        <g key={i} mask={trace.derrierePlanche && planche ? `url(#${id}-planche)` : undefined}>
           <use href={`#${id}-${i}`} fill="none" stroke={couleur} strokeWidth={epaisseur} />
           <text fill="#ffffff" fontSize={taille} fontWeight={600} dy={trace.base} letterSpacing={trace.espacement}>
             <textPath href={`#${id}-${i}`} startOffset={trace.debut}>
