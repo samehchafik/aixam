@@ -24,6 +24,8 @@ type Props = {
   children?: ReactNode
   /** Appele quand le rendu ne charge pas : au diaporama de passer au suivant. */
   onErreur?: () => void
+  /** Appele une fois le rendu charge, pret a paraitre : le fondu part de la. */
+  onPret?: () => void
 }
 
 /**
@@ -38,7 +40,7 @@ type Props = {
  * compris ce que le volant et le montant de pare-brise cachent. L'ombrage
  * repose par-dessus, pour que le skin prenne la lumiere de la photo.
  */
-export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }: Props) {
+export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur, onPret }: Props) {
   // Meme raison que pour le catalogue : ces trois images changent sous le meme
   // nom quand le studio livre un nouveau mockup, et un cache les garderait.
   const url = (fichier: string) => urlMockup(mockup, mediaBase, fichier)
@@ -55,6 +57,8 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
   // en boucle -- remettant la marge a zero, donc redemandant l'image.
   const signaler = useRef(onErreur)
   signaler.current = onErreur
+  const annoncer = useRef(onPret)
+  annoncer.current = onPret
 
   useEffect(() => {
     if (!src) {
@@ -64,7 +68,10 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur }
     setMarge(null)
     const img = new window.Image()
     img.src = src
-    img.onload = () => setMarge((img.naturalWidth - shape.width) / 2)
+    img.onload = () => {
+      setMarge((img.naturalWidth - shape.width) / 2)
+      annoncer.current?.()
+    }
     // Sans ceci, une image qui ne vient jamais laissait la marge indefiniment
     // indeterminee, et le skin n'etait jamais pose. On previent le diaporama,
     // qui passe a la creation suivante.

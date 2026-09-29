@@ -32,16 +32,19 @@ function EnDirect({ layers }: { layers: Layer[] }) {
   )
 }
 
+/** Une creation approuvee, telle que l'API la liste. */
+type Creation = { id: string; render_url: string }
+
 /**
- * Les creations approuvees, l'une apres l'autre. Tant qu'aucune ne l'est --
- * au debut du salon, par exemple -- le tableau de bord reste nu, tel que la
- * photo du studio le montre : on ne le prend ni pour une panne, ni pour la
- * creation de quelqu'un.
+ * Les creations approuvees, l'une apres l'autre, en fondu enchaine. Tant
+ * qu'aucune ne l'est -- au debut du salon, par exemple -- le tableau de bord
+ * reste nu, tel que la photo du studio le montre : on ne le prend ni pour une
+ * panne, ni pour la creation de quelqu'un.
  */
 function Defilement() {
   const { api, settings } = useApp()
   const catalog = useSession((s) => s.catalog)
-  const [liste, setListe] = useState<{ id: string; render_url: string }[]>([])
+  const [liste, setListe] = useState<Creation[]>([])
   // Un rendu peut disparaitre entre la reponse de l'API et son affichage. On
   // retient celui qui a echoue pour ne pas y revenir a chaque tour.
   const [manquants, setManquants] = useState<Set<string>>(new Set())
@@ -74,16 +77,64 @@ function Defilement() {
   }, [total, settings.attract_interval_seconds])
 
   const courante = creations[index % Math.max(1, total)]
+
+  // Les creations affichees, la plus recente en dernier. Au changement, la
+  // suivante s'ajoute par-dessus, invisible ; une fois son image chargee, elle
+  // apparait en fondu, puis la precedente est retiree. Chaque calque garde sa
+  // cle d'un bout a l'autre : retirer le dessous ne recharge pas le dessus.
+  const [calques, setCalques] = useState<{ creation: Creation; visible: boolean }[]>([])
+  useEffect(() => {
+    if (!courante) {
+      setCalques([])
+      return
+    }
+    setCalques((avant) =>
+      avant.at(-1)?.creation.id === courante.id
+        ? avant
+        : // La toute premiere parait d'emblee, sans fondu depuis le vide.
+          [...avant.slice(-1), { creation: courante, visible: avant.length === 0 }],
+    )
+  }, [courante])
+
+  const montrer = (id: string) =>
+    // Deux images plus tard : l'opacite nulle doit avoir ete peinte, sans quoi
+    // le navigateur saute directement a la fin de la transition.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        setCalques((avant) => avant.map((k) => (k.creation.id === id ? { ...k, visible: true } : k))),
+      ),
+    )
+
   if (!catalog?.mockup) return null
+  const mockup = catalog.mockup
+
+  // Aucune creation approuvee : la planche de bord nue de la photo.
+  if (!calques.length) return <SkinMockup mockup={mockup} shape={catalog.shape} mediaBase={api.mediaBase} />
 
   return (
-    <SkinMockup
-      key={courante?.id ?? 'vide'}
-      mockup={catalog.mockup}
-      shape={catalog.shape}
-      mediaBase={api.mediaBase}
-      src={courante ? `${api.base}${courante.render_url}` : undefined}
-      onErreur={() => courante && setManquants((vus) => new Set(vus).add(courante.id))}
-    />
+    <>
+      {calques.map(({ creation, visible }, i) => (
+        <div
+          key={creation.id}
+          className={`fondu ${visible ? 'visible' : ''}`}
+          onTransitionEnd={(e) => {
+            // Le fondu du dessus est fini : le dessous ne se voit plus.
+            if (e.target === e.currentTarget && i === calques.length - 1) setCalques((avant) => avant.slice(-1))
+          }}
+        >
+          <SkinMockup
+            mockup={mockup}
+            shape={catalog.shape}
+            mediaBase={api.mediaBase}
+            src={`${api.base}${creation.render_url}`}
+            onPret={() => montrer(creation.id)}
+            onErreur={() => {
+              setManquants((vus) => new Set(vus).add(creation.id))
+              setCalques((avant) => avant.filter((k) => k.creation.id !== creation.id))
+            }}
+          />
+        </div>
+      ))}
+    </>
   )
 }
