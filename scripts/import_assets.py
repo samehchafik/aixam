@@ -986,14 +986,15 @@ def remonter_bord_haut(masque_4k, photo: Path, sombre: int = 45, jusqua: int = 8
     return Image.fromarray((sortie * 255).astype(np.uint8))
 
 
-def poser_recadre(image, masque_4k) -> "Image.Image":
+def poser_recadre(image, masque_4k) -> tuple["Image.Image", "Image.Image"]:
     """Pose dans le cadre 4K une image recadree sur la planche et reduite.
 
     La graphiste peut livrer un calque (l'ombrage) recadre au ras de sa forme,
     a la taille qui l'arrange, sans position. On retrouve l'echelle et la
     position qui superposent le mieux sa transparence au masque, puis on l'y
     pose -- en alpha premultiplie, pour que le reechantillonnage ne laisse pas
-    de franges.
+    de franges. Rend le calque pose et son empreinte (sa forme, en niveaux de
+    gris : 255 dedans, bords adoucis).
     """
     import cv2
     import numpy as np
@@ -1028,7 +1029,9 @@ def poser_recadre(image, masque_4k) -> "Image.Image":
     pose_img = poser(pose, premult)
     alpha = pose_img[..., 3:]
     couleur = np.where(alpha > 0, pose_img[..., :3] / np.maximum(alpha, 1e-3) * 255, 0)
-    return Image.fromarray(np.dstack([couleur.clip(0, 255), alpha]).astype(np.uint8))
+    calque = Image.fromarray(np.dstack([couleur.clip(0, 255), alpha]).astype(np.uint8))
+    empreinte = Image.fromarray((poser(pose, forme) * 255).clip(0, 255).astype(np.uint8))
+    return calque, empreinte
 
 
 def prolonger_ombrage(ombrage, masque_4k, sortie: Path) -> None:
@@ -1053,8 +1056,13 @@ def prolonger_ombrage(ombrage, masque_4k, sortie: Path) -> None:
         trous = np.nonzero(m[:premier, x])[0]
         o[trous, x] = o[premier, x]
     o[..., 3] = (o[..., 3].astype(np.float32) * (np.asarray(masque_4k) / 255)).astype(np.uint8)
+    enregistrer_ombrage(Image.fromarray(o), sortie)
+
+
+def enregistrer_ombrage(ombrage, sortie: Path) -> None:
+    """L'ombrage, en AVIF : quelques centaines de Ko au lieu de plusieurs Mo."""
     tampon = sortie.with_name("ombrage.tmp.png")
-    Image.fromarray(o).save(tampon)
+    ombrage.save(tampon)
     try:
         vers_avif(tampon, sortie, qualite=75)
     finally:
@@ -1064,11 +1072,12 @@ def prolonger_ombrage(ombrage, masque_4k, sortie: Path) -> None:
 def importer_mockup(dossier: Path) -> None:
     """Le decor du diaporama : la photo, le masque de la planche, l'ombrage.
 
-    Le masque vient de `masque_skin_placement.svg`, pose dans le cadre complet :
-    recale sur l'ecran compose du studio, remonte a travers le sillon du bord
-    haut, puis servi en PNG recadre sur la planche. L'ombrage est
-    `ombrage_skin.*` s'il est livre (recadre, pose automatiquement), sinon
-    `effet_sur_skin.png`.
+    Si la graphiste livre `ombrage_skin.*` -- un calque recadre dont la forme
+    est le masque et le contenu l'ombrage --, il est applique tel quel, pose
+    automatiquement. Sinon, le masque vient de `masque_skin_placement.svg`,
+    recale sur l'ecran compose du studio et remonte a travers le sillon du bord
+    haut, avec l'ombrage `effet_sur_skin.png`. Le masque est servi en PNG
+    recadre sur la planche.
     """
     import cairosvg
     from PIL import Image
@@ -1088,12 +1097,12 @@ def importer_mockup(dossier: Path) -> None:
     cible.mkdir(parents=True)
 
     vers_avif(fichiers["decor"], cible / "decor.avif")
-    # Le masque livre, recale sur l'ecran du studio (decale, elargi), puis
-    # remonte a travers le sillon sombre du bord haut. Le resultat n'est plus
-    # un simple trace : il est servi en PNG 4K, recadre sur la planche.
-    masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
+    placement_brut = Image.open(io.BytesIO(cairosvg.svg2png(
         url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
     ))).getchannel("A")
+    # La planche -- la perspective du skin -- se cale sur le masque livre,
+    # recale sur l'ecran du studio (decale, elargi).
+    masque_4k = placement_brut
     dx, dy, elargi = recaler_masque(dossier, masque_4k)
     print(f"   masque recale sur l'ecran du studio : decale de ({dx:+.2f}, {dy:+.2f}), elargi de {elargi:.2f} px")
     placement = elargir_svg(fichiers["placement"].read_text(encoding="utf-8"), elargi)
@@ -1101,20 +1110,25 @@ def importer_mockup(dossier: Path) -> None:
     masque_4k = Image.open(io.BytesIO(cairosvg.svg2png(
         bytestring=placement.encode(), output_width=ECRAN[0], output_height=ECRAN[1],
     ))).getchannel("A")
-    # La planche se cale sur ce masque-ci : le sillon est de l'ombre, pas de la
-    # planche, et le fond perdu du skin suffit a le couvrir.
     masque_planche = masque_4k
-    masque_4k = remonter_bord_haut(masque_4k, fichiers["decor"])
 
-    # L'ombrage : celui que la graphiste livre recadre (`ombrage_skin.*`), s'il
-    # est la ; sinon celui du studio, au cadre complet (`effet_sur_skin.png`).
+    # Le masque et l'ombrage affiches.
     recadre_graphiste = next(iter(sorted(dossier.glob("ombrage_skin.*"))), None)
     if recadre_graphiste:
-        print(f"   ombrage : {recadre_graphiste.name}")
-        ombrage = poser_recadre(Image.open(recadre_graphiste), masque_planche)
+        # Livres par la graphiste en un seul calque, recadre : sa forme est le
+        # masque, son contenu l'ombrage. Appliques TELS QUELS -- ni recalage,
+        # ni elargissement, ni remontee du bord haut. Il est plus petit que le
+        # masque d'origine, et c'est voulu : le skin y est coupe plus court.
+        # Seule sa pose est cherchee, sur le masque livre : l'image n'en dit
+        # rien.
+        print(f"   masque et ombrage : {recadre_graphiste.name}, tels que livres")
+        ombrage, masque_4k = poser_recadre(Image.open(recadre_graphiste), placement_brut)
+        enregistrer_ombrage(ombrage, cible / "ombrage.avif")
     else:
-        ombrage = Image.open(fichiers["ombrage"])
-    prolonger_ombrage(ombrage, masque_4k, cible / "ombrage.avif")
+        # Le masque du studio, remonte a travers le sillon sombre du bord haut,
+        # et son ombrage prolonge d'autant.
+        masque_4k = remonter_bord_haut(masque_4k, fichiers["decor"])
+        prolonger_ombrage(Image.open(fichiers["ombrage"]), masque_4k, cible / "ombrage.avif")
 
     boite = masque_4k.getbbox()
     boite = (max(0, boite[0] - 2), max(0, boite[1] - 2), min(ECRAN[0], boite[2] + 2), min(ECRAN[1], boite[3] + 2))
