@@ -986,18 +986,64 @@ def remonter_bord_haut(masque_4k, photo: Path, sombre: int = 45, jusqua: int = 8
     return Image.fromarray((sortie * 255).astype(np.uint8))
 
 
-def prolonger_ombrage(source: Path, masque_4k, sortie: Path) -> None:
-    """L'ombrage du studio, prolonge a tout le masque.
+def poser_recadre(image, masque_4k) -> "Image.Image":
+    """Pose dans le cadre 4K une image recadree sur la planche et reduite.
 
-    L'ombrage s'arrete au bord du masque livre. La ou le masque a ete recale ou
-    remonte, le skin n'etait pas assombri comme le reste : une bande plus
-    claire sous le rebord. Chaque pixel du masque sans ombrage prend celui du
-    premier pixel ombre en dessous, dans la meme colonne.
+    La graphiste peut livrer un calque (l'ombrage) recadre au ras de sa forme,
+    a la taille qui l'arrange, sans position. On retrouve l'echelle et la
+    position qui superposent le mieux sa transparence au masque, puis on l'y
+    pose -- en alpha premultiplie, pour que le reechantillonnage ne laisse pas
+    de franges.
+    """
+    import cv2
+    import numpy as np
+    from PIL import Image
+    from scipy.optimize import minimize
+
+    rgba = np.asarray(image.convert("RGBA")).astype(np.float32)
+    forme = (rgba[..., 3] > 5).astype(np.float32)
+    cible = np.asarray(masque_4k) > 127
+    h, w = forme.shape
+    ys, xs = np.nonzero(cible)
+    largeur = xs.max() - xs.min() + 1
+
+    def poser(p, image_f, mode=cv2.INTER_LINEAR):
+        s, x0, y0 = p
+        return cv2.warpAffine(image_f, np.float32([[s, 0, x0], [0, s, y0]]), (ECRAN[0], ECRAN[1]), flags=mode)
+
+    def cout(p):
+        a = poser(p, forme) > 0.5
+        return -float((a & cible).sum() / max(1, (a | cible).sum()))
+
+    depart = (largeur / w, float(xs.min()), float(ys.min()))
+    pose = minimize(cout, depart, method="Nelder-Mead", options={
+        "xatol": 0.05, "fatol": 1e-6, "maxiter": 2000,
+        "initial_simplex": [depart, (depart[0] * 1.01, depart[1], depart[2]),
+                            (depart[0], depart[1] + 4, depart[2]), (depart[0], depart[1], depart[2] + 4)],
+    }).x
+    print(f"   calque recadre pose a l'echelle {pose[0]:.3f}, en ({pose[1]:.0f}, {pose[2]:.0f}),"
+          f" recouvrement {-cout(pose) * 100:.1f} %")
+    premult = rgba.copy()
+    premult[..., :3] *= rgba[..., 3:] / 255
+    pose_img = poser(pose, premult)
+    alpha = pose_img[..., 3:]
+    couleur = np.where(alpha > 0, pose_img[..., :3] / np.maximum(alpha, 1e-3) * 255, 0)
+    return Image.fromarray(np.dstack([couleur.clip(0, 255), alpha]).astype(np.uint8))
+
+
+def prolonger_ombrage(ombrage, masque_4k, sortie: Path) -> None:
+    """L'ombrage, prolonge a tout le masque et borne par lui.
+
+    L'ombrage s'arrete au bord du masque qu'il accompagnait. La ou le masque a
+    ete recale ou remonte, le skin n'etait pas assombri comme le reste : une
+    bande plus claire sous le rebord. Chaque pixel du masque sans ombrage prend
+    celui du premier pixel ombre en dessous, dans la meme colonne. Hors du
+    masque, l'ombrage est retire : il assombrirait le rebord sous la planche.
     """
     import numpy as np
     from PIL import Image
 
-    o = np.array(Image.open(source).convert("RGBA").crop((0, 0, *ECRAN)))
+    o = np.array(ombrage.convert("RGBA").crop((0, 0, *ECRAN)))
     m = np.asarray(masque_4k) > 127
     for x in np.nonzero(m.any(axis=0))[0]:
         ombres = np.nonzero(o[:, x, 3] > 0)[0]
@@ -1006,6 +1052,7 @@ def prolonger_ombrage(source: Path, masque_4k, sortie: Path) -> None:
         premier = ombres[0]
         trous = np.nonzero(m[:premier, x])[0]
         o[trous, x] = o[premier, x]
+    o[..., 3] = (o[..., 3].astype(np.float32) * (np.asarray(masque_4k) / 255)).astype(np.uint8)
     tampon = sortie.with_name("ombrage.tmp.png")
     Image.fromarray(o).save(tampon)
     try:
@@ -1019,7 +1066,9 @@ def importer_mockup(dossier: Path) -> None:
 
     Le masque vient de `masque_skin_placement.svg`, pose dans le cadre complet :
     recale sur l'ecran compose du studio, remonte a travers le sillon du bord
-    haut, puis servi en PNG recadre sur la planche.
+    haut, puis servi en PNG recadre sur la planche. L'ombrage est
+    `ombrage_skin.*` s'il est livre (recadre, pose automatiquement), sinon
+    `effet_sur_skin.png`.
     """
     import cairosvg
     from PIL import Image
@@ -1057,7 +1106,15 @@ def importer_mockup(dossier: Path) -> None:
     masque_planche = masque_4k
     masque_4k = remonter_bord_haut(masque_4k, fichiers["decor"])
 
-    prolonger_ombrage(fichiers["ombrage"], masque_4k, cible / "ombrage.avif")
+    # L'ombrage : celui que la graphiste livre recadre (`ombrage_skin.*`), s'il
+    # est la ; sinon celui du studio, au cadre complet (`effet_sur_skin.png`).
+    recadre_graphiste = next(iter(sorted(dossier.glob("ombrage_skin.*"))), None)
+    if recadre_graphiste:
+        print(f"   ombrage : {recadre_graphiste.name}")
+        ombrage = poser_recadre(Image.open(recadre_graphiste), masque_planche)
+    else:
+        ombrage = Image.open(fichiers["ombrage"])
+    prolonger_ombrage(ombrage, masque_4k, cible / "ombrage.avif")
 
     boite = masque_4k.getbbox()
     boite = (max(0, boite[0] - 2), max(0, boite[1] - 2), min(ECRAN[0], boite[2] + 2), min(ECRAN[1], boite[3] + 2))
