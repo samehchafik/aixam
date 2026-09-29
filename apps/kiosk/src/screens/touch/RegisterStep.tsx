@@ -3,7 +3,7 @@ import { ValidationError } from '../../api/client'
 import { useApp } from '../../app-context'
 import { enrichir, useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
-import { Popin, TexteLong } from '../../components/Popin'
+import { Popin, TexteLegal } from '../../components/Popin'
 import { EcranFormulaire } from './EcranFormulaire'
 
 const FIELDS = [
@@ -40,6 +40,9 @@ function valider(champ: string, valeur: string): string | null {
 
 /** Les deux textes que les liens des mentions ouvrent dans la popin. */
 type Texte = 'policy' | 'rules'
+
+/** Le fichier de chaque texte, dans `public/legal/`. */
+const FICHIERS: Record<Texte, string> = { policy: 'politique', rules: 'reglement' }
 
 /**
  * Ecran 2 : le formulaire, sur la carte bleue.
@@ -183,8 +186,12 @@ export function RegisterStep() {
             type="checkbox"
             checked={accepte}
             onChange={(e) => {
-              setAccepte(e.currentTarget.checked)
               setCaseOubliee(false)
+              // Cocher, c'est accepter le reglement : on l'ouvre, et la case ne
+              // se coche qu'avec son bouton, une fois le texte lu jusqu'au
+              // bout. Decocher reste direct.
+              if (e.currentTarget.checked) setTexte('rules')
+              else setAccepte(false)
             }}
           />
           <span className="case-boite" aria-hidden="true" />
@@ -209,8 +216,24 @@ export function RegisterStep() {
       </form>
 
       {texte && (
-        <Popin titre={t(`legal.${texte}.title`)} onClose={() => setTexte(null)}>
-          <TexteLong texte={t(`legal.${texte}.text`)} />
+        <Popin
+          titre={t(`legal.${texte}.title`)}
+          onClose={() => setTexte(null)}
+          validation={
+            texte === 'rules'
+              ? {
+                  libelle: t('legal.rules.accept'),
+                  aide: t('legal.rules.readFirst'),
+                  onValider: () => {
+                    setAccepte(true)
+                    setCaseOubliee(false)
+                    setTexte(null)
+                  },
+                }
+              : undefined
+          }
+        >
+          <TexteLegal nom={FICHIERS[texte]} />
         </Popin>
       )}
     </EcranFormulaire>

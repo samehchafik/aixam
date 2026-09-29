@@ -220,8 +220,22 @@ body {
   font-size: 15px; line-height: 20px; user-select: text;
 }
 .popin-corps h2 { margin: 0 0 12px; font-size: 20px; line-height: 28px; font-weight: 700; }
-.popin-corps h3 { margin: 12px 0 0; font-size: 20px; line-height: 28px; font-weight: 700; }
-.popin-corps p { margin: 0 0 20px; white-space: pre-line; }
+.popin-corps h3 { margin: 12px 0 8px; font-size: 20px; line-height: 28px; font-weight: 700; }
+.popin-corps h4 { margin: 4px 0 8px; font-size: 16px; line-height: 22px; font-weight: 700; }
+.popin-corps p { margin: 0 0 12px; white-space: pre-line; }
+.popin-corps ul { margin: 0 0 12px; padding-left: 22px; }
+.popin-corps ul ul { margin: 2px 0 0; }
+.popin-corps li { margin: 0 0 2px; }
+/* Avec un bouton de validation : le texte laisse la place au pied. */
+.popin.avec-validation .popin-corps { bottom: 150px; }
+.popin-pied {
+  position: absolute; left: 54px; right: 54px; bottom: 36px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.popin-aide { margin: 0; font-size: 15px; line-height: 20px; color: var(--bleu-nuit); opacity: 0.75; }
+.popin-aide.cache { visibility: hidden; }
+.popin-valider { position: static; width: 460px; height: 50.8px; font-size: 27.5px; }
+.popin-valider:disabled { opacity: 0.35; }
 /* La barre de defilement de la maquette : un rail bleu pale, un curseur bleu. */
 .popin-corps::-webkit-scrollbar { width: 9px; }
 .popin-corps::-webkit-scrollbar-track { background: #d8f0fa; border-radius: 5px; }

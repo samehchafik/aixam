@@ -339,6 +339,7 @@ apps/api/media/backgrounds/index.json   fonds : ordre, vignette 16:9, libellé f
 apps/api/media/objects/index.json       objets à poser : ordre, dimensions, libellé
 apps/api/media/base/shape.json          silhouette de la planche, en points
 apps/kiosk/public/locales/{fr,en,es}.json  tous les textes de la borne
+apps/kiosk/public/legal/                   règlement et politique de données (voir son README)
 ```
 
 Tout est en **SVG**, du gabarit aux objets. La borne les affiche tels quels ;

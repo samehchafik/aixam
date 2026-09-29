@@ -26,12 +26,12 @@
   },
   "legal": {
     "policy": {
-      "title": "Data processing policy",
-      "text": "Text to come."
+      "title": "Data processing policy"
     },
     "rules": {
-      "title": "Contest rules",
-      "text": "Text to come."
+      "title": "EASY event rules",
+      "accept": "I have read and accept the rules",
+      "readFirst": "Scroll to the end of the rules to accept them."
     }
   },
   "verify": {

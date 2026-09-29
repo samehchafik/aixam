@@ -26,12 +26,12 @@
   },
   "legal": {
     "policy": {
-      "title": "Politique de traitement des données",
-      "text": "Texte à venir."
+      "title": "Politique de traitement des données"
     },
     "rules": {
-      "title": "Règlement du jeu concours",
-      "text": "Texte à venir."
+      "title": "Règlement de l’animation EASY",
+      "accept": "J’ai lu et j’accepte le règlement",
+      "readFirst": "Fais défiler le règlement jusqu’au bout pour pouvoir l’accepter."
     }
   },
   "verify": {

@@ -26,12 +26,12 @@
   },
   "legal": {
     "policy": {
-      "title": "Política de tratamiento de datos",
-      "text": "Texto pendiente."
+      "title": "Política de tratamiento de datos"
     },
     "rules": {
-      "title": "Bases del concurso",
-      "text": "Texto pendiente."
+      "title": "Bases de la animación EASY",
+      "accept": "He leído y acepto las bases",
+      "readFirst": "Desplázate hasta el final de las bases para poder aceptarlas."
     }
   },
   "verify": {
