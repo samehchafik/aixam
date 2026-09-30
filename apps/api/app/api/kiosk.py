@@ -263,7 +263,7 @@ def save_design(
             mailer.queue_email(
                 db,
                 to_email=visitor.email,
-                subject="Votre creation EASY",
+                subject="Votre création EASY",
                 body_html=mailer.render_template(
                     "creation.html",
                     first_name=visitor.first_name,
