@@ -1069,6 +1069,16 @@ def enregistrer_ombrage(ombrage, sortie: Path) -> None:
         tampon.unlink(missing_ok=True)
 
 
+def borner(calque, masque) -> "Image.Image":
+    """Le calque, visible seulement dans le masque (niveaux de gris compris)."""
+    import numpy as np
+    from PIL import Image
+
+    c = np.array(calque.convert("RGBA"))
+    c[..., 3] = (c[..., 3].astype(np.uint16) * np.asarray(masque) // 255).astype(np.uint8)
+    return Image.fromarray(c)
+
+
 def couper_au_volant(masque, reference) -> "Image.Image":
     """Coupe un masque au masque de reference, a gauche de la console seulement.
 
@@ -1092,14 +1102,19 @@ def couper_au_volant(masque, reference) -> "Image.Image":
     milieu = [x for x in colonnes if g + (d - g) / 4 < x < g + (d - g) / 2 and x + 1 in bas]
     mur = max(milieu, key=lambda x: bas[x] - bas[x + 1])
 
-    garde = m.copy()
+    # On garde les niveaux de gris des deux masques : leur bord adouci est ce
+    # qui evite l'escalier sur un bord presque horizontal, a l'ecran 4K. La
+    # coupe est donc un minimum, pas un ET logique.
+    doux = np.asarray(masque).astype(np.uint8).copy()
+    ref_doux = np.asarray(reference).astype(np.uint8)
     for x in range(0, min(mur + 10, m.shape[1])):
         if not m[:, x].any():
             continue
         haut = np.nonzero(ref[:, x])[0].min() if ref[:, x].any() else m.shape[0]
-        dessus = np.arange(m.shape[0]) < haut
-        garde[:, x] = m[:, x] & (ref[:, x] | dessus)
-    return Image.fromarray((garde * 255).astype(np.uint8))
+        autorise = ref_doux[:, x].copy()
+        autorise[:haut] = 255
+        doux[:, x] = np.minimum(doux[:, x], autorise)
+    return Image.fromarray(doux)
 
 
 def importer_mockup(dossier: Path) -> None:
@@ -1158,7 +1173,10 @@ def importer_mockup(dossier: Path) -> None:
         ombrage, masque_4k = poser_recadre(Image.open(recadre_graphiste), placement_brut)
         # Sauf autour du volant et du levier, ou son trace deborde de la photo.
         masque_4k = couper_au_volant(masque_4k, masque_planche)
-        enregistrer_ombrage(ombrage, cible / "ombrage.avif")
+        # L'ombrage est decoupe par le MEME masque : pose par-dessus toute la
+        # photo, il laissait sinon son liseret sombre la ou le masque avait ete
+        # coupe -- un bord irregulier.
+        enregistrer_ombrage(borner(ombrage, masque_4k), cible / "ombrage.avif")
     else:
         # Le masque du studio, remonte a travers le sillon sombre du bord haut,
         # et son ombrage prolonge d'autant.
