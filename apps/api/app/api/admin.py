@@ -7,6 +7,7 @@ import tempfile
 import uuid
 import zipfile
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
@@ -287,13 +288,21 @@ def designs_xlsx(
     )
 
 
-@router.get("/designs.zip")
-def designs_zip() -> FileResponse:
-    """Tout le dossier des images des creations, zippe tel quel.
+# Sous-dossiers du zip, par decision de moderation. En ASCII : l'explorateur
+# de Windows lit mal les noms accentues dans un zip.
+DOSSIERS_ZIP = {"approved": "validees", "rejected": "rejetees", "pending": "en_attente"}
 
-    Sans filtre ni base de donnees : c'est le dossier du disque
-    (apps/api/media/renders/), chaque image sous son nom -- celui de la colonne
-    « Fichier » de l'export Excel --, dans un dossier `skins/`.
+
+@router.get("/designs.zip")
+def designs_zip(db: Session = Depends(get_db)) -> FileResponse:
+    """Tout le dossier des images des creations, zippe et range par decision.
+
+    Toutes les images du disque (apps/api/media/renders/), sans filtre, chaque
+    image sous son nom -- celui de la colonne « Fichier » de l'export Excel --,
+    dans skins/validees/, skins/rejetees/ ou skins/en_attente/ selon la
+    moderation de sa creation. Une image partagee par des creations aux
+    decisions differentes est dans chacun de leurs dossiers ; une image
+    qu'aucune creation ne cite va dans skins/sans_creation/ : rien n'est omis.
 
     Le zip est ecrit dans un fichier temporaire, pas en memoire : quelques
     centaines de creations font des centaines de Mo. Les PNG sont deja
@@ -308,11 +317,19 @@ def designs_zip() -> FileResponse:
     if not images:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"le dossier des images est vide : {RENDERS}")
 
+    # Nom de fichier -> dossiers ou le ranger.
+    dossiers: dict[str, set[str]] = {}
+    for skin, chemin, verdict in db.execute(select(Design.skin, Design.render_path, Design.moderation)):
+        nom = skin or (Path(chemin).name if chemin else None)
+        if nom:
+            dossiers.setdefault(nom, set()).add(DOSSIERS_ZIP.get(verdict, "en_attente"))
+
     descripteur, tampon = tempfile.mkstemp(suffix=".zip", prefix="skins-")
     os.close(descripteur)
     with zipfile.ZipFile(tampon, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
         for image in images:
-            archive.write(image, f"skins/{image.name}")
+            for dossier in sorted(dossiers.get(image.name, {"sans_creation"})):
+                archive.write(image, f"skins/{dossier}/{image.name}")
     return FileResponse(
         tampon,
         media_type="application/zip",

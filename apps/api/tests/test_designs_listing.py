@@ -167,13 +167,23 @@ check("les deux Alvarez, pas les autres", "Bruno" in partages and "Chloe" in par
 check("le filtre rappele en tete", "recherche « alvarez »" in partages)
 check("sans session, refuse", c.get("/api/admin/designs.xlsx").status_code == 401)
 
-print("\n[10] L'export des images : tout le dossier, sans filtre")
-r = c.get("/api/admin/designs.zip", params={"search": "personne"}, headers=H)
-check("200, meme avec un filtre sans resultat", r.status_code == 200, (r.status_code, r.text[:200]))
+print("\n[10] L'export des images : tout le dossier, range par decision")
+# Des verdicts varies : x.jpg sert a une creation validee ET a une rejetee,
+# y.jpg reste en attente, z.jpg n'est citee par aucune creation.
+(RENDUS / "z.jpg").write_bytes(b"jpeg")
+with SessionLocal() as db:
+    creations_x = db.query(Design).filter(Design.render_path == "renders/x.jpg").order_by(Design.created_at).all()
+    creations_x[0].moderation = "approved"
+    creations_x[1].moderation = "rejected"
+    db.commit()
+r = c.get("/api/admin/designs.zip", headers=H)
+check("200", r.status_code == 200, (r.status_code, r.text[:200]))
 check("un zip", r.headers["content-type"] == "application/zip", r.headers["content-type"])
 check("en piece jointe datee", 'filename="skins-' in r.headers.get("content-disposition", ""))
 contenu = sorted(zipfile.ZipFile(io.BytesIO(r.content)).namelist())
-check("toutes les images du dossier, dans skins/", contenu == ["skins/x.jpg", "skins/y.jpg"], contenu)
+attendu = ["skins/en_attente/x.jpg", "skins/en_attente/y.jpg", "skins/rejetees/x.jpg",
+           "skins/sans_creation/z.jpg", "skins/validees/x.jpg"]
+check("chaque image dans le dossier de sa decision", contenu == attendu, contenu)
 check("sans session, refuse", c.get("/api/admin/designs.zip").status_code == 401)
 restes = list(Path(tempfile.gettempdir()).glob("skins-*.zip"))
 check("le zip temporaire est efface apres l'envoi", not restes, restes)

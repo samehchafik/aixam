@@ -433,7 +433,9 @@ aperçu dans la cellule, le nom de son fichier image (cliquable), l'auteur, la
 date et la modération. Il reprend les filtres et le tri affichés. Les images
 sont dans `apps/api/media/renders/` (`C:\aixam\apps\api\media\renders\`
 sur la borne). À côté, « Export des images (zip) » livre tout le dossier
-des images (`skins/`), sans filtre, sous les noms de la colonne « Fichier ». L'export Excel demande XlsxWriter : `bin/start.sh --local` réinstalle les
+des images, sans filtre, sous les noms de la colonne « Fichier », rangées dans
+`skins/validees/`, `skins/rejetees/` et `skins/en_attente/` ;
+`skins/sans_creation/` reçoit celles qu'aucune création ne cite. L'export Excel demande XlsxWriter : `bin/start.sh --local` réinstalle les
 dépendances quand `requirements.txt` change, l'image Docker les prend avec
 `--api-image`.
 

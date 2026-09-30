@@ -227,7 +227,8 @@ export function Designs() {
         {/* L'Excel reprend ce qui est affiche (memes filtres, meme tri,
             toutes les pages) : une ligne par creation, avec son auteur, le nom
             de son fichier et son apercu. Le zip, lui, livre TOUT le dossier
-            des images, sans filtre. */}
+            des images, sans filtre, range par decision (validees,
+            rejetees, en attente). */}
         <Group gap="xs" ml="auto">
           <Button
             variant="light"
