@@ -173,8 +173,10 @@ export function RegisterStep() {
         <div className="mentions">
           {t('register.legal').split('\n').map((paragraphe, i) => (
             <p key={i}>
-              {/* Le reglement s'ouvre par la case a cocher, plus par un lien. */}
-              {enrichir(paragraphe, { politique: lien('policy', 'register.policyLink') })}
+              {enrichir(paragraphe, {
+                politique: lien('policy', 'register.policyLink'),
+                reglement: lien('rules', 'register.rulesLink'),
+              })}
             </p>
           ))}
         </div>
