@@ -114,6 +114,15 @@ export function Designs() {
     return () => clearInterval(id)
   }, [repere])
 
+  const exporter = (format: 'xlsx' | 'zip', adresse: string) => {
+    const jour = new Date().toISOString().slice(0, 10)
+    setErreurExport(null)
+    setExportEnCours(format)
+    telecharger(adresse, format === 'xlsx' ? `creations-${jour}.xlsx` : `skins-${jour}.zip`)
+      .catch((e) => setErreurExport(e.message))
+      .finally(() => setExportEnCours(null))
+  }
+
   // Les nouvelles sont en tete du tri par date : on revient page 1 les chercher.
   const actualiser = () => {
     setPage(1)
@@ -215,31 +224,27 @@ export function Designs() {
             </Group>
           </Checkbox.Group>
         )}
-        {/* Les deux exports reprennent ce qui est affiche : memes filtres,
-            meme tri, toutes les pages. L'Excel donne une ligne par creation
-            (auteur, fichier, apercu) ; le zip, le dossier skins/ des images,
-            sous les noms de la colonne « Fichier ». */}
+        {/* L'Excel reprend ce qui est affiche (memes filtres, meme tri,
+            toutes les pages) : une ligne par creation, avec son auteur, le nom
+            de son fichier et son apercu. Le zip, lui, livre TOUT le dossier
+            des images, sans filtre. */}
         <Group gap="xs" ml="auto">
-          {(['xlsx', 'zip'] as const).map((format) => (
-            <Button
-              key={format}
-              variant="light"
-              loading={exportEnCours === format}
-              disabled={aucunVerdict || (exportEnCours !== null && exportEnCours !== format)}
-              onClick={() => {
-                const q = new URLSearchParams({ search, sort, moderation })
-                const jour = new Date().toISOString().slice(0, 10)
-                const nom = format === 'xlsx' ? `creations-${jour}.xlsx` : `skins-${jour}.zip`
-                setErreurExport(null)
-                setExportEnCours(format)
-                telecharger(`/api/admin/designs.${format}?${q}`, nom)
-                  .catch((e) => setErreurExport(e.message))
-                  .finally(() => setExportEnCours(null))
-              }}
-            >
-              {format === 'xlsx' ? 'Export Excel' : 'Export des images (zip)'}
-            </Button>
-          ))}
+          <Button
+            variant="light"
+            loading={exportEnCours === 'xlsx'}
+            disabled={aucunVerdict || exportEnCours === 'zip'}
+            onClick={() => exporter('xlsx', `/api/admin/designs.xlsx?${new URLSearchParams({ search, sort, moderation })}`)}
+          >
+            Export Excel
+          </Button>
+          <Button
+            variant="light"
+            loading={exportEnCours === 'zip'}
+            disabled={exportEnCours === 'xlsx'}
+            onClick={() => exporter('zip', '/api/admin/designs.zip')}
+          >
+            Export des images (zip)
+          </Button>
         </Group>
       </Group>
       {erreurExport && <Text c="red" fz="sm">Export impossible : {erreurExport}</Text>}
