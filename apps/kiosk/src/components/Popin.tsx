@@ -6,7 +6,7 @@ import fermer from '../assets/fermer.svg'
 type Validation = { libelle: string; aide: string; onValider: () => void }
 
 /**
- * La fenetre blanche des textes longs (politique de donnees, reglement), telle
+ * La fenetre blanche des textes longs (le reglement), telle
  * que l'ecran 2b la dessine : une croix, un titre, un texte qui defile.
  *
  * Un toucher hors de la fenetre la ferme aussi : sur une borne, personne ne

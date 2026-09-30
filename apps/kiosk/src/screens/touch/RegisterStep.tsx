@@ -38,11 +38,11 @@ function valider(champ: string, valeur: string): string | null {
   return v.length >= 2 ? null : 'register.errors.name'
 }
 
-/** Les deux textes que les liens des mentions ouvrent dans la popin. */
-type Texte = 'policy' | 'rules'
+/** Les textes que les liens des mentions ouvrent dans la popin. */
+type Texte = 'rules'
 
 /** Le fichier de chaque texte, dans `public/legal/`. */
-const FICHIERS: Record<Texte, string> = { policy: 'politique', rules: 'reglement' }
+const FICHIERS: Record<Texte, string> = { rules: 'reglement' }
 
 /**
  * Ecran 2 : le formulaire, sur la carte bleue.
@@ -174,7 +174,6 @@ export function RegisterStep() {
           {t('register.legal').split('\n').map((paragraphe, i) => (
             <p key={i}>
               {enrichir(paragraphe, {
-                politique: lien('policy', 'register.policyLink'),
                 reglement: lien('rules', 'register.rulesLink'),
               })}
             </p>

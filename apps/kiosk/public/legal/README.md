@@ -6,7 +6,6 @@ corrigent ici, sans recompiler (un rechargement de la page suffit).
 | Fichier | Ouvert par |
 |---|---|
 | `reglement.<langue>.md` | le lien « cliquez ici » du règlement, et la case à cocher |
-| `politique.<langue>.md` | le lien « cliquant ici » de la politique de données |
 
 `<langue>` vaut `fr`, `en` ou `es`. Une langue sans fichier affiche la version
 française. Les versions anglaise et espagnole du règlement sont des
