@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import csv
 import io
+import os
+import tempfile
 import uuid
+import zipfile
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
+from starlette.background import BackgroundTask
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -38,7 +43,7 @@ from app.schemas import (
 from app.security import generate_relay_token, generate_token, hash_secret, token_indice
 from app.services import mailer
 from app.services.export_creations import ExportIndisponible, classeur_creations
-from app.services.renderer import skin_present, skin_url, skins_stockes
+from app.services.renderer import skin_path, skin_present, skin_url, skins_stockes
 from app.services.settings_store import get_setting, set_setting
 from app.services.transports import SendError
 from app.services.transports import relay as relay_transport
@@ -281,6 +286,62 @@ def designs_xlsx(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{nom}"'},
     )
+
+
+@router.get("/designs.zip")
+def designs_zip(
+    search: str = "",
+    sort: str = TRI_DESIGNS,
+    moderation: str = Query("", description="verdicts separes par des virgules"),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Les images des creations filtrees, dans un zip : un dossier `skins/`,
+    chaque PNG sous son nom -- celui de la colonne « Fichier » de l'export
+    Excel. Memes filtres que l'ecran.
+
+    Le zip est ecrit dans un fichier temporaire, pas en memoire : quelques
+    centaines de creations font des centaines de Mo. Les PNG sont deja
+    compresses, on les range donc sans recompresser (plus rapide, meme
+    taille). Le fichier est ferme avant d'etre servi et supprime apres : sous
+    Windows, un fichier encore ouvert ne se relit ni ne s'efface.
+    """
+    stmt, _ = _requete_designs(search, moderation)
+    fichiers: dict[str, Path] = {}
+    for design, _visiteur in db.execute(stmt.order_by(*DESIGN_SORTS[sort])):
+        chemin = _fichier_creation(design)
+        if chemin:
+            # Deux creations identiques partagent le meme fichier : une fois.
+            fichiers.setdefault(chemin.name, chemin)
+    if not fichiers:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "aucune image a exporter pour ces filtres")
+
+    descripteur, tampon = tempfile.mkstemp(suffix=".zip", prefix="skins-")
+    os.close(descripteur)
+    with zipfile.ZipFile(tampon, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
+        for nom, chemin in sorted(fichiers.items()):
+            archive.write(chemin, f"skins/{nom}")
+    return FileResponse(
+        tampon,
+        media_type="application/zip",
+        filename=f"skins-{datetime.now(UTC):%Y-%m-%d}.zip",
+        background=BackgroundTask(os.unlink, tampon),
+    )
+
+
+def _fichier_creation(design) -> Path | None:
+    """Le fichier image d'une creation sur ce disque, ou rien s'il manque."""
+    if design.skin:
+        try:
+            chemin = skin_path(design.skin)
+        except ValueError:
+            return None
+        return chemin if chemin.is_file() else None
+    if design.render_path:
+        # Les rendus d'avant les skins : chemin tel quel, ou relatif aux medias.
+        for chemin in (Path(design.render_path), Path(settings.media_dir) / design.render_path):
+            if chemin.is_file():
+                return chemin
+    return None
 
 
 def _vignette(design) -> str | None:

@@ -167,4 +167,20 @@ check("les deux Alvarez, pas les autres", "Bruno" in partages and "Chloe" in par
 check("le filtre rappele en tete", "recherche « alvarez »" in partages)
 check("sans session, refuse", c.get("/api/admin/designs.xlsx").status_code == 401)
 
+print("\n[10] L'export des images : un zip du dossier skins/")
+r = c.get("/api/admin/designs.zip", headers=H)
+check("200", r.status_code == 200, (r.status_code, r.text[:200]))
+check("un zip", r.headers["content-type"] == "application/zip", r.headers["content-type"])
+check("en piece jointe datee", 'filename="skins-' in r.headers.get("content-disposition", ""))
+contenu = sorted(zipfile.ZipFile(io.BytesIO(r.content)).namelist())
+# x.jpg sert a quatre creations : une seule fois. Le fichier disparu est omis.
+check("chaque image une fois, dans skins/", contenu == ["skins/x.jpg", "skins/y.jpg"], contenu)
+r = c.get("/api/admin/designs.zip", params={"search": "alvarez"}, headers=H)
+check("memes filtres que l'ecran", sorted(zipfile.ZipFile(io.BytesIO(r.content)).namelist()) == ["skins/x.jpg"])
+r = c.get("/api/admin/designs.zip", params={"search": "personne"}, headers=H)
+check("rien a exporter : 404 explique", r.status_code == 404 and "aucune image" in r.text, r.status_code)
+check("sans session, refuse", c.get("/api/admin/designs.zip").status_code == 401)
+restes = list(Path(tempfile.gettempdir()).glob("skins-*.zip"))
+check("le zip temporaire est efface apres l'envoi", not restes, restes)
+
 sys.exit(report())

@@ -432,7 +432,9 @@ nouveaux inscrits ne figurent donc pas dans l'export par défaut.
 aperçu dans la cellule, le nom de son fichier image (cliquable), l'auteur, la
 date et la modération. Il reprend les filtres et le tri affichés. Les images
 sont dans `apps/api/media/renders/` (`C:\aixam\apps\api\media\renders\`
-sur la borne). Il demande XlsxWriter : `bin/start.sh --local` réinstalle les
+sur la borne). À côté, « Export des images (zip) » livre le dossier
+`skins/` des images de ces mêmes créations, sous les noms de la colonne
+« Fichier ». L'export Excel demande XlsxWriter : `bin/start.sh --local` réinstalle les
 dépendances quand `requirements.txt` change, l'image Docker les prend avec
 `--api-image`.
 

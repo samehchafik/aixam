@@ -77,7 +77,7 @@ export function Designs() {
   const [nouvelles, setNouvelles] = useState(0)
   const [rafraichir, setRafraichir] = useState(0)
   const [agrandie, setAgrandie] = useState<number | null>(null)
-  const [exportEnCours, setExportEnCours] = useState(false)
+  const [exportEnCours, setExportEnCours] = useState<'xlsx' | 'zip' | null>(null)
   const [erreurExport, setErreurExport] = useState<string | null>(null)
 
   // Aucune case cochee : on n'invente pas un filtre que l'animateur vient de
@@ -215,26 +215,32 @@ export function Designs() {
             </Group>
           </Checkbox.Group>
         )}
-        {/* Exporte ce qui est affiche : memes filtres, meme tri, toutes les
-            pages. Une ligne par creation, avec son auteur, le nom de son
-            fichier et son apercu. */}
-        <Button
-          variant="light"
-          ml="auto"
-          loading={exportEnCours}
-          disabled={aucunVerdict}
-          onClick={() => {
-            const q = new URLSearchParams({ search, sort, moderation })
-            const jour = new Date().toISOString().slice(0, 10)
-            setErreurExport(null)
-            setExportEnCours(true)
-            telecharger(`/api/admin/designs.xlsx?${q}`, `creations-${jour}.xlsx`)
-              .catch((e) => setErreurExport(e.message))
-              .finally(() => setExportEnCours(false))
-          }}
-        >
-          Export Excel
-        </Button>
+        {/* Les deux exports reprennent ce qui est affiche : memes filtres,
+            meme tri, toutes les pages. L'Excel donne une ligne par creation
+            (auteur, fichier, apercu) ; le zip, le dossier skins/ des images,
+            sous les noms de la colonne « Fichier ». */}
+        <Group gap="xs" ml="auto">
+          {(['xlsx', 'zip'] as const).map((format) => (
+            <Button
+              key={format}
+              variant="light"
+              loading={exportEnCours === format}
+              disabled={aucunVerdict || (exportEnCours !== null && exportEnCours !== format)}
+              onClick={() => {
+                const q = new URLSearchParams({ search, sort, moderation })
+                const jour = new Date().toISOString().slice(0, 10)
+                const nom = format === 'xlsx' ? `creations-${jour}.xlsx` : `skins-${jour}.zip`
+                setErreurExport(null)
+                setExportEnCours(format)
+                telecharger(`/api/admin/designs.${format}?${q}`, nom)
+                  .catch((e) => setErreurExport(e.message))
+                  .finally(() => setExportEnCours(null))
+              }}
+            >
+              {format === 'xlsx' ? 'Export Excel' : 'Export des images (zip)'}
+            </Button>
+          ))}
+        </Group>
       </Group>
       {erreurExport && <Text c="red" fz="sm">Export impossible : {erreurExport}</Text>}
 
