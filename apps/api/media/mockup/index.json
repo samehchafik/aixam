@@ -1,16 +1,16 @@
 {
   "width": 1920,
   "height": 1080,
-  "decor": "decor.avif",
+  "decor": "decor.png",
   "masque": "masque.png",
-  "ombrage": "ombrage.avif",
+  "ombrage": "ombrage.png",
   "maskOrigin": [
-    758.0,
-    432.5
+    756.5,
+    428.0
   ],
   "maskSize": [
-    1162.0,
-    158.0
+    1163.5,
+    159.5
   ],
   "corners": [
     [

@@ -721,12 +721,10 @@ def coins_planche(masque_img, forme: dict) -> tuple[list, float]:
 #                             ecran et les ecrans 1 et 7 du tactile)
 #   les images des ecrans     apps/kiosk/src/assets/   (embarquees dans le front)
 #
-# Les photos et les degrades partent en AVIF 10 bits 4:4:4 : le ciel violet
-# des photos et le degrade de l'ecran 8 y restent aussi lisses qu'en PNG, pour
-# une fraction du poids (11,8 Mo -> 0,6 Mo pour la photo, 1,4 Mo -> 32 Ko pour
-# un degrade). Un JPEG ou un WebP de meme poids y laissent des bandes. Ce qui a
-# des aplats nets et de la transparence (logos, bandeau de marque) reste en
-# PNG, et les pictos restent en SVG.
+# Tout reste en PNG, sans perte : photo, degrades, ombrage, masque. Le studio
+# livre en PNG pour que rien ne soit degrade -- une compression avec perte
+# (JPEG, WebP, AVIF) abimait le ciel et le grain de l'ombrage. Les pictos
+# restent en SVG.
 
 KIOSK_ASSETS = RACINE / "apps" / "kiosk" / "src" / "assets"
 ECRAN = (3840, 2160)
@@ -734,12 +732,12 @@ ECRAN = (3840, 2160)
 # lit la borne sont en pixels de scene, pas en pixels d'image.
 SCENE = (1920, 1080)
 
-# Image du front <- fichier de la livraison. Les .avif sont convertis, le reste
+# Image du front <- fichier de la livraison. Les .png sont recadres en 16/9, le reste
 # est copie tel quel (recadre au besoin).
 ECRANS_KIOSK = {
-    "fond-borne.avif": "04_05_06_creationduskin/Fond_borne.png",
-    "fond-formulaire.avif": "02_formulaire/fond_02a_formulaire.png",
-    "fond-merci.avif": "08_skin_valid/fond_08_skin_valid.png",
+    "fond-borne.png": "04_05_06_creationduskin/Fond_borne.png",
+    "fond-formulaire.png": "02_formulaire/fond_02a_formulaire.png",
+    "fond-merci.png": "08_skin_valid/fond_08_skin_valid.png",
     "bandeau-marque.png": "01_slideshow_Et_ecran1/fond_bis/logo.png",
     "logo-bas-droite.png": "07_validation_ou_modification/fond_bis_avec_fond01/logo_enbasdroite.png",
     "logo-easy.svg": "01_slideshow_Et_ecran1/Bouton_LogoEasy.svg",
@@ -747,28 +745,20 @@ ECRANS_KIOSK = {
 }
 
 
-def vers_avif(source: Path, sortie: Path, qualite: int = 70) -> None:
-    """Convertit une image du studio en AVIF 10 bits 4:4:4, recadree en 16/9.
+def vers_png(source, sortie: Path) -> None:
+    """Enregistre une image du studio en PNG, recadree en 16/9 -- SANS PERTE.
 
-    Le 10 bits est ce qui garde les degrades sans bandes ; le 4:4:4 garde net
-    le bord des lettres « PIMP TON SKIN » peintes dans les fonds. `avifenc`
-    (brew install libavif) et non Pillow : Pillow n'ecrit que du 8 bits.
+    Aucune compression avec perte nulle part : le studio livre en PNG pour que
+    rien ne soit degrade, et un JPEG, un WebP ou un AVIF avec perte abimaient
+    le degrade du ciel et le grain de l'ombrage. `source` : un chemin ou une
+    image deja ouverte.
     """
     from PIL import Image
 
-    image = Image.open(source)
+    image = source if isinstance(source, Image.Image) else Image.open(source)
     if image.size[0] >= ECRAN[0] and image.size[1] >= ECRAN[1]:
         image = image.crop((0, 0, *ECRAN))
-    tampon = sortie.with_suffix(".tmp.png")
-    image.save(tampon)
-    try:
-        subprocess.run(
-            ["avifenc", "-q", str(qualite), "-d", "10", "-y", "444", "-s", "4", str(tampon), str(sortie)],
-            check=True, capture_output=True,
-        )
-    finally:
-        tampon.unlink(missing_ok=True)
-
+    image.save(sortie, "PNG", optimize=True)
 
 def coins_sur_pose(dossier: Path, forme: dict) -> list | None:
     """Les coins de la planche, lus sur l'ecran ou le studio a pose un skin.
@@ -987,6 +977,19 @@ def remonter_bord_haut(masque_4k, photo: Path, sombre: int = 45, jusqua: int = 8
 
 
 def poser_recadre(image, masque_4k) -> tuple["Image.Image", "Image.Image"]:
+    """Voir `_poser_recadre` : l'echelle est cherchee seulement si l'image n'est
+    pas deja a la taille 4K (a 3 % pres de la largeur du masque) -- une image
+    fournie en taille reelle n'est jamais agrandie ni reduite."""
+    import numpy as np
+
+    largeur = image.width
+    cible = np.asarray(masque_4k) > 127
+    colonnes = np.nonzero(cible.any(axis=0))[0]
+    taille_reelle = abs(largeur / (colonnes.max() - colonnes.min() + 1) - 1) < 0.03
+    return _poser_recadre(image, masque_4k, echelle=1.0 if taille_reelle else None)
+
+
+def _poser_recadre(image, masque_4k, echelle: float | None = None) -> tuple["Image.Image", "Image.Image"]:
     """Pose dans le cadre 4K une image recadree sur la planche et reduite.
 
     La graphiste peut livrer un calque (l'ombrage) recadre au ras de sa forme,
@@ -1016,14 +1019,36 @@ def poser_recadre(image, masque_4k) -> tuple["Image.Image", "Image.Image"]:
         a = poser(p, forme) > 0.5
         return -float((a & cible).sum() / max(1, (a | cible).sum()))
 
-    depart = (largeur / w, float(xs.min()), float(ys.min()))
-    pose = minimize(cout, depart, method="Nelder-Mead", options={
-        "xatol": 0.05, "fatol": 1e-6, "maxiter": 2000,
-        "initial_simplex": [depart, (depart[0] * 1.01, depart[1], depart[2]),
-                            (depart[0], depart[1] + 4, depart[2]), (depart[0], depart[1], depart[2] + 4)],
-    }).x
+    if echelle is not None:
+        # Taille reelle : seule la position est cherchee, au pixel pres, par
+        # simple glissement (pas de reechantillonnage).
+        f = forme > 0.5
+        meilleure = (-1.0, 0, 0)
+        for x0 in range(int(xs.min()) - 12, int(xs.min()) + 13):
+            for y0 in range(int(ys.min()) - 12, int(ys.min()) + 13):
+                zone = np.zeros_like(cible)
+                h2, w2 = min(h, zone.shape[0] - y0), min(w, zone.shape[1] - x0)
+                zone[y0:y0 + h2, x0:x0 + w2] = f[:h2, :w2]
+                v = float((zone & cible).sum() / max(1, (zone | cible).sum()))
+                if v > meilleure[0]:
+                    meilleure = (v, x0, y0)
+        pose = (echelle, float(meilleure[1]), float(meilleure[2]))
+    else:
+        depart = (largeur / w, float(xs.min()), float(ys.min()))
+        pose = minimize(cout, depart, method="Nelder-Mead", options={
+            "xatol": 0.05, "fatol": 1e-6, "maxiter": 2000,
+            "initial_simplex": [depart, (depart[0] * 1.01, depart[1], depart[2]),
+                                (depart[0], depart[1] + 4, depart[2]), (depart[0], depart[1], depart[2] + 4)],
+        }).x
     print(f"   calque recadre pose a l'echelle {pose[0]:.3f}, en ({pose[1]:.0f}, {pose[2]:.0f}),"
           f" recouvrement {-cout(pose) * 100:.1f} %")
+    if echelle == 1.0:
+        # Taille reelle, position entiere : colle tel quel, pixel pour pixel.
+        calque = Image.new("RGBA", ECRAN, (0, 0, 0, 0))
+        calque.paste(image.convert("RGBA"), (int(pose[1]), int(pose[2])))
+        empreinte = Image.new("L", ECRAN, 0)
+        empreinte.paste(Image.fromarray((forme * 255).astype(np.uint8)), (int(pose[1]), int(pose[2])))
+        return calque, empreinte
     premult = rgba.copy()
     premult[..., :3] *= rgba[..., 3:] / 255
     pose_img = poser(pose, premult)
@@ -1060,14 +1085,8 @@ def prolonger_ombrage(ombrage, masque_4k, sortie: Path) -> None:
 
 
 def enregistrer_ombrage(ombrage, sortie: Path) -> None:
-    """L'ombrage, en AVIF : quelques centaines de Ko au lieu de plusieurs Mo."""
-    tampon = sortie.with_name("ombrage.tmp.png")
-    ombrage.save(tampon)
-    try:
-        vers_avif(tampon, sortie, qualite=75)
-    finally:
-        tampon.unlink(missing_ok=True)
-
+    """L'ombrage, en PNG : sans perte, comme tout ce que la borne affiche."""
+    ombrage.save(sortie, "PNG", optimize=True)
 
 def borner(calque, masque) -> "Image.Image":
     """Le calque, visible seulement dans le masque (niveaux de gris compris)."""
@@ -1144,7 +1163,7 @@ def importer_mockup(dossier: Path) -> None:
         shutil.rmtree(cible)
     cible.mkdir(parents=True)
 
-    vers_avif(fichiers["decor"], cible / "decor.avif")
+    vers_png(fichiers["decor"], cible / "decor.png")
     placement_brut = Image.open(io.BytesIO(cairosvg.svg2png(
         url=str(fichiers["placement"]), output_width=ECRAN[0], output_height=ECRAN[1],
     ))).getchannel("A")
@@ -1161,14 +1180,33 @@ def importer_mockup(dossier: Path) -> None:
     masque_planche = masque_4k
 
     # Le masque et l'ombrage affiches.
+    masque_fourni = dossier / "masque_skin.png"
     recadre_graphiste = next(iter(sorted(dossier.glob("ombrage_skin.*"))), None)
-    if recadre_graphiste:
+    if masque_fourni.is_file():
+        # Masque et ombrage fournis, appliques TELS QUELS : ni changement de
+        # taille, ni retouche du bord, ni prolongement de l'ombrage. La borne
+        # les compose dans l'ordre skin + ombrage, puis le masque decoupe le
+        # tout (voir SkinMockup). Le masque se fournit de preference en pleine
+        # image 3840 x 2160 ; un calque recadre est seulement place.
+        print(f"   masque : {masque_fourni.name}, tel que fourni")
+        fourni = Image.open(masque_fourni).convert("RGBA")
+        if fourni.size == ECRAN:
+            masque_4k = fourni.getchannel("A")
+        else:
+            _, masque_4k = poser_recadre(fourni, placement_brut)
+        if recadre_graphiste:
+            print(f"   ombrage : {recadre_graphiste.name}, tel que fourni")
+            ombrage = Image.open(recadre_graphiste).convert("RGBA")
+            if ombrage.size != ECRAN:
+                ombrage, _ = poser_recadre(ombrage, masque_4k)
+        else:
+            ombrage = Image.open(fichiers["ombrage"])
+        enregistrer_ombrage(ombrage.convert("RGBA").crop((0, 0, *ECRAN)), cible / "ombrage.png")
+    elif recadre_graphiste:
         # Livres par la graphiste en un seul calque, recadre : sa forme est le
         # masque, son contenu l'ombrage. Appliques tels quels -- ni recalage,
-        # ni elargissement, ni remontee du bord haut. Il est plus petit que le
-        # masque d'origine, et c'est voulu : le skin y est coupe plus court.
-        # Seule sa pose est cherchee, sur le masque livre : l'image n'en dit
-        # rien.
+        # ni elargissement, ni remontee du bord haut. Seule sa pose est
+        # cherchee, sur le masque livre : l'image n'en dit rien.
         print(f"   masque et ombrage : {recadre_graphiste.name}, tels que livres")
         ombrage, masque_4k = poser_recadre(Image.open(recadre_graphiste), placement_brut)
         # Sauf autour du volant et du levier, ou son trace deborde de la photo.
@@ -1176,12 +1214,12 @@ def importer_mockup(dossier: Path) -> None:
         # L'ombrage est decoupe par le MEME masque : pose par-dessus toute la
         # photo, il laissait sinon son liseret sombre la ou le masque avait ete
         # coupe -- un bord irregulier.
-        enregistrer_ombrage(borner(ombrage, masque_4k), cible / "ombrage.avif")
+        enregistrer_ombrage(borner(ombrage, masque_4k), cible / "ombrage.png")
     else:
         # Le masque du studio, remonte a travers le sillon sombre du bord haut,
         # et son ombrage prolonge d'autant.
         masque_4k = remonter_bord_haut(masque_4k, fichiers["decor"])
-        prolonger_ombrage(Image.open(fichiers["ombrage"]), masque_4k, cible / "ombrage.avif")
+        prolonger_ombrage(Image.open(fichiers["ombrage"]), masque_4k, cible / "ombrage.png")
 
     boite = masque_4k.getbbox()
     boite = (max(0, boite[0] - 2), max(0, boite[1] - 2), min(ECRAN[0], boite[2] + 2), min(ECRAN[1], boite[3] + 2))
@@ -1203,7 +1241,7 @@ def importer_mockup(dossier: Path) -> None:
     a_la_scene = lambda x, y: [round(x * echelle, 2), round(y * echelle, 2)]
     (cible / "index.json").write_text(json.dumps({
         "width": SCENE[0], "height": SCENE[1],
-        "decor": "decor.avif", "masque": "masque.png", "ombrage": "ombrage.avif",
+        "decor": "decor.png", "masque": "masque.png", "ombrage": "ombrage.png",
         "maskOrigin": a_la_scene(*origine),
         "maskSize": a_la_scene(largeur, hauteur),
         "corners": [a_la_scene(x, y) for x, y in coins],
@@ -1220,11 +1258,10 @@ def importer_ecrans(livraison: Path) -> None:
         source, sortie = livraison / relatif, KIOSK_ASSETS / nom
         if not source.is_file():
             raise SystemExit(f"livraison incomplete : {relatif}")
-        if sortie.suffix == ".avif":
-            vers_avif(source, sortie)
-        elif sortie.suffix == ".png":
+        if sortie.suffix == ".png":
             # Les PNG livres debordent d'un pixel et portent des marges
-            # transparentes : on garde l'emprise utile, bornee au cadre.
+            # transparentes : on garde l'emprise utile, bornee au cadre. Un
+            # fond opaque garde donc tout son cadre, 3840 x 2160.
             image = Image.open(source)
             boite = image.getchannel("A").getbbox() if image.mode == "RGBA" else None
             if boite:

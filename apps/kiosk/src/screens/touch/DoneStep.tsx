@@ -1,7 +1,7 @@
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { Fond } from '../../components/Stage16x9'
-import fondMerci from '../../assets/fond-merci.avif'
+import fondMerci from '../../assets/fond-merci.png'
 
 /**
  * Ecran 8 : le remerciement. « Creer un nouveau skin » repart de l'accueil,

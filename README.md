@@ -369,10 +369,16 @@ de la borne, sans redéploiement.
 `make ecrans ECRANS=<livraison>` reprend une livraison d'écrans du studio (un
 dossier par écran, `01_…` à `08_…`). Il en tire le décor du diaporama —
 photo, masque et ombrage de la planche dans `apps/api/media/mockup/`, avec les
-quatre coins où poser un skin, calés sur le skin de test que le studio y a
-posé — et les images des écrans dans `apps/kiosk/src/assets/`. Photos et
-dégradés partent en AVIF 10 bits (`brew install libavif`) : sans bandes, pour
-une fraction du poids d'un PNG. Les positions, tailles et interlettrages des
+quatre coins où poser un skin — et les images des écrans dans
+`apps/kiosk/src/assets/`. Tout reste en PNG, sans perte : aucune image n'est
+dégradée.
+
+Masque et ombrage du tableau de bord : s'ils sont fournis dans le dossier de
+l'écran 1 (`masque_skin.png`, de préférence en 3840 × 2160, et
+`ombrage_skin.png`), ils sont appliqués tels quels — ni changement de taille,
+ni retouche. La borne compose dans l'ordre : le skin, l'ombrage par-dessus,
+puis le masque, qui découpe les deux. Un fichier recadré est seulement placé ;
+fourni en 3840 × 2160, il n'y a rien à deviner. Les positions, tailles et interlettrages des
 écrans sont relevés dans le fichier Illustrator (`260923_BorneEasy.ai`) et
 reportés dans `styles.css` et `components/chrome/Ribbon.tsx`.
 

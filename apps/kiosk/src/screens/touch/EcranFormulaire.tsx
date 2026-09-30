@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Fond } from '../../components/Stage16x9'
 import { Ribbon } from '../../components/chrome/Ribbon'
-import fondFormulaire from '../../assets/fond-formulaire.avif'
+import fondFormulaire from '../../assets/fond-formulaire.png'
 
 /**
  * Le decor commun des ecrans 2 et 3 : l'habitacle assombri, la planche

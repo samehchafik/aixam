@@ -121,6 +121,9 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur, 
             </div>
           </div>
         )}
+        {/* L'ombrage repose sur le skin, DANS la zone : le masque decoupe les
+            deux ensemble -- skin + ombrage, puis masque. */}
+        <img className="mockup-ombrage" src={url(mockup.ombrage)} alt="" draggable={false} />
       </div>
 
       {/* Fond perdu : sous le skin net, une copie floutee puis rendue opaque,
@@ -146,7 +149,6 @@ export function SkinMockup({ mockup, shape, mediaBase, src, children, onErreur, 
         </filter>
       </svg>
 
-      <img className="mockup-ombrage" src={url(mockup.ombrage)} alt="" draggable={false} />
     </div>
   )
 }

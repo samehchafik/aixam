@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import fondBorne from '../assets/fond-borne.avif'
+import fondBorne from '../assets/fond-borne.png'
 
 export const STAGE_W = 1920
 export const STAGE_H = 1080
