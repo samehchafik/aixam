@@ -21,7 +21,6 @@ from app.services.renderer import skin_path
 # de haut, assez pour la reconnaitre sans alourdir le classeur.
 APERCU = 360
 MARGE = 6
-VERDICTS = {"pending": "En attente", "approved": "Validée", "rejected": "Rejetée"}
 
 
 class ExportIndisponible(RuntimeError):
@@ -58,12 +57,13 @@ def _apercu(nom: str | None) -> tuple[io.BytesIO, int] | None:
 DOSSIER_IMAGES = "apps/api/media/renders/"
 
 
-def classeur_creations(lignes, *, adresse_images: str = "", filtres: str = "") -> bytes:
-    """`lignes` : des couples (Design, Visitor ou None), dans l'ordre voulu.
+def classeur_creations(feuilles, *, adresse_images: str = "") -> bytes:
+    """`feuilles` : des couples (nom de la feuille, lignes), une feuille par
+    couple -- « Validées », « Rejetées ». Les lignes sont des couples (Design,
+    Visitor ou None), dans l'ordre voulu.
 
     `adresse_images` : l'URL du dossier des images en ligne (se terminant par
-    « / »), qui rend chaque nom de fichier cliquable. `filtres` : ce que
-    l'ecran affichait, rappele en tete de feuille.
+    « / »), qui rend chaque nom de fichier cliquable.
     """
     try:
         import xlsxwriter
@@ -72,20 +72,26 @@ def classeur_creations(lignes, *, adresse_images: str = "", filtres: str = "") -
             "XlsxWriter manque : pip install -r apps/api/requirements.txt, puis redemarrer l'API"
         ) from exc
 
-    lignes = list(lignes)
     fuseau, titre_date = _heure_de_paris()
     sortie = io.BytesIO()
     classeur = xlsxwriter.Workbook(sortie, {"in_memory": True})
-    feuille = classeur.add_worksheet("Créations")
+    styles = {
+        "entete": classeur.add_format({"bold": True, "bg_color": "#1F2847", "font_color": "#FFFFFF",
+                                       "valign": "vcenter", "border": 1}),
+        "titre": classeur.add_format({"bold": True, "font_size": 14, "font_color": "#1F2847"}),
+        "note": classeur.add_format({"text_wrap": True, "valign": "top", "font_color": "#444444"}),
+        "lien": classeur.add_format({"valign": "vcenter", "font_color": "#1A6FB0", "underline": 1}),
+        "texte": classeur.add_format({"valign": "vcenter", "text_wrap": True}),
+        "date": classeur.add_format({"valign": "vcenter", "num_format": "dd/mm/yyyy hh:mm"}),
+    }
+    for nom, lignes in feuilles:
+        _feuille(classeur.add_worksheet(nom), nom, list(lignes), styles, fuseau, titre_date, adresse_images)
+    classeur.close()
+    return sortie.getvalue()
 
-    entete = classeur.add_format({"bold": True, "bg_color": "#1F2847", "font_color": "#FFFFFF",
-                                  "valign": "vcenter", "border": 1})
-    titre = classeur.add_format({"bold": True, "font_size": 14, "font_color": "#1F2847"})
-    note = classeur.add_format({"text_wrap": True, "valign": "top", "font_color": "#444444"})
-    lien = classeur.add_format({"valign": "vcenter", "font_color": "#1A6FB0", "underline": 1})
-    texte = classeur.add_format({"valign": "vcenter", "text_wrap": True})
-    date = classeur.add_format({"valign": "vcenter", "num_format": "dd/mm/yyyy hh:mm"})
 
+def _feuille(feuille, nom_feuille, lignes, styles, fuseau, titre_date, adresse_images) -> None:
+    """Une feuille : l'en-tete explicatif, puis une ligne par creation."""
     colonnes = [
         ("Aperçu", APERCU / 7 + 2),
         ("Fichier", 40),
@@ -94,37 +100,37 @@ def classeur_creations(lignes, *, adresse_images: str = "", filtres: str = "") -
         ("E-mail", 32),
         ("Code postal", 12),
         (titre_date, 17),
-        ("Modération", 13),
     ]
     # En tete : ce que contient la feuille, et ou sont les images.
     maintenant = datetime.now(fuseau) if fuseau else datetime.now()
     feuille.merge_range(0, 0, 0, len(colonnes) - 1,
-                        f"Créations EASY — export du {maintenant:%d/%m/%Y à %H:%M}", titre)
+                        f"Créations EASY {nom_feuille.lower()} — export du {maintenant:%d/%m/%Y à %H:%M}",
+                        styles["titre"])
     dossier_windows = "C:\\aixam\\" + DOSSIER_IMAGES.replace("/", "\\")
     explication = (
-        f"Une ligne par création ({len(lignes)}) : son aperçu, le nom de son fichier image, "
-        "l'auteur (vide si ses données ont été effacées à sa demande), la date et la décision "
-        "de modération." + (f" {filtres}." if filtres else "") + "\n"
+        f"Une ligne par création {nom_feuille.lower()[:-1]} ({len(lignes)}) : son aperçu, le nom de "
+        "son fichier image, l'auteur (vide si ses données ont été effacées à sa demande) et la date.\n"
         "Les fichiers images (PNG) sont sur la machine qui héberge le back-office, dans le dossier "
         f"« {DOSSIER_IMAGES} » du projet AIXAM (sur la borne du salon : {dossier_windows})."
         + (f" Ils sont aussi en ligne : {adresse_images}<nom du fichier> — un clic sur un nom "
            "de fichier l'ouvre." if adresse_images else "")
     )
-    feuille.merge_range(1, 0, 1, len(colonnes) - 1, explication, note)
+    feuille.merge_range(1, 0, 1, len(colonnes) - 1, explication, styles["note"])
     feuille.set_row(1, 66)
     ENTETE = 3
-    for i, (nom, largeur) in enumerate(colonnes):
+    for i, (titre, largeur) in enumerate(colonnes):
         feuille.set_column(i, i, largeur)
-        feuille.write(ENTETE, i, nom, entete)
+        feuille.write(ENTETE, i, titre, styles["entete"])
     feuille.set_row(ENTETE, 22)
     feuille.freeze_panes(ENTETE + 1, 0)
 
+    texte = styles["texte"]
     for n, (design, visiteur) in enumerate(lignes, start=ENTETE + 1):
         cree = design.created_at
         if fuseau and cree.tzinfo:
             cree = cree.astimezone(fuseau)
         if design.skin and adresse_images:
-            feuille.write_url(n, 1, adresse_images + design.skin, lien, string=design.skin)
+            feuille.write_url(n, 1, adresse_images + design.skin, styles["lien"], string=design.skin)
         else:
             feuille.write_string(n, 1, design.skin or "", texte)
         valeurs = [
@@ -135,8 +141,8 @@ def classeur_creations(lignes, *, adresse_images: str = "", filtres: str = "") -
         ]
         for i, valeur in enumerate(valeurs, start=2):
             feuille.write_string(n, i, valeur, texte)
-        feuille.write_datetime(n, 6, cree.replace(tzinfo=None) if isinstance(cree, datetime) else cree, date)
-        feuille.write_string(n, 7, VERDICTS.get(design.moderation, design.moderation), texte)
+        feuille.write_datetime(n, 6, cree.replace(tzinfo=None) if isinstance(cree, datetime) else cree,
+                               styles["date"])
 
         apercu = _apercu(design.skin)
         if apercu:
@@ -151,5 +157,3 @@ def classeur_creations(lignes, *, adresse_images: str = "", filtres: str = "") -
             feuille.write_string(n, 0, "image absente", texte)
 
     feuille.autofilter(ENTETE, 0, ENTETE + max(1, len(lignes)), len(colonnes) - 1)
-    classeur.close()
-    return sortie.getvalue()

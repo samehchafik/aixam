@@ -250,34 +250,21 @@ def designs(
 
 
 @router.get("/designs.xlsx")
-def designs_xlsx(
-    request: Request,
-    search: str = "",
-    sort: str = TRI_DESIGNS,
-    moderation: str = Query("", description="verdicts separes par des virgules"),
-    db: Session = Depends(get_db),
-) -> Response:
-    """Les creations filtrees, en classeur Excel : l'auteur, le nom du fichier,
-    et l'apercu de la creation dans la cellule."""
-    stmt, _ = _requete_designs(search, moderation)
-    lignes = db.execute(stmt.order_by(*DESIGN_SORTS[sort])).all()
-    # Les filtres de l'ecran, rappeles en tete de feuille.
-    libelles = {"pending": "en attente", "approved": "validées", "rejected": "rejetées"}
-    filtres = []
-    if moderation:
-        filtres.append("créations " + ", ".join(libelles.get(v, v) for v in moderation.split(",") if v))
-    if search:
-        filtres.append(f"recherche « {search} »")
+def designs_xlsx(request: Request, sort: str = TRI_DESIGNS, db: Session = Depends(get_db)) -> Response:
+    """Les creations en classeur Excel, deux feuilles : « Validées » et
+    « Rejetées ». Toutes, sans filtre -- comme le zip des images --, dans
+    l'ordre du tri de l'ecran. Une ligne par creation : l'auteur, le nom du
+    fichier et l'apercu de la creation dans la cellule."""
+    feuilles = []
+    for verdict, nom in ((Moderation.approved, "Validées"), (Moderation.rejected, "Rejetées")):
+        stmt, _ = _requete_designs("", verdict.value)
+        feuilles.append((nom, db.execute(stmt.order_by(*DESIGN_SORTS[sort])).all()))
     # L'adresse publique : celle par laquelle l'admin nous parle. Derriere un
     # proxy, c'est l'hote transmis ; en local, celui de la requete.
     hote = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
     schema = request.headers.get("x-forwarded-proto") or request.url.scheme
     try:
-        contenu = classeur_creations(
-            lignes,
-            adresse_images=f"{schema}://{hote}/media/renders/",
-            filtres=("Filtres : " + " ; ".join(filtres)) if filtres else "",
-        )
+        contenu = classeur_creations(feuilles, adresse_images=f"{schema}://{hote}/media/renders/")
     except ExportIndisponible as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     nom = f"creations-{datetime.now(UTC):%Y-%m-%d}.xlsx"

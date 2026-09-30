@@ -428,9 +428,10 @@ pour participer, qu'on n'enregistre pas comme un accord commercial. Les
 nouveaux inscrits ne figurent donc pas dans l'export par défaut.
 
 **Export Excel des créations.** Page Créations du back-office, bouton
-« Export Excel » : un classeur `.xlsx` avec une ligne par création — son
-aperçu dans la cellule, le nom de son fichier image (cliquable), l'auteur, la
-date et la modération. Il reprend les filtres et le tri affichés. Les images
+« Export Excel » : un classeur `.xlsx` à deux feuilles, « Validées » et
+« Rejetées », avec une ligne par création — son aperçu dans la cellule, le nom
+de son fichier image (cliquable), l'auteur et la date. Il contient toutes les
+créations validées et rejetées, sans filtre, dans l'ordre du tri affiché. Les images
 sont dans `apps/api/media/renders/` (`C:\aixam\apps\api\media\renders\`
 sur la borne). À côté, « Export des images (zip) » livre tout le dossier
 des images, sans filtre, sous les noms de la colonne « Fichier », rangées dans

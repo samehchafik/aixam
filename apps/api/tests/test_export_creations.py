@@ -36,26 +36,28 @@ creation = lambda nom, verdict: SimpleNamespace(  # noqa: E731
 anne = SimpleNamespace(first_name="Anne", last_name="Martin", email="anne@example.fr", postal_code="75011")
 
 contenu = classeur_creations([
-    (creation(skin, "approved"), anne),
-    (creation(skin, "pending"), None),                           # anonymisee
-    (creation("0" * 32 + ".png", "rejected"), anne),             # fichier absent
-], adresse_images="https://aixam.exemple/media/renders/", filtres="Filtres : créations validées")
+    ("Validées", [(creation(skin, "approved"), anne), (creation(skin, "approved"), None)]),   # une anonymisee
+    ("Rejetées", [(creation("0" * 32 + ".png", "rejected"), anne)]),                        # fichier absent
+], adresse_images="https://aixam.exemple/media/renders/")
 
-print("\n[1] Un vrai classeur")
+print("\n[1] Un vrai classeur, deux feuilles")
 archive = zipfile.ZipFile(io.BytesIO(contenu))
 noms = archive.namelist()
 check("c'est une archive xlsx", "xl/workbook.xml" in noms, noms[:5])
+classeur = archive.read("xl/workbook.xml").decode("utf-8")
+check("feuilles « Validées » puis « Rejetées »", re.findall(r'<sheet name="([^"]+)"', classeur) == ["Validées", "Rejetées"],
+      re.findall(r'<sheet name="([^"]+)"', classeur))
 
 print("\n[2] L'apercu est dans la feuille, pas un lien")
 # Une image identique n'est stockee qu'une fois : on compte les images POSEES.
 dessin = archive.read("xl/drawings/drawing1.xml").decode("utf-8")
-check("un fichier image au moins dans l'archive", any(n.startswith("xl/media/") for n in noms))
-check("deux apercus poses (le fichier absent n'en a pas)", dessin.count("<xdr:pic>") == 2, dessin.count("<xdr:pic>"))
+check("deux apercus poses sur Validées", dessin.count("<xdr:pic>") == 2, dessin.count("<xdr:pic>"))
+check("pas d'apercu sur Rejetées (fichier absent)", "xl/drawings/drawing2.xml" not in noms)
 
 print("\n[3] Les textes attendus")
 partages = archive.read("xl/sharedStrings.xml").decode("utf-8")
-for texte in ("Fichier", skin, "Anne", "Martin", "anne@example.fr", "75011", "Validée", "En attente",
-              "Rejetée", "image absente"):
+for texte in ("Fichier", skin, "Anne", "Martin", "anne@example.fr", "75011", "image absente",
+              "Une ligne par création validée (2)", "Une ligne par création rejetée (1)"):
     check(f"« {texte} »", texte in partages)
 
 print("\n[4] La date, a l'heure de Paris")
@@ -66,9 +68,8 @@ valeurs = [float(v) for v in re.findall(r'<c r="G(?:[5-9]|\d{2,})"[^>]*><v>([\d.
 heure = round((valeurs[0] % 1) * 24, 2) if valeurs else None
 check("16 h 30 et non 14 h 30", heure == 16.5, heure)
 
-print("\n[5] L'en-tete explique la feuille et dit ou sont les images")
-for texte in ("Une ligne par création (3)", "apps/api/media/renders/", "C:\\aixam\\apps\\api\\media\\renders\\",
-              "https://aixam.exemple/media/renders/", "Filtres : créations validées"):
+print("\n[5] L'en-tete dit ou sont les images")
+for texte in ("apps/api/media/renders/", "C:\\aixam\\apps\\api\\media\\renders\\", "https://aixam.exemple/media/renders/"):
     check(f"« {texte} »", texte in partages)
 
 print("\n[6] Chaque nom de fichier ouvre son image")

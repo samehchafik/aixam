@@ -224,17 +224,16 @@ export function Designs() {
             </Group>
           </Checkbox.Group>
         )}
-        {/* L'Excel reprend ce qui est affiche (memes filtres, meme tri,
-            toutes les pages) : une ligne par creation, avec son auteur, le nom
-            de son fichier et son apercu. Le zip, lui, livre TOUT le dossier
-            des images, sans filtre, range par decision (validees,
-            rejetees, en attente). */}
+        {/* Les deux exports livrent tout, sans filtre. L'Excel a deux
+            feuilles, Validées et Rejetées, dans l'ordre du tri choisi : une
+            ligne par creation, avec son auteur, le nom de son fichier et son
+            apercu. Le zip livre le dossier des images, range par decision. */}
         <Group gap="xs" ml="auto">
           <Button
             variant="light"
             loading={exportEnCours === 'xlsx'}
-            disabled={aucunVerdict || exportEnCours === 'zip'}
-            onClick={() => exporter('xlsx', `/api/admin/designs.xlsx?${new URLSearchParams({ search, sort, moderation })}`)}
+            disabled={exportEnCours === 'zip'}
+            onClick={() => exporter('xlsx', `/api/admin/designs.xlsx?${new URLSearchParams({ sort })}`)}
           >
             Export Excel
           </Button>

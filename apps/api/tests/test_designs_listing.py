@@ -151,20 +151,27 @@ r = c.get("/api/admin/designs", params={"sort": "'; DROP TABLE designs; --"}, he
 check("422", r.status_code == 422, r.status_code)
 check("la table est toujours la", lister()["total"] == 6)
 
-print("\n[9] L'export Excel reprend les memes filtres")
+print("\n[9] L'export Excel : deux feuilles, Validées et Rejetées, sans filtre")
 import io
+import re
 import zipfile
 
-r = c.get("/api/admin/designs.xlsx", params={"search": "alvarez", "sort": "name_asc"}, headers=H)
+with SessionLocal() as db:
+    toutes = db.query(Design).order_by(Design.created_at).all()
+    for d, verdict in zip(toutes, ["approved", "approved", "rejected", "pending", "pending", "pending"]):
+        d.moderation = verdict
+    db.commit()
+r = c.get("/api/admin/designs.xlsx", params={"search": "personne", "moderation": "pending"}, headers=H)
 check("200", r.status_code == 200, (r.status_code, r.text[:200]))
 check("un classeur xlsx", r.headers["content-type"].startswith(
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), r.headers["content-type"])
 check("en piece jointe datee", 'filename="creations-' in r.headers.get("content-disposition", ""))
-partages = zipfile.ZipFile(io.BytesIO(r.content)).read("xl/sharedStrings.xml").decode("utf-8")
-check("le meme nombre de lignes que la liste", "Une ligne par création (2)" in partages,
-      lister(search="alvarez")["total"])
-check("les deux Alvarez, pas les autres", "Bruno" in partages and "Chloe" in partages and "Zoe" not in partages)
-check("le filtre rappele en tete", "recherche « alvarez »" in partages)
+archive = zipfile.ZipFile(io.BytesIO(r.content))
+feuilles = re.findall(r'<sheet name="([^"]+)"', archive.read("xl/workbook.xml").decode("utf-8"))
+check("feuilles Validées et Rejetées", feuilles == ["Validées", "Rejetées"], feuilles)
+partages = archive.read("xl/sharedStrings.xml").decode("utf-8")
+check("toutes les validees, filtres ignores", "Une ligne par création validée (2)" in partages)
+check("toutes les rejetees", "Une ligne par création rejetée (1)" in partages)
 check("sans session, refuse", c.get("/api/admin/designs.xlsx").status_code == 401)
 
 print("\n[10] L'export des images : tout le dossier, range par decision")
