@@ -1150,7 +1150,9 @@ def importer_mockup(dossier: Path) -> None:
     from PIL import Image
 
     fichiers = {
-        "decor": dossier / "fond_bis" / "fondbis.png",
+        # La photo : `fond.png` si la graphiste l'a livree a part (livraison du
+        # 30/09), sinon celle du dossier « bis » -- la meme, sans le bandeau.
+        "decor": dossier / "fond.png" if (dossier / "fond.png").is_file() else dossier / "fond_bis" / "fondbis.png",
         "placement": dossier / "masque_skin_placement.svg",
         "ombrage": dossier / "effet_sur_skin.png",
     }

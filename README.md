@@ -373,9 +373,10 @@ quatre coins où poser un skin — et les images des écrans dans
 `apps/kiosk/src/assets/`. Tout reste en PNG, sans perte : aucune image n'est
 dégradée.
 
-Masque et ombrage du tableau de bord : s'ils sont fournis dans le dossier de
-l'écran 1 (`masque_skin.png`, de préférence en 3840 × 2160, et
-`ombrage_skin.png`), ils sont appliqués tels quels — ni changement de taille,
+Photo, masque et ombrage du tableau de bord : s'ils sont fournis dans le
+dossier de l'écran 1 (`fond.png`, `masque_skin.png` et `ombrage_skin.png`, de
+préférence en 3840 × 2160 — livraison du 30/09 : `fond.png`, `masque.png`,
+`effet_V2.png`), ils sont appliqués tels quels — ni changement de taille,
 ni retouche. La borne compose dans l'ordre : le skin, l'ombrage par-dessus,
 puis le masque, qui découpe les deux. Un fichier recadré est seulement placé ;
 fourni en 3840 × 2160, il n'y a rien à deviner. Les positions, tailles et interlettrages des
