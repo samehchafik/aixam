@@ -17,7 +17,7 @@ from __future__ import annotations
 import html
 import mimetypes
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 
@@ -109,6 +109,28 @@ def images_du_message(message: "Outgoing") -> dict[str, bytes]:
     for nom, contenu in images_du_gabarit(corps).items():
         images.setdefault(nom, contenu)
     return {nom: images[nom] for nom in cites if nom in images}
+
+
+# Le nom de la piece jointe quand c'est le visuel de l'ecran 7.
+NOM_VISUEL = "PimptonSkinEasy"
+
+
+def preparer(message: "Outgoing") -> "Outgoing":
+    """Le message tel qu'il part : toutes ses images pretes et, quand le corps
+    montre le visuel de l'ecran 7, ce visuel en piece jointe a la place du
+    skin -- le visiteur garde l'ecran construit, celui qu'il partagera.
+
+    Sans effet sur un message deja prepare : le relais recoit le visuel en
+    piece jointe ET dans ses images, et le retrouve tel quel.
+    """
+    images = images_du_message(message)
+    jointe = message.attachment
+    if jointe and CID_VISUEL in images:
+        contenu = images[CID_VISUEL]
+        sous_type = sous_type_image(contenu)
+        jointe = Attachment(filename=f"{NOM_VISUEL}.{'png' if sous_type == 'png' else 'jpg'}",
+                            content=contenu, content_type=f"image/{sous_type}")
+    return replace(message, images=images, attachment=jointe)
 
 
 def ranger_images(dossier: Path, images: dict[str, bytes]) -> str | None:

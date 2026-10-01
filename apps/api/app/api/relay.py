@@ -194,12 +194,13 @@ def _dossier_message(client: RelayClient, message_id: str) -> Path:
 def _store_attachment(client: RelayClient, message_id: str, filename: str, content: bytes) -> str:
     """Ecrit la piece jointe sur disque : l'outbox stocke un chemin, pas des octets.
 
-    Le nom du fichier vient du client, donc on n'en garde que le suffixe et on
-    nomme d'apres l'identifiant du message -- un `../` dans `filename` ne doit
-    pas pouvoir designer un fichier hors du dossier.
+    Un dossier par message, et le nom choisi par le client -- celui que le
+    visiteur verra -- reduit a des caracteres surs : un `../` dans `filename`
+    ne doit pas pouvoir designer un fichier hors du dossier.
     """
-    base = _dossier_message(client, message_id)
-    base.parent.mkdir(parents=True, exist_ok=True)
-    path = base.with_name(base.name + Path(filename).suffix[:12])
+    dossier = _dossier_message(client, message_id)
+    dossier.mkdir(parents=True, exist_ok=True)
+    nom = "".join(c for c in Path(filename).name if c.isalnum() or c in "-_.").lstrip(".")[:80] or "piece-jointe"
+    path = dossier / nom
     path.write_bytes(content)
     return str(path)

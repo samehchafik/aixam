@@ -20,14 +20,15 @@ from . import (
     PermanentSendError,
     SendError,
     html_vers_texte,
-    images_du_message,
     images_en_texte,
+    preparer,
     retirer_image_liee,
     sous_type_image,
 )
 
 
 def build_message(message: Outgoing) -> EmailMessage:
+    message = preparer(message)
     msg = EmailMessage()
     msg["Subject"] = message.subject
     msg["From"] = f"{settings.mail_from_name} <{settings.mail_from}>"
@@ -56,7 +57,7 @@ def build_message(message: Outgoing) -> EmailMessage:
         liees.append((cid, contenu, subtype))
 
     jointe = message.attachment
-    for nom, contenu in images_du_message(message).items():
+    for nom, contenu in message.images.items():
         lier(nom, contenu, sous_type_image(contenu))
     # Rien a lier : la balise designerait une partie absente, et le visiteur
     # verrait un cadre casse. Le visuel disparait, un picto devient son texte

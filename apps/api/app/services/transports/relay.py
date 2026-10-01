@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.services.settings_store import get_setting
 
-from . import Outgoing, PermanentSendError, SendError, images_du_message, sous_type_image
+from . import Outgoing, PermanentSendError, SendError, preparer, sous_type_image
 
 # 401/403 : token invalide ou revoque. 413 : message trop gros. 422 : charge
 # utile refusee. Retenter ne changerait rien. 429 (quota) et 5xx, si.
@@ -84,6 +84,10 @@ def _raise_for(response: httpx.Response) -> None:
 
 
 def send(db: Session, message: Outgoing) -> None:
+    # Le visuel de l'ecran 7 compose ici, en piece jointe et dans le corps,
+    # avec le logo et les pictos : le serveur n'a plus qu'a les ranger -- il
+    # ne depend ni de ses propres fichiers, ni de sa version.
+    message = preparer(message)
     payload: dict = {
         # L'identifiant de NOTRE ligne d'outbox : c'est lui qui rend le
         # renvoi apres un timeout inoffensif cote distant.
@@ -98,10 +102,7 @@ def send(db: Session, message: Outgoing) -> None:
             "content_type": message.attachment.content_type,
             "content_b64": base64.b64encode(message.attachment.content).decode(),
         }
-    # Les images du corps, toutes : le visuel de l'ecran 7 compose ici, le logo
-    # et les pictos. Le serveur n'a plus qu'a les ranger dans le message --
-    # il ne depend ni de ses propres fichiers, ni de sa version.
-    images = images_du_message(message)
+    images = message.images
     if images:
         payload["images"] = [
             {

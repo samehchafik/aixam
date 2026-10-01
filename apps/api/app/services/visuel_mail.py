@@ -1,16 +1,19 @@
-"""Le visuel de l'e-mail : la creation posee sur le tableau de bord, comme a
-l'ecran 7 de la borne -- la photo seule, sans boutons ni ruban.
+"""Le visuel de l'e-mail : l'ecran 7 de la borne, sans son bouton -- la
+creation posee sur le tableau de bord, le ruban, le logo et la grande
+planche a plat. C'est l'image du corps de l'e-mail et sa piece jointe.
 
-Meme composition que `SkinMockup` cote borne, avec les memes fichiers
-(`media/mockup/`) et les memes coins :
+Meme composition que l'ecran 7 (`ReviewStep`), avec les memes fichiers :
 
-    photo, puis [skin projete + ombrage] decoupes ensemble par le masque.
+    photo (`media/mockup/`)
+    [skin projete + ombrage] decoupes ensemble par le masque (`SkinMockup`)
+    ruban et logo (`templates/ecran7/habillage.png`, voir
+        scripts/habillage_ecran7.py : ils ne dependent pas de la creation)
+    planche a plat et son contour blanc (`PLANCHE` de ReviewStep)
 
-Compose au moment de l'envoi, par le transport, a partir du skin joint au
-message : la ligne d'outbox ne porte que le skin, et le relais ne recoit que
-lui -- le back-office qui expedie compose le visuel avec ses propres fichiers.
-Pillow seul, sans numpy ni OpenCV ni Cairo : la borne du salon, qui expedie
-elle-meme quand elle n'est pas en relais, tourne sous Windows.
+Compose au moment de l'envoi, a partir du skin de la ligne d'outbox, par le
+back-office qui prepare le message -- la borne, qui confie ensuite le tout au
+relais. Pillow seul, sans numpy ni OpenCV ni Cairo : la borne du salon tourne
+sous Windows.
 
 On compose en 4K, la resolution des fichiers du studio, puis on reduit une
 seule fois. Tout ce qui est hors du rectangle du masque est la photo telle
@@ -23,12 +26,19 @@ import io
 import json
 from functools import lru_cache
 
-from PIL import Image, ImageFilter
+from pathlib import Path
+
+from PIL import Image, ImageChops, ImageFilter
 
 from app.services.assets import load_catalog
 from app.services.renderer import MEDIA
 
 MOCKUP = MEDIA / "mockup"
+HABILLAGE = Path(__file__).resolve().parent.parent / "templates" / "ecran7" / "habillage.png"
+
+# La planche du bas de l'ecran 7, en pixels de scene (1920 de large) : la
+# meme que `PLANCHE` dans ReviewStep.tsx.
+PLANCHE = {"x": 103, "y": 747, "largeur": 1714, "contour": 4}
 
 # Largeur du visuel. L'e-mail l'affiche sur 456 px : 1600 reste net sur un
 # ecran haute densite comme a l'agrandissement, pour un PNG d'environ 1,4 Mo.
@@ -103,7 +113,8 @@ def composer(skin_png: bytes, *, largeur: int = LARGEUR) -> bytes:
     # coins, et la marge suit la meme projection.
     shape = load_catalog()["shape"]
     pw, ph = float(shape["width"]), float(shape["height"])
-    skin = _fond_perdu(Image.open(io.BytesIO(skin_png)).convert("RGBA"))
+    brut = Image.open(io.BytesIO(skin_png)).convert("RGBA")
+    skin = _fond_perdu(brut)
     marge = (skin.width - pw) / 2
 
     coins = [(x * k - mx, y * k - my) for x, y in index["corners"]]
@@ -128,6 +139,15 @@ def composer(skin_png: bytes, *, largeur: int = LARGEUR) -> bytes:
     zone.putalpha(Image.composite(zone.getchannel("A"), Image.new("L", zone.size, 0), masque))
 
     photo.alpha_composite(zone, (mx, my))
+
+    # Le ruban et le logo, puis la planche a plat, par-dessus.
+    habillage = Image.open(HABILLAGE).convert("RGBA")
+    if habillage.size != photo.size:
+        habillage = habillage.resize(photo.size, Image.LANCZOS)
+    photo.alpha_composite(habillage)
+    planche, position = _planche(brut, pw, ph, k)
+    photo.alpha_composite(planche, position)
+
     hauteur = round(photo.height * largeur / photo.width)
     visuel = photo.convert("RGB").resize((largeur, hauteur), Image.LANCZOS)
     tampon = io.BytesIO()
@@ -135,6 +155,29 @@ def composer(skin_png: bytes, *, largeur: int = LARGEUR) -> bytes:
     # temps -- les deux tiers de la composition. Le PNG reste sans perte.
     visuel.save(tampon, "PNG")
     return tampon.getvalue()
+
+
+def _planche(skin: Image.Image, pw: float, ph: float, k: float) -> tuple[Image.Image, tuple[int, int]]:
+    """La planche a plat de l'ecran 7 et son contour blanc, avec sa position.
+
+    Le contour est a cheval sur le bord, comme le trace de la borne : moitie
+    dehors, moitie sur la planche.
+    """
+    marge = (skin.width - pw) / 2
+    planche = skin.crop((round(marge), round(marge), round(marge + pw), round(marge + ph)))
+    largeur = round(PLANCHE["largeur"] * k)
+    planche = planche.resize((largeur, round(largeur * ph / pw)), Image.LANCZOS)
+
+    e = max(1, round(PLANCHE["contour"] * k / 2))
+    toile = Image.new("RGBA", (planche.width + 2 * e, planche.height + 2 * e), (0, 0, 0, 0))
+    toile.alpha_composite(planche, (e, e))
+    forme = toile.getchannel("A")
+    trait = ImageChops.subtract(forme.filter(ImageFilter.MaxFilter(2 * e + 1)),
+                                forme.filter(ImageFilter.MinFilter(2 * e + 1)))
+    blanc = Image.new("RGBA", toile.size, (255, 255, 255, 255))
+    blanc.putalpha(trait)
+    toile.alpha_composite(blanc)
+    return toile, (round(PLANCHE["x"] * k) - e, round(PLANCHE["y"] * k) - e)
 
 
 @lru_cache(maxsize=8)

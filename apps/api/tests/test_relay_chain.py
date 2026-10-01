@@ -199,8 +199,10 @@ try:
     check("cinq images dans le corps, toutes presentes dans le message",
           len(cites) == 5 and all(c in lies for c in cites), (cites, lies))
     jointes = list(msg.iter_attachments())
-    check("le skin en piece jointe", len(jointes) == 1
-          and jointes[0].get_payload(decode=True) == skin.read_bytes(), [p.get_filename() for p in jointes])
+    visuel = Path(recu.images_path) / "visuel.png"
+    check("en piece jointe, le visuel compose par la borne, sous son nom",
+          [p.get_filename() for p in jointes] == ["PimptonSkinEasy.png"]
+          and jointes[0].get_payload(decode=True) == visuel.read_bytes(), [p.get_filename() for p in jointes])
 
 finally:
     server.terminate(); server.wait(timeout=10)

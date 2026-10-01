@@ -13,7 +13,7 @@ import httpx
 
 from app.config import settings
 
-from . import Outgoing, PermanentSendError, SendError, images_en_texte, retirer_image_liee
+from . import Outgoing, PermanentSendError, SendError, images_en_texte, preparer, retirer_image_liee
 
 # 401/403 : mauvaise cle. 400 : charge utile refusee. Rien de tout cela ne
 # s'arrangera au dixieme essai. 429 et 5xx, si.
@@ -21,6 +21,8 @@ _PERMANENT = {400, 401, 403}
 
 
 def build_payload(message: Outgoing) -> dict:
+    # Le visuel de l'ecran 7 en piece jointe, comme par SMTP.
+    message = preparer(message)
     payload = {
         "sender": {"name": settings.mail_from_name, "email": settings.mail_from},
         "to": [{"email": message.to_email}],

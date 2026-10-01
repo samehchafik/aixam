@@ -136,10 +136,6 @@ check("le corps et ses images forment un multipart/related",
       "multipart/related" in [p.get_content_type() for p in liee.walk()])
 html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
 jointe = next(p for p in liee.walk() if p.get_content_disposition() == "attachment")
-check("une seule piece jointe listee : le skin",
-      [p.get_filename() for p in liee.iter_attachments()] == [skin.name],
-      [p.get_filename() for p in liee.iter_attachments()])
-check("la piece jointe porte les octets du skin", jointe.get_payload(decode=True) == skin.read_bytes())
 lies = {p["Content-ID"][1:-1]: p for p in liee.walk() if p["Content-ID"]}
 html_liee = html_part.get_content()
 cites = re.findall(r'src="cid:([^"]+)"', html_liee)
@@ -153,6 +149,13 @@ check("la premiere image du corps est le visuel 16/9", visuel_img.width / visuel
       visuel_img.size)
 check("le visuel ne se propose pas a enregistrer",
       visuel_part.get_filename() is None and visuel_part.get_content_disposition() == "inline")
+# La piece jointe est l'ecran construit -- celui que le visiteur gardera et
+# partagera --, pas le skin seul.
+check("une seule piece jointe listee : PimptonSkinEasy.png",
+      [p.get_filename() for p in liee.iter_attachments()] == ["PimptonSkinEasy.png"],
+      [p.get_filename() for p in liee.iter_attachments()])
+check("la piece jointe est le visuel du corps",
+      jointe.get_payload(decode=True) == visuel_part.get_payload(decode=True))
 check("aucune image chargee par http", 'src="http' not in html_liee)
 check("le texte seul ne garde aucune balise",
       "<" not in next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain"))
