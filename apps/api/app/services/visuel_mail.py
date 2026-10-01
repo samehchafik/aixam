@@ -131,7 +131,9 @@ def composer(skin_png: bytes, *, largeur: int = LARGEUR) -> bytes:
     hauteur = round(photo.height * largeur / photo.width)
     visuel = photo.convert("RGB").resize((largeur, hauteur), Image.LANCZOS)
     tampon = io.BytesIO()
-    visuel.save(tampon, "PNG", optimize=True)
+    # Sans `optimize` : il ne gagne que 3 % de poids, pour quatre fois plus de
+    # temps -- les deux tiers de la composition. Le PNG reste sans perte.
+    visuel.save(tampon, "PNG")
     return tampon.getvalue()
 
 
