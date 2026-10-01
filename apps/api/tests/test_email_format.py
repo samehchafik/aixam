@@ -116,63 +116,59 @@ check("pas de chemin, pas de piece : ce cas reste normal",
       load_attachment(None) is None)
 
 
-print("\n[7] La creation s'affiche dans le corps du message")
+print("\n[7] Le skin en piece jointe, le visuel de l'ecran 7 dans le corps")
 # `cid:` n'est pas une adresse : elle designe une partie de CE message. L'image
 # est donc dans l'email, affichee hors ligne, sans rien demander a un serveur.
 # Un <img src="https://..."> serait bloque par defaut par la plupart des
 # messageries, expirerait avec le serveur, et dirait a qui l'a envoye quand le
 # visiteur l'a ouvert.
+from PIL import Image
+from app.services.transports import CID_VISUEL
+
 vraie = render_template("creation.html", first_name="Camille", base_url="https://exemple.fr")
-check("le gabarit pose le marqueur", f"cid:{CID_CREATION}" in vraie, vraie[:200])
+check("le gabarit pose le marqueur du visuel", f"cid:{CID_VISUEL}" in vraie, vraie[:200])
 liee = build_message(Outgoing(message_id="z", to_email="v@example.com",
                               subject="Votre creation", body_html=vraie,
                               attachment=load_attachment(str(skin))))
-
-# DEUX parties pour la meme image. Les deux economies ont ete essayees en
-# vrai, chacune a manque une moitie : dans le seul multipart/related elle
-# s'affichait sans etre enregistrable ; en seule piece jointe citee par un
-# cid:, l'inverse. Les clients ne resolvent le lien qu'entre voisins d'un
-# related, et ne listent de facon sure qu'une piece du premier niveau.
 check("structure multipart/mixed", liee.get_content_type() == "multipart/mixed",
       liee.get_content_type())
-check("le corps et l'image liee forment un multipart/related",
+check("le corps et ses images forment un multipart/related",
       "multipart/related" in [p.get_content_type() for p in liee.walk()])
 html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
 jointe = next(p for p in liee.walk() if p.get_content_disposition() == "attachment")
-# Les pictos des reseaux sont aussi des images liees : on ne compte ici que
-# celles qui portent la creation.
-images = [p for p in liee.walk() if p.get_content_type() == "image/png"
-          and p.get_payload(decode=True) == jointe.get_payload(decode=True)]
-check("deux parties image : une pour montrer, une pour garder", len(images) == 2,
-      [p.get_content_disposition() for p in images])
-image = next(p for p in images if p["Content-ID"])
-
-# Une seule doit paraitre dans la liste des fichiers : celle qui n'existe que
-# pour le <img> n'a ni nom ni disposition « attachment ».
-check("une seule piece jointe listee",
+check("une seule piece jointe listee : le skin",
       [p.get_filename() for p in liee.iter_attachments()] == [skin.name],
       [p.get_filename() for p in liee.iter_attachments()])
-check("la copie du corps ne se propose pas a enregistrer",
-      image.get_filename() is None and image.get_content_disposition() == "inline",
-      (image.get_filename(), image.get_content_disposition()))
-check("les deux portent bien les memes octets",
-      image.get_payload(decode=True) == jointe.get_payload(decode=True))
-
+check("la piece jointe porte les octets du skin", jointe.get_payload(decode=True) == skin.read_bytes())
+lies = {p["Content-ID"][1:-1]: p for p in liee.walk() if p["Content-ID"]}
+html_liee = html_part.get_content()
+cites = re.findall(r'src="cid:([^"]+)"', html_liee)
 # Le piege classique : une balise qui cite un identifiant que la partie ne
 # porte pas. L'email est bien forme, et le visiteur voit un cadre casse.
-check("l'image porte un Content-ID", image["Content-ID"] is not None)
-check("le HTML cite exactement cet identifiant",
-      f"cid:{image['Content-ID'][1:-1]}" in html_part.get_content(),
-      (image["Content-ID"], html_part.get_content()[-300:]))
-check("le marqueur a bien ete remplace",
-      f"cid:{CID_CREATION}" not in html_part.get_content())
-# Les liens vers les reseaux sont voulus ; une image chargee par http, non.
-check("aucune image chargee par http", 'src="http' not in html_part.get_content())
-
-check("la piece jointe porte le nom du fichier", jointe.get_filename() == skin.name,
-      jointe.get_filename())
+check("chaque image citee designe une partie du message", cites and all(c in lies for c in cites), cites)
+check("le marqueur a bien ete remplace", f"cid:{CID_VISUEL}" not in html_liee)
+visuel_part = lies[cites[0]]
+visuel_img = Image.open(io.BytesIO(visuel_part.get_payload(decode=True)))
+check("la premiere image du corps est le visuel 16/9", visuel_img.width / visuel_img.height == 16 / 9,
+      visuel_img.size)
+check("le visuel ne se propose pas a enregistrer",
+      visuel_part.get_filename() is None and visuel_part.get_content_disposition() == "inline")
+check("aucune image chargee par http", 'src="http' not in html_liee)
 check("le texte seul ne garde aucune balise",
       "<" not in next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain"))
+
+# Les gabarits d'avant le visuel (des lignes encore en file) citent le skin
+# lui-meme : DEUX parties pour la meme image. Les deux economies ont ete
+# essayees en vrai, chacune a manque une moitie : dans le seul
+# multipart/related elle s'affichait sans etre enregistrable ; en seule piece
+# jointe citee par un cid:, l'inverse.
+ancien = build_message(Outgoing(message_id="z2", to_email="v@example.com", subject="s",
+                                body_html=f'<p>x</p><img src="cid:{CID_CREATION}" alt="c">',
+                                attachment=load_attachment(str(skin))))
+copies = [p for p in ancien.walk() if p.get_content_type() == "image/png"
+          and p.get_payload(decode=True) == skin.read_bytes()]
+check("ancien gabarit : le skin montre et garde", sorted(p.get_content_disposition() for p in copies)
+      == ["attachment", "inline"], [p.get_content_disposition() for p in copies])
 
 print("\n[8] Pas d'image liee sans piece a lier")
 # Sans piece jointe, la balise designerait une partie absente. Le transport la
@@ -181,7 +177,7 @@ seul = build_message(Outgoing(message_id="w", to_email="v@example.com",
                               subject="Votre creation", body_html=vraie))
 html_seul = next(p.get_content() for p in seul.walk() if p.get_content_type() == "text/html")
 lies_seul = {p["Content-ID"][1:-1] for p in seul.walk() if p["Content-ID"]}
-check("la balise est retiree", "Ta création EASY" not in html_seul)
+check("la balise est retiree", "tableau de bord" not in html_seul)
 check("toute image restante designe une partie du message",
       all(c in lies_seul for c in re.findall(r'src="cid:([^"]+)"', html_seul)))
 # L'API Brevo prend des pieces jointes, pas des images liees au corps.
@@ -193,16 +189,13 @@ check("retirer_image_liee ne touche pas au reste",
       == "<p>avant</p><p>apres</p>")
 
 
-print("\n[9] Les pictos des reseaux, sous l'image")
-# Instagram, TikTok et le site : dans le message, comme la creation, et
-# cliquables.
-lies = {p["Content-ID"][1:-1]: p for p in liee.walk() if p["Content-ID"]}
-html_liee = html_part.get_content()
-cites = re.findall(r'src="cid:([^"]+)"', html_liee)
-check("quatre images liees : la creation et trois pictos", len(cites) == 4 and len(lies) == 4, (cites, list(lies)))
-check("chacune designe une partie du message", all(c in lies for c in cites))
-for adresse in ("https://www.instagram.com/aixam_officiel/", "https://www.tiktok.com/@aixam_officiel",
-                "https://www.aixam.com/"):
+print("\n[9] Le logo et les reseaux, en bas")
+# Le logo mene au site ; Instagram, Facebook et TikTok. Dans le message, comme
+# le visuel, et cliquables.
+check("cinq images liees : le visuel, le logo et trois pictos", len(cites) == 5 and len(lies) == 5,
+      (cites, list(lies)))
+for adresse in ("https://www.instagram.com/aixam_officiel/", "https://www.facebook.com/aixam",
+                "https://www.tiktok.com/@aixam_officiel", "https://www.aixam.com/"):
     check(f"lien {adresse}", f'href="{adresse}"' in html_liee)
 texte_liee = next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain")
 check("la version texte garde le nom et l'adresse",
@@ -224,10 +217,9 @@ check("picto absent : son nom a la place", ">Instagram" in html_sans.replace("\n
       and "cid:instagram" not in html_sans)
 
 print("\n[10] Le visuel de l'ecran 7")
-from PIL import Image
 from app.services.visuel_mail import LARGEUR, MOCKUP, composer
 rouge = render_design({"layers": [Layer(type="background", hex="#FF0000").model_dump(exclude_none=True)]})
-visuel = Image.open(io.BytesIO(composer(rouge))).convert("RGB")
+visuel = Image.open(io.BytesIO(composer(rouge.read_bytes()))).convert("RGB")
 check("un PNG 16/9 a la largeur prevue", visuel.size == (LARGEUR, LARGEUR * 9 // 16), visuel.size)
 k = LARGEUR / 1920
 r, g, b = visuel.getpixel((round(1400 * k), round(500 * k)))

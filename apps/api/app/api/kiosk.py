@@ -6,7 +6,6 @@ Tous authentifies par le header `X-Kiosk-Token`.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
@@ -40,7 +39,6 @@ from app.services import mailer, materiel
 from app.services.assets import load_catalog
 from app.services.renderer import render_design, skin_present, skin_url
 from app.services.settings_store import get_setting
-from app.services.visuel_mail import visuel_mail
 
 router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
 
@@ -262,14 +260,6 @@ def save_design(
     if design.visitor_id and design.status == DesignStatus.rendered:
         visitor = db.get(Visitor, design.visitor_id)
         if visitor:
-            # Le visuel de l'e-mail : la creation sur le tableau de bord, comme
-            # a l'ecran 7. Faute de quoi, le skin seul -- le visiteur doit
-            # recevoir sa creation quoi qu'il arrive.
-            visuel = design.render_path
-            try:
-                visuel = str(visuel_mail(Path(design.render_path)))
-            except Exception as exc:
-                _log(db, kiosk, "visuel_failed", session_id=payload.session_id, payload={"error": str(exc)})
             mailer.queue_email(
                 db,
                 to_email=visitor.email,
@@ -279,7 +269,7 @@ def save_design(
                     first_name=visitor.first_name,
                     base_url=settings.public_base_url,
                 ),
-                attachment_path=visuel,
+                attachment_path=design.render_path,
             )
 
     _log(db, kiosk, "design_submitted", visitor_id=payload.visitor_id, session_id=payload.session_id)

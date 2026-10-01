@@ -8,41 +8,61 @@
 </p>
 
 {# Le visuel de l'ecran 7 de la borne : la creation posee sur le tableau de
-   bord photographie (`visuel_mail.py`). `cid:creation` n'est pas une
-   adresse : le transport y branche la piece jointe elle-meme, deja dans le
-   message. Rien n'est demande a un serveur -- l'image s'affiche hors ligne et
-   ne dit a personne quand elle a ete ouverte.
+   bord photographie. `cid:visuel` n'est pas une adresse : le transport
+   compose l'image a partir du skin joint au message (`visuel_mail.py`) et la
+   range dans le message lui-meme. Rien n'est demande a un serveur -- l'image
+   s'affiche hors ligne et ne dit a personne quand elle a ete ouverte. Le skin,
+   lui, est en piece jointe.
 
    Un tableau plutot qu'un div, et `width` en attribut autant qu'en style :
    Outlook ignore les deux sinon. #}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-       style="margin:0 0 16px;border-collapse:collapse">
+       style="border-collapse:collapse">
   <tr>
     <td align="center">
-      <img src="cid:creation" alt="Ta création EASY sur le tableau de bord" width="456"
-           style="display:block;width:100%;max-width:456px;height:auto;border:0;border-radius:8px">
+      <img src="cid:visuel" alt="Ta création EASY sur le tableau de bord" width="456"
+           style="display:block;width:100%;max-width:456px;height:auto;border:0">
     </td>
   </tr>
 </table>
+{% endblock %}
 
-{# Les reseaux d'AIXAM, juste sous l'image. Les pictos voyagent dans le
-   message comme la creation (`templates/images/`, cid:instagram...) ; la ou
-   une messagerie ne les montre pas, leur texte alternatif reste un lien. #}
-<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0"
-       style="margin:0 auto 20px;border-collapse:collapse">
+{# Pas de titre « AIXAM » en tete : le logo est en bas, avec les reseaux. #}
+{% block entete %}{% endblock %}
+{% block marge_pied %}26px{% endblock %}
+
+{# Sous le texte de bas de page : le logo d'AIXAM, qui mene au site, et ses
+   reseaux. Les images voyagent dans le message comme le visuel
+   (`templates/images/`, cid:instagram...) ; la ou une messagerie ne les
+   montre pas, leur texte alternatif reste un lien. #}
+{% block pied %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="margin:14px 0 0;border-collapse:collapse">
   <tr>
-    {% for nom, libelle, adresse in [
-         ("instagram", "Instagram", "https://www.instagram.com/aixam_officiel/"),
-         ("tiktok", "TikTok", "https://www.tiktok.com/@aixam_officiel"),
-         ("site", "aixam.com", "https://www.aixam.com/"),
-       ] %}
-    <td style="padding:0 8px">
-      <a href="{{ adresse }}" target="_blank" style="text-decoration:none">
-        <img src="cid:{{ nom }}" alt="{{ libelle }}" width="36" height="36"
-             style="display:block;width:36px;height:36px;border:0">
+    <td align="left" valign="middle">
+      <a href="https://www.aixam.com/" target="_blank" style="text-decoration:none">
+        <img src="cid:logo-aixam" alt="AIXAM" width="120" height="39"
+             style="display:block;width:120px;height:39px;border:0">
       </a>
     </td>
-    {% endfor %}
+    <td align="right" valign="middle">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
+        <tr>
+          {% for nom, libelle, adresse in [
+               ("instagram", "Instagram", "https://www.instagram.com/aixam_officiel/"),
+               ("facebook", "Facebook", "https://www.facebook.com/aixam"),
+               ("tiktok", "TikTok", "https://www.tiktok.com/@aixam_officiel"),
+             ] %}
+          <td style="padding-left:{{ 0 if loop.first else 10 }}px">
+            <a href="{{ adresse }}" target="_blank" style="text-decoration:none">
+              <img src="cid:{{ nom }}" alt="{{ libelle }}" width="28" height="28"
+                   style="display:block;width:28px;height:28px;border:0">
+            </a>
+          </td>
+          {% endfor %}
+        </tr>
+      </table>
+    </td>
   </tr>
 </table>
 {% endblock %}

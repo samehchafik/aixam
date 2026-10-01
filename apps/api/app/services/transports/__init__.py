@@ -31,9 +31,14 @@ from pathlib import Path
 # qui ne sait pas faire d'image liee retire la balise : mieux vaut pas d'image
 # qu'un cadre casse, la piece jointe restant la.
 CID_CREATION = "creation"
+# Le visuel de l'ecran 7 -- la creation posee sur le tableau de bord. Il ne
+# vient pas de la ligne d'outbox : le transport le compose a partir de la piece
+# jointe, au moment d'envoyer (`visuel_mail.py`).
+CID_VISUEL = "visuel"
+_CREATION = (CID_CREATION, CID_VISUEL)
 
 _IMAGE_LIEE = re.compile(
-    r"""<img\b[^>]*\bsrc=["']cid:""" + CID_CREATION + r"""["'][^>]*>""", re.IGNORECASE
+    r"""<img\b[^>]*\bsrc=["']cid:(?:""" + "|".join(_CREATION) + r""")["'][^>]*>""", re.IGNORECASE
 )
 
 
@@ -57,7 +62,7 @@ def images_du_gabarit(html_source: str) -> dict[str, bytes]:
     trouvees = {}
     for nom in dict.fromkeys(m.group(1) for m in _IMAGE_CID.finditer(html_source)):
         fichier = IMAGES_GABARIT / f"{nom}.png"
-        if nom != CID_CREATION and fichier.is_file():
+        if nom not in _CREATION and fichier.is_file():
             trouvees[nom] = fichier.read_bytes()
     return trouvees
 
@@ -69,7 +74,7 @@ def images_en_texte(html_source: str) -> str:
     de ce back-office : « Instagram » reste un lien cliquable, la ou une
     balise orpheline ferait un cadre casse.
     """
-    return _IMAGE_CID.sub(lambda m: "" if m.group(1) == CID_CREATION else _alt(m), html_source)
+    return _IMAGE_CID.sub(lambda m: "" if m.group(1) in _CREATION else _alt(m), html_source)
 
 
 class SendError(RuntimeError):

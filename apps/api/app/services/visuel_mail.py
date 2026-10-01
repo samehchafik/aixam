@@ -6,8 +6,11 @@ Meme composition que `SkinMockup` cote borne, avec les memes fichiers
 
     photo, puis [skin projete + ombrage] decoupes ensemble par le masque.
 
-Pillow seul, sans numpy ni OpenCV ni Cairo : la borne du salon tourne sous
-Windows, et c'est elle qui compose le visuel avant de le confier au relais.
+Compose au moment de l'envoi, par le transport, a partir du skin joint au
+message : la ligne d'outbox ne porte que le skin, et le relais ne recoit que
+lui -- le back-office qui expedie compose le visuel avec ses propres fichiers.
+Pillow seul, sans numpy ni OpenCV ni Cairo : la borne du salon, qui expedie
+elle-meme quand elle n'est pas en relais, tourne sous Windows.
 
 On compose en 4K, la resolution des fichiers du studio, puis on reduit une
 seule fois. Tout ce qui est hors du rectangle du masque est la photo telle
@@ -18,23 +21,17 @@ from __future__ import annotations
 
 import io
 import json
-from pathlib import Path
+from functools import lru_cache
 
 from PIL import Image, ImageFilter
 
 from app.services.assets import load_catalog
-from app.services.renderer import MEDIA, RENDERS
+from app.services.renderer import MEDIA
 
 MOCKUP = MEDIA / "mockup"
-# A cote des creations, dans le seul dossier que l'API et le worker partagent
-# en ecriture -- le worker relit ce fichier au moment d'envoyer. Un
-# sous-dossier : les exports et la synchronisation ne lisent que les fichiers
-# du premier niveau.
-VISUELS = RENDERS / "visuels"
 
-# Largeur du visuel envoye. Assez pour etre partage tel quel sur les reseaux,
-# et un PNG de quelques Mo : le relais en accepte 8, et l'image voyage deux
-# fois dans l'e-mail (dans le corps, et en piece jointe).
+# Largeur du visuel. L'e-mail l'affiche sur 456 px : 1600 reste net sur un
+# ecran haute densite comme a l'agrandissement, pour un PNG d'environ 1,4 Mo.
 LARGEUR = 1600
 
 # Fond perdu du skin, comme le filtre `#skin-fond-perdu` de la borne : flou de
@@ -85,7 +82,7 @@ def _fond_perdu(skin: Image.Image) -> Image.Image:
     return flou
 
 
-def composer(skin_png: Path, *, largeur: int = LARGEUR) -> bytes:
+def composer(skin_png: bytes, *, largeur: int = LARGEUR) -> bytes:
     """Le PNG du visuel : la photo du tableau de bord, la creation posee."""
     index = json.loads((MOCKUP / "index.json").read_text(encoding="utf-8"))
     photo = Image.open(MOCKUP / index["decor"]).convert("RGBA")
@@ -106,7 +103,7 @@ def composer(skin_png: Path, *, largeur: int = LARGEUR) -> bytes:
     # coins, et la marge suit la meme projection.
     shape = load_catalog()["shape"]
     pw, ph = float(shape["width"]), float(shape["height"])
-    skin = _fond_perdu(Image.open(skin_png).convert("RGBA"))
+    skin = _fond_perdu(Image.open(io.BytesIO(skin_png)).convert("RGBA"))
     marge = (skin.width - pw) / 2
 
     coins = [(x * k - mx, y * k - my) for x, y in index["corners"]]
@@ -138,9 +135,8 @@ def composer(skin_png: Path, *, largeur: int = LARGEUR) -> bytes:
     return tampon.getvalue()
 
 
-def visuel_mail(skin_png: Path) -> Path:
-    """Compose et range le visuel d'une creation ; son chemin."""
-    VISUELS.mkdir(parents=True, exist_ok=True)
-    sortie = VISUELS / skin_png.name
-    sortie.write_bytes(composer(skin_png))
-    return sortie
+@lru_cache(maxsize=8)
+def visuel(skin_png: bytes) -> bytes:
+    """Le visuel d'un skin. Garde en memoire : un envoi retente apres une
+    coupure ne le recompose pas."""
+    return composer(skin_png)

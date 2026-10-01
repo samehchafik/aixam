@@ -17,6 +17,7 @@ from app.config import settings
 
 from . import (
     CID_CREATION,
+    CID_VISUEL,
     Outgoing,
     PermanentSendError,
     SendError,
@@ -45,63 +46,60 @@ def build_message(message: Outgoing) -> EmailMessage:
     # en file, bien avant qu'on sache comment le message sera decoupe.
     domaine = settings.mail_from.rpartition("@")[2] or None
     corps = message.body_html
-    lien = None
-    if message.attachment and f"cid:{CID_CREATION}" in corps:
-        lien = make_msgid(domain=domaine)
-        corps = corps.replace(f"cid:{CID_CREATION}", f"cid:{lien[1:-1]}")
-    else:
-        # Rien a lier : la balise designerait une partie absente, et le
-        # visiteur verrait un cadre casse a la place de sa creation.
-        corps = retirer_image_liee(corps)
-    # Les pictos du gabarit, chacun sa partie. Celui que ce back-office n'a
-    # pas devient son texte alternatif, toujours cliquable.
-    pictos = []
-    for nom, contenu in images_du_gabarit(corps).items():
+    # Les images du corps : (identifiant, octets, type), chacune sa partie dans
+    # le multipart/related.
+    liees: list[tuple[str, bytes, str]] = []
+
+    def lier(marqueur: str, contenu: bytes, subtype: str = "png") -> None:
+        nonlocal corps
         cid = make_msgid(domain=domaine)
-        corps = corps.replace(f"cid:{nom}", f"cid:{cid[1:-1]}")
-        pictos.append((cid, contenu))
+        corps = corps.replace(f"cid:{marqueur}", f"cid:{cid[1:-1]}")
+        liees.append((cid, contenu, subtype))
+
+    jointe = message.attachment
+    if jointe and f"cid:{CID_VISUEL}" in corps:
+        # Le visuel de l'ecran 7, compose a partir du skin joint. S'il ne peut
+        # pas l'etre, c'est le skin lui-meme qui s'affiche.
+        try:
+            from app.services.visuel_mail import visuel
+
+            lier(CID_VISUEL, visuel(jointe.content))
+        except Exception:
+            lier(CID_VISUEL, jointe.content, jointe.subtype)
+    if jointe and f"cid:{CID_CREATION}" in corps:
+        # Le skin lui-meme dans le corps (gabarit d'avant le visuel).
+        lier(CID_CREATION, jointe.content, jointe.subtype)
+    # Rien a lier : la balise designerait une partie absente, et le visiteur
+    # verrait un cadre casse a la place de sa creation.
+    corps = retirer_image_liee(corps)
+    # Les pictos du gabarit. Celui que ce back-office n'a pas devient son
+    # texte alternatif, toujours cliquable.
+    for nom, contenu in images_du_gabarit(corps).items():
+        lier(nom, contenu)
     corps = images_en_texte(corps)
 
     msg.set_content(html_vers_texte(corps), subtype="plain", charset="utf-8")
     msg.add_alternative(corps, subtype="html", charset="utf-8")
     # Apres le premier ajout, la partie HTML est devenue un multipart/related :
-    # les suivants s'y rangent, a cote d'elle.
-    for cid, contenu in pictos:
-        msg.get_payload()[-1].add_related(contenu, maintype="image", subtype="png", cid=cid, disposition="inline")
+    # les suivantes s'y rangent, a cote d'elle. Sans nom de fichier ni
+    # disposition « attachment » : ces images n'existent que pour le corps,
+    # elles n'ont pas a paraitre dans la liste des fichiers.
+    for cid, contenu, subtype in liees:
+        msg.get_payload()[-1].add_related(contenu, maintype="image", subtype=subtype, cid=cid, disposition="inline")
 
-    if message.attachment:
-        # DEUX parties pour la meme image, et ce n'est pas un oubli.
+    if jointe:
+        # La creation elle-meme, en piece jointe au premier niveau : c'est la
+        # que les messageries la listent de facon sure, enregistrable.
         #
-        # On a essaye les deux economies, chacune a manque une moitie :
-        #
-        #   image dans le multipart/related seul  -> affichee, pas enregistrable
-        #   image en piece jointe seule, citee    -> enregistrable, pas affichee
-        #
-        # La theorie donne raison a la seconde -- `cid:` designe le message
-        # entier -- mais les clients ne la suivent pas : ils ne resolvent le
-        # lien qu'entre voisins d'un multipart/related. Et une piece jointe
-        # n'est listee de facon sure qu'au premier niveau du message.
-        #
-        # Donc une partie pour montrer, une partie pour garder. Le cout est de
-        # 200 Kio par email, et chez les clients qui posent d'office les images
-        # jointes en fin de message le visiteur verra sa creation deux fois.
-        # C'est le prix a payer pour qu'il l'ait a coup sur.
-        if lien:
-            msg.get_payload()[-1].add_related(
-                message.attachment.content,
-                maintype=message.attachment.maintype,
-                subtype=message.attachment.subtype,
-                cid=lien,
-                # Sans nom de fichier ni disposition « attachment » : cette
-                # copie-la n'existe que pour le <img>, elle n'a pas a paraitre
-                # une seconde fois dans la liste des fichiers.
-                disposition="inline",
-            )
+        # Quand le corps montre la creation, c'est une seconde partie, voisine
+        # du HTML dans le multipart/related : les clients ne resolvent un
+        # `cid:` qu'entre voisins, et ne listent sur qu'une piece du premier
+        # niveau. Une partie pour montrer, une partie pour garder.
         msg.add_attachment(
-            message.attachment.content,
-            maintype=message.attachment.maintype,
-            subtype=message.attachment.subtype,
-            filename=message.attachment.filename,
+            jointe.content,
+            maintype=jointe.maintype,
+            subtype=jointe.subtype,
+            filename=jointe.filename,
         )
     return msg
 
