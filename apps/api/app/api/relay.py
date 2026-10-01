@@ -35,6 +35,7 @@ from app.deps import current_relay_client
 from app.models import RelayClient, RelayMessage
 from app.schemas import RelaySendIn, RelaySendOut
 from app.services import mailer
+from app.services.transports import ranger_images
 
 router = APIRouter(prefix="/api/relay", tags=["relay"])
 
@@ -101,6 +102,20 @@ def send(
                 f"Piece jointe trop volumineuse (max {settings.relay_max_attachment_bytes} octets)",
             )
 
+    images: dict[str, bytes] = {}
+    for image in payload.images:
+        try:
+            images[image.cid] = base64.b64decode(image.content_b64, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, f"Image {image.cid} illisible (base64)"
+            ) from exc
+    if sum(len(c) for c in images.values()) > settings.relay_max_attachment_bytes:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            f"Images trop volumineuses (max {settings.relay_max_attachment_bytes} octets)",
+        )
+
     # Le doublon est reconnu avant le quota : un renvoi apres timeout ne doit
     # ni consommer un envoi, ni etre refuse une fois la journee pleine.
     existing = db.scalar(
@@ -134,6 +149,7 @@ def send(
         subject=payload.subject,
         body_html=payload.body_html,
         attachment_path=attachment_path,
+        images_path=ranger_images(_dossier_message(client, payload.message_id).with_suffix(".images"), images),
     )
 
     db.add(RelayMessage(client_id=client.id, message_id=payload.message_id, outbox_id=item.id))
@@ -164,6 +180,17 @@ def send(
     )
 
 
+def _dossier_message(client: RelayClient, message_id: str) -> Path:
+    """Le chemin de base des fichiers d'un message, sans suffixe.
+
+    Nomme d'apres l'identifiant du message, nettoye : un `../` venu du client
+    ne doit pas pouvoir designer un fichier hors du dossier.
+    """
+    directory = Path(settings.media_dir) / RELAY_MEDIA_SUBDIR / str(client.id)
+    safe_id = "".join(c for c in message_id if c.isalnum() or c in "-_")[:64] or "message"
+    return directory / safe_id
+
+
 def _store_attachment(client: RelayClient, message_id: str, filename: str, content: bytes) -> str:
     """Ecrit la piece jointe sur disque : l'outbox stocke un chemin, pas des octets.
 
@@ -171,10 +198,8 @@ def _store_attachment(client: RelayClient, message_id: str, filename: str, conte
     nomme d'apres l'identifiant du message -- un `../` dans `filename` ne doit
     pas pouvoir designer un fichier hors du dossier.
     """
-    directory = Path(settings.media_dir) / RELAY_MEDIA_SUBDIR / str(client.id)
-    directory.mkdir(parents=True, exist_ok=True)
-    suffix = Path(filename).suffix[:12]
-    safe_id = "".join(c for c in message_id if c.isalnum() or c in "-_")[:64] or "message"
-    path = directory / f"{safe_id}{suffix}"
+    base = _dossier_message(client, message_id)
+    base.parent.mkdir(parents=True, exist_ok=True)
+    path = base.with_name(base.name + Path(filename).suffix[:12])
     path.write_bytes(content)
     return str(path)

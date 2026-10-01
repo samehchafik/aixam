@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.services.settings_store import get_setting
 
-from . import Outgoing, PermanentSendError, SendError
+from . import Outgoing, PermanentSendError, SendError, images_du_message, sous_type_image
 
 # 401/403 : token invalide ou revoque. 413 : message trop gros. 422 : charge
 # utile refusee. Retenter ne changerait rien. 429 (quota) et 5xx, si.
@@ -98,6 +98,19 @@ def send(db: Session, message: Outgoing) -> None:
             "content_type": message.attachment.content_type,
             "content_b64": base64.b64encode(message.attachment.content).decode(),
         }
+    # Les images du corps, toutes : le visuel de l'ecran 7 compose ici, le logo
+    # et les pictos. Le serveur n'a plus qu'a les ranger dans le message --
+    # il ne depend ni de ses propres fichiers, ni de sa version.
+    images = images_du_message(message)
+    if images:
+        payload["images"] = [
+            {
+                "cid": nom,
+                "content_type": f"image/{sous_type_image(contenu)}",
+                "content_b64": base64.b64encode(contenu).decode(),
+            }
+            for nom, contenu in images.items()
+        ]
 
     response = _request(db, "POST", "/api/relay/send", json=payload)
     if not response.is_success:

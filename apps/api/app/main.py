@@ -46,6 +46,8 @@ COLONNES_AJOUTEES = (
     # desormais ce qui voyage et ce qu'on garde. Cette recette qu'on ne peut
     # plus suivre n'a plus lieu d'etre.
     "ALTER TABLE designs DROP COLUMN IF EXISTS layers",
+    # Les images du corps confiees au relais avec le message.
+    "ALTER TABLE email_outbox ADD COLUMN IF NOT EXISTS images_path VARCHAR(512)",
 )
 
 

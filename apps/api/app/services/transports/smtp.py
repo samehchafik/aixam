@@ -16,15 +16,14 @@ from datetime import datetime, timezone
 from app.config import settings
 
 from . import (
-    CID_CREATION,
-    CID_VISUEL,
     Outgoing,
     PermanentSendError,
     SendError,
     html_vers_texte,
-    images_du_gabarit,
+    images_du_message,
     images_en_texte,
     retirer_image_liee,
+    sous_type_image,
 )
 
 
@@ -57,25 +56,12 @@ def build_message(message: Outgoing) -> EmailMessage:
         liees.append((cid, contenu, subtype))
 
     jointe = message.attachment
-    if jointe and f"cid:{CID_VISUEL}" in corps:
-        # Le visuel de l'ecran 7, compose a partir du skin joint. S'il ne peut
-        # pas l'etre, c'est le skin lui-meme qui s'affiche.
-        try:
-            from app.services.visuel_mail import visuel
-
-            lier(CID_VISUEL, visuel(jointe.content))
-        except Exception:
-            lier(CID_VISUEL, jointe.content, jointe.subtype)
-    if jointe and f"cid:{CID_CREATION}" in corps:
-        # Le skin lui-meme dans le corps (gabarit d'avant le visuel).
-        lier(CID_CREATION, jointe.content, jointe.subtype)
+    for nom, contenu in images_du_message(message).items():
+        lier(nom, contenu, sous_type_image(contenu))
     # Rien a lier : la balise designerait une partie absente, et le visiteur
-    # verrait un cadre casse a la place de sa creation.
+    # verrait un cadre casse. Le visuel disparait, un picto devient son texte
+    # alternatif, toujours cliquable.
     corps = retirer_image_liee(corps)
-    # Les pictos du gabarit. Celui que ce back-office n'a pas devient son
-    # texte alternatif, toujours cliquable.
-    for nom, contenu in images_du_gabarit(corps).items():
-        lier(nom, contenu)
     corps = images_en_texte(corps)
 
     msg.set_content(html_vers_texte(corps), subtype="plain", charset="utf-8")

@@ -113,6 +113,14 @@ class RelayAttachmentIn(BaseModel):
     content_b64: str
 
 
+class RelayImageIn(BaseModel):
+    """Une image du corps, citee par `cid:<cid>` dans `body_html`."""
+
+    cid: str = Field(pattern=r"^[\w-]{1,40}$")
+    content_type: str = Field(default="image/png", pattern=r"^image/(png|jpeg)$")
+    content_b64: str
+
+
 class RelaySendIn(BaseModel):
     """Un email confie par un autre back-office.
 
@@ -126,6 +134,9 @@ class RelaySendIn(BaseModel):
     subject: str = Field(min_length=1, max_length=255)
     body_html: str = Field(min_length=1)
     attachment: RelayAttachmentIn | None = None
+    # Le visuel, le logo, les pictos : prepares par la borne, ranges tels quels
+    # dans le message par le serveur.
+    images: list[RelayImageIn] = Field(default_factory=list, max_length=12)
 
 
 class RelaySendOut(BaseModel):

@@ -50,12 +50,14 @@ def queue_email(
     subject: str,
     body_html: str,
     attachment_path: str | None = None,
+    images_path: str | None = None,
 ) -> EmailOutbox:
     item = EmailOutbox(
         to_email=to_email,
         subject=subject,
         body_html=body_html,
         attachment_path=attachment_path,
+        images_path=images_path,
     )
     db.add(item)
     db.flush()

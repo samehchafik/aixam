@@ -27,10 +27,11 @@ CLIENT_DB = reset_database("aixam_test_bo_local")
 VENV_UVICORN = API_DIR.parent.parent / ".venv" / "bin" / "uvicorn"
 
 # --- Le back-office DISTANT, dans son propre processus ---
+SERVER_MEDIA = tempfile.mkdtemp(prefix="distant-media-")
 server_env = {**os.environ,
     "DATABASE_URL": SERVER_DB, "RELAY_SERVER_ENABLED": "true", "MAIL_TRANSPORT": "smtp",
     "SMTP_HOST": "", "ADMIN_EMAIL": "admin@aixam-test.fr", "ADMIN_PASSWORD": "distant",
-    "MEDIA_DIR": tempfile.mkdtemp(prefix="distant-media-"), "STATIC_DIR": tempfile.mkdtemp(),
+    "MEDIA_DIR": SERVER_MEDIA, "STATIC_DIR": tempfile.mkdtemp(),
     "PYTHONPATH": str(API_DIR)}
 server = subprocess.Popen(
     [str(VENV_UVICORN), "app.main:app", "--port", str(PORT), "--log-level", "warning"],
@@ -149,6 +150,49 @@ try:
           len(httpx.get(f"{base}/api/admin/emails", headers=admin).json()) == 2)
     used = httpx.get(f"{base}/api/admin/relay-clients", headers=admin).json()[0]
     check("quota non reconsomme par le rejeu", used["sent_today"] == 2, used)
+
+    print("\n[8] L'e-mail de la creation : la borne envoie toutes ses images")
+    # Le visuel de l'ecran 7, le logo, les pictos : prepares par la borne et
+    # confies au relais avec le message. Le distant n'a qu'a les ranger -- il
+    # ne depend ni de ses fichiers, ni de sa version.
+    import io
+    import re
+    from PIL import Image
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    from app.services import mailer
+    from app.services.transports import Outgoing
+    import app.services.transports as transports
+    from app.services.transports.smtp import build_message
+
+    skin = Path(tempfile.mkdtemp()) / "skin.png"
+    Image.new("RGBA", (300, 40), (230, 80, 40, 255)).save(skin)
+    with SessionLocal() as db:
+        item = mailer.queue_email(db, to_email="camille.durand@example.com", subject="Votre création EASY",
+                                  body_html=mailer.render_template("creation.html", first_name="Camille"),
+                                  attachment_path=str(skin))
+        db.commit()
+    process_batch()
+    with Session(create_engine(SERVER_DB)) as sdb:
+        recu = sdb.scalars(select(EmailOutbox).order_by(EmailOutbox.created_at.desc())).first()
+        check("le distant a recu le message", recu is not None and recu.subject == "Votre création EASY")
+        check("avec ses images, rangees a part", bool(recu.images_path), recu.images_path)
+        ranges = sorted(f.stem for f in Path(recu.images_path).iterdir()) if recu.images_path else []
+        check("le visuel, le logo et les trois pictos",
+              ranges == ["facebook", "instagram", "logo-aixam", "tiktok", "visuel"], ranges)
+        # Le distant construit le message SANS ses propres pictos.
+        vrai_dossier = transports.IMAGES_GABARIT
+        transports.IMAGES_GABARIT = Path(tempfile.mkdtemp())
+        msg = build_message(Outgoing.from_outbox(recu))
+        transports.IMAGES_GABARIT = vrai_dossier
+    html = next(p.get_content() for p in msg.walk() if p.get_content_type() == "text/html")
+    lies = {p["Content-ID"][1:-1] for p in msg.walk() if p["Content-ID"]}
+    cites = re.findall(r'src="cid:([^"]+)"', html)
+    check("cinq images dans le corps, toutes presentes dans le message",
+          len(cites) == 5 and all(c in lies for c in cites), (cites, lies))
+    jointes = list(msg.iter_attachments())
+    check("le skin en piece jointe", len(jointes) == 1
+          and jointes[0].get_payload(decode=True) == skin.read_bytes(), [p.get_filename() for p in jointes])
 
 finally:
     server.terminate(); server.wait(timeout=10)

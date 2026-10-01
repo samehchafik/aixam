@@ -204,6 +204,9 @@ class EmailOutbox(Base):
     subject: Mapped[str] = mapped_column(String(255))
     body_html: Mapped[str] = mapped_column(Text)
     attachment_path: Mapped[str | None] = mapped_column(String(512))
+    # Le dossier des images du corps, quand elles sont arrivees avec le message
+    # (relais) plutot que preparees au moment d'envoyer.
+    images_path: Mapped[str | None] = mapped_column(String(512))
     status: Mapped[OutboxStatus] = mapped_column(
         Enum(OutboxStatus, name="outbox_status"), default=OutboxStatus.pending, index=True
     )
