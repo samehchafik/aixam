@@ -92,18 +92,22 @@ def recover_stale() -> None:
 
 
 def attendre_le_schema(delai: float = 2.0, essais: int = 60) -> None:
-    """Patiente jusqu'a ce que les tables existent.
+    """Patiente jusqu'a ce que les tables existent, avec toutes leurs colonnes.
 
-    C'est l'API qui les cree, a son demarrage. Le worker part en meme temps et
-    peut la devancer : sans cette attente il mourait sur « relation
-    email_outbox does not exist ». En conteneur, `restart: unless-stopped` le
-    relancait jusqu'a ce que ca passe -- bruyamment ; lance a la main, il ne
-    revenait jamais.
+    C'est l'API qui les cree, a son demarrage, et qui ajoute les colonnes
+    venues apres coup. Le worker part en meme temps et peut la devancer : sans
+    cette attente il mourait sur « relation email_outbox does not exist » --
+    ou, la table existant deja, sur « column email_outbox.images_path does not
+    exist ». En conteneur, `restart: unless-stopped` le relancait jusqu'a ce
+    que ca passe -- bruyamment ; lance a la main, il ne revenait jamais.
+
+    On lit donc une ligne entiere, toutes colonnes du modele, et pas
+    seulement l'identifiant.
     """
     for reste in range(essais, 0, -1):
         try:
             with SessionLocal() as db:
-                db.execute(select(EmailOutbox.id).limit(1))
+                db.execute(select(EmailOutbox).limit(1))
             return
         except Exception as exc:
             if reste == 1:
