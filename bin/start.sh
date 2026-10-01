@@ -268,9 +268,13 @@ if [ $FRONT -eq 1 ]; then
 fi
 echo
 
-if [ $LOGS -eq 1 ]; then exec docker compose -f "$ROOT/docker-compose.yml" logs -f api worker; fi
+if [ $LOGS -eq 1 ]; then
+  # Sans docker, les journaux sont des fichiers : on suit les deux a la fois.
+  if [ $SANS_DOCKER -eq 1 ]; then exec tail -n 30 -f "$ROOT/.run/api.log" "$ROOT/.run/worker.log"; fi
+  exec docker compose -f "$ROOT/docker-compose.yml" logs -f api worker
+fi
 if [ $SANS_DOCKER -eq 1 ]; then
-  say "logs : tail -f .run/api.log    arret : bin/stop.sh --local"
+  say "logs : tail -f .run/api.log .run/worker.log    arret : bin/stop.sh --local"
 else
   say "logs : make logs    arret : bin/stop.sh    redemarrage : bin/restart.sh"
 fi
