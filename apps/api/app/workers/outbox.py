@@ -17,15 +17,39 @@ from app.models import EmailOutbox, OutboxStatus
 from app.services.mailer import PermanentSendError, current_transport, send_now
 
 POLL_SECONDS = 5
-MAX_ATTEMPTS = 8
 BATCH = 20
+# Combien de temps on insiste sur une erreur passagere (reseau du salon
+# coupe, relais ou SMTP injoignable) avant de passer l'e-mail en echec : le
+# temps qu'on voie la panne et qu'on la repare. Une erreur definitive
+# (jeton refuse, message refuse) passe en echec tout de suite.
+DUREE_RELANCES = timedelta(hours=4)
+# Ecart maximal entre deux essais : une fois la panne reparee, l'e-mail part
+# dans les dix minutes.
+ECART_MAX = timedelta(minutes=10)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("outbox")
 
 
 def _backoff(attempts: int) -> timedelta:
-    return timedelta(seconds=min(600, 5 * 2**attempts))
+    return min(ECART_MAX, timedelta(seconds=5 * 2**attempts))
+
+
+def _essais_pour(duree: timedelta) -> int:
+    """Le nombre d'essais dont les ecarts couvrent `duree`.
+
+    Compte en essais plutot qu'en heures depuis la mise en file : un e-mail
+    reste en attente pendant que le worker est arrete, et il ne doit pas
+    etre abandonne des son premier essai au redemarrage.
+    """
+    essais, ecoule = 1, timedelta(0)
+    while ecoule < duree:
+        ecoule += _backoff(essais)
+        essais += 1
+    return essais
+
+
+MAX_ATTEMPTS = _essais_pour(DUREE_RELANCES)
 
 
 def process_batch() -> int:

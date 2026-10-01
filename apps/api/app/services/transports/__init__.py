@@ -144,8 +144,8 @@ class SendError(RuntimeError):
 class PermanentSendError(SendError):
     """Echec dont on sait qu'il se reproduira a l'identique.
 
-    Token refuse, adresse invalide, configuration absente : retenter huit
-    fois avec un backoff n'apporte rien, sinon du bruit dans la file. Le
+    Token refuse, adresse invalide, configuration absente : retenter quatre
+    heures avec un backoff n'apporte rien, sinon du bruit dans la file. Le
     worker marque directement en echec, l'admin voit pourquoi.
     """
 

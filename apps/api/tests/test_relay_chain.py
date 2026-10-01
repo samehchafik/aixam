@@ -115,6 +115,14 @@ try:
     used = httpx.get(f"{base}/api/admin/relay-clients", headers=admin).json()[0]
     check("compteur du client incremente", used["sent_today"] == 1 and used["sent_total"] == 1, used)
 
+    print("\n[4b] Une panne passagere est relancee pendant quatre heures")
+    from datetime import timedelta
+    from app.workers.outbox import MAX_ATTEMPTS, _backoff
+    couvert = sum((_backoff(n) for n in range(1, MAX_ATTEMPTS)), timedelta())
+    check("les relances couvrent au moins 4 h", couvert >= timedelta(hours=4), couvert)
+    check("jamais plus de 10 min entre deux essais", max(_backoff(n) for n in range(1, MAX_ATTEMPTS))
+          == timedelta(minutes=10))
+
     print("\n[5] Le distant coupe le client -> le local le voit, sans perdre le mail")
     cid = used["id"]
     httpx.patch(f"{base}/api/admin/relay-clients/{cid}", json={"is_active": False}, headers=admin)
@@ -125,7 +133,7 @@ try:
     process_batch()
     with SessionLocal() as db:
         item = db.scalars(select(EmailOutbox).order_by(EmailOutbox.created_at.desc())).first()
-        check("echec permanent, pas 8 essais inutiles", item.status == OutboxStatus.failed, item.status)
+        check("echec permanent, pas quatre heures d'essais inutiles", item.status == OutboxStatus.failed, item.status)
         check("l'admin lit la cause", "relais" in (item.last_error or "").lower(), item.last_error)
         failed_id = str(item.id)
     check("le distant n'a rien recu de plus",
