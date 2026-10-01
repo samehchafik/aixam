@@ -13,7 +13,7 @@ import httpx
 
 from app.config import settings
 
-from . import Outgoing, PermanentSendError, SendError, retirer_image_liee
+from . import Outgoing, PermanentSendError, SendError, images_en_texte, retirer_image_liee
 
 # 401/403 : mauvaise cle. 400 : charge utile refusee. Rien de tout cela ne
 # s'arrangera au dixieme essai. 429 et 5xx, si.
@@ -27,8 +27,9 @@ def build_payload(message: Outgoing) -> dict:
         "subject": message.subject,
         # L'API Brevo prend des pieces jointes, pas des images liees au
         # corps : la balise designerait une partie qu'elle n'expose pas, et le
-        # visiteur verrait un cadre casse. La creation reste en piece jointe.
-        "htmlContent": retirer_image_liee(message.body_html),
+        # visiteur verrait un cadre casse. La creation reste en piece jointe ;
+        # les pictos des reseaux deviennent leur nom, toujours cliquable.
+        "htmlContent": images_en_texte(retirer_image_liee(message.body_html)),
     }
     if message.attachment:
         payload["attachment"] = [

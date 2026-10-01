@@ -41,6 +41,37 @@ def retirer_image_liee(html_source: str) -> str:
     return _IMAGE_LIEE.sub("", html_source)
 
 
+# Les pictos du gabarit (reseaux sociaux) suivent le meme principe : le
+# gabarit ecrit <img src="cid:instagram">, et le fichier est
+# `templates/images/instagram.png`. Ils voyagent dans le message comme la
+# creation, sans rien demander a un serveur -- y compris quand le message passe
+# par le relais : celui-ci a les memes fichiers.
+IMAGES_GABARIT = Path(__file__).resolve().parent.parent.parent / "templates" / "images"
+
+_IMAGE_CID = re.compile(r"""<img\b[^>]*\bsrc=["']cid:([\w-]+)["'][^>]*>""", re.IGNORECASE)
+_ALT = re.compile(r"""\balt=["']([^"']*)["']""", re.IGNORECASE)
+
+
+def images_du_gabarit(html_source: str) -> dict[str, bytes]:
+    """Les pictos que le corps cite et que ce back-office possede."""
+    trouvees = {}
+    for nom in dict.fromkeys(m.group(1) for m in _IMAGE_CID.finditer(html_source)):
+        fichier = IMAGES_GABARIT / f"{nom}.png"
+        if nom != CID_CREATION and fichier.is_file():
+            trouvees[nom] = fichier.read_bytes()
+    return trouvees
+
+
+def images_en_texte(html_source: str) -> str:
+    """Remplace chaque image liee restante par son texte alternatif.
+
+    Pour qui ne sait pas lier d'image (l'API Brevo), ou pour un picto absent
+    de ce back-office : « Instagram » reste un lien cliquable, la ou une
+    balise orpheline ferait un cadre casse.
+    """
+    return _IMAGE_CID.sub(lambda m: "" if m.group(1) == CID_CREATION else _alt(m), html_source)
+
+
 class SendError(RuntimeError):
     """Echec d'envoi. Le worker retentera."""
 
@@ -140,9 +171,31 @@ _BALISES = re.compile(r"<[^>]+>")
 _LIGNES_VIDES = re.compile(r"\n{3,}")
 
 
+# Un lien garde son adresse, sans quoi la version texte perdrait les liens
+# vers les reseaux sociaux ; un picto, son nom.
+_LIEN = re.compile(r"""(?is)<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>(.*?)</a>""")
+_CELLULE = re.compile(r"(?i)</td>")
+
+
+_IMAGE = re.compile(r"(?i)<img\b[^>]*>")
+
+
+def _alt(m: re.Match) -> str:
+    alt = _ALT.search(m.group(0))
+    return alt.group(1) if alt else ""
+
+
+def _lien_en_texte(m: re.Match) -> str:
+    adresse = m.group(1)
+    libelle = _BALISES.sub("", _IMAGE.sub(_alt, m.group(2))).strip()
+    return f"{libelle} : {adresse}" if libelle and libelle != adresse else adresse
+
+
 def html_vers_texte(html_source: str) -> str:
     """Une version texte lisible du corps HTML."""
     texte = _INVISIBLE.sub("", html_source)
+    texte = _LIEN.sub(_lien_en_texte, texte)
+    texte = _CELLULE.sub("\n", texte)
     texte = _PARAGRAPHES.sub("\n\n", texte)
     texte = _LIGNES.sub("\n", texte)
     texte = _BALISES.sub("", texte)

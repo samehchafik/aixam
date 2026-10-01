@@ -21,6 +21,8 @@ from . import (
     PermanentSendError,
     SendError,
     html_vers_texte,
+    images_du_gabarit,
+    images_en_texte,
     retirer_image_liee,
 )
 
@@ -41,18 +43,31 @@ def build_message(message: Outgoing) -> EmailMessage:
     # L'identifiant de la partie image se fabrique ici, au moment ou la partie
     # existe. Le gabarit ne peut ecrire qu'un marqueur : il est rendu a la mise
     # en file, bien avant qu'on sache comment le message sera decoupe.
+    domaine = settings.mail_from.rpartition("@")[2] or None
     corps = message.body_html
     lien = None
     if message.attachment and f"cid:{CID_CREATION}" in corps:
-        lien = make_msgid(domain=settings.mail_from.rpartition("@")[2] or None)
+        lien = make_msgid(domain=domaine)
         corps = corps.replace(f"cid:{CID_CREATION}", f"cid:{lien[1:-1]}")
     else:
         # Rien a lier : la balise designerait une partie absente, et le
         # visiteur verrait un cadre casse a la place de sa creation.
         corps = retirer_image_liee(corps)
+    # Les pictos du gabarit, chacun sa partie. Celui que ce back-office n'a
+    # pas devient son texte alternatif, toujours cliquable.
+    pictos = []
+    for nom, contenu in images_du_gabarit(corps).items():
+        cid = make_msgid(domain=domaine)
+        corps = corps.replace(f"cid:{nom}", f"cid:{cid[1:-1]}")
+        pictos.append((cid, contenu))
+    corps = images_en_texte(corps)
 
     msg.set_content(html_vers_texte(corps), subtype="plain", charset="utf-8")
     msg.add_alternative(corps, subtype="html", charset="utf-8")
+    # Apres le premier ajout, la partie HTML est devenue un multipart/related :
+    # les suivants s'y rangent, a cote d'elle.
+    for cid, contenu in pictos:
+        msg.get_payload()[-1].add_related(contenu, maintype="image", subtype="png", cid=cid, disposition="inline")
 
     if message.attachment:
         # DEUX parties pour la meme image, et ce n'est pas un oubli.

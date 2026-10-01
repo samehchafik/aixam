@@ -7,7 +7,9 @@ en-tetes et des parties MIME les revele.
     ../../.venv/bin/python tests/test_email_format.py     (depuis apps/api)
 """
 
+import io
 import os
+import re
 import sys
 import tempfile
 from email.utils import parsedate_to_datetime
@@ -136,11 +138,14 @@ check("structure multipart/mixed", liee.get_content_type() == "multipart/mixed",
 check("le corps et l'image liee forment un multipart/related",
       "multipart/related" in [p.get_content_type() for p in liee.walk()])
 html_part = next(p for p in liee.walk() if p.get_content_type() == "text/html")
-images = [p for p in liee.walk() if p.get_content_type() == "image/png"]
+jointe = next(p for p in liee.walk() if p.get_content_disposition() == "attachment")
+# Les pictos des reseaux sont aussi des images liees : on ne compte ici que
+# celles qui portent la creation.
+images = [p for p in liee.walk() if p.get_content_type() == "image/png"
+          and p.get_payload(decode=True) == jointe.get_payload(decode=True)]
 check("deux parties image : une pour montrer, une pour garder", len(images) == 2,
       [p.get_content_disposition() for p in images])
 image = next(p for p in images if p["Content-ID"])
-jointe = next(p for p in images if p.get_content_disposition() == "attachment")
 
 # Une seule doit paraitre dans la liste des fichiers : celle qui n'existe que
 # pour le <img> n'a ni nom ni disposition « attachment ».
@@ -161,7 +166,8 @@ check("le HTML cite exactement cet identifiant",
       (image["Content-ID"], html_part.get_content()[-300:]))
 check("le marqueur a bien ete remplace",
       f"cid:{CID_CREATION}" not in html_part.get_content())
-check("aucun lien http dans le corps", "http" not in html_part.get_content())
+# Les liens vers les reseaux sont voulus ; une image chargee par http, non.
+check("aucune image chargee par http", 'src="http' not in html_part.get_content())
 
 check("la piece jointe porte le nom du fichier", jointe.get_filename() == skin.name,
       jointe.get_filename())
@@ -173,8 +179,11 @@ print("\n[8] Pas d'image liee sans piece a lier")
 # retire plutot que de montrer un cadre casse.
 seul = build_message(Outgoing(message_id="w", to_email="v@example.com",
                               subject="Votre creation", body_html=vraie))
-check("la balise est retiree", "cid:" not in next(
-    p.get_content() for p in seul.walk() if p.get_content_type() == "text/html"))
+html_seul = next(p.get_content() for p in seul.walk() if p.get_content_type() == "text/html")
+lies_seul = {p["Content-ID"][1:-1] for p in seul.walk() if p["Content-ID"]}
+check("la balise est retiree", "Ta création EASY" not in html_seul)
+check("toute image restante designe une partie du message",
+      all(c in lies_seul for c in re.findall(r'src="cid:([^"]+)"', html_seul)))
 # L'API Brevo prend des pieces jointes, pas des images liees au corps.
 check("Brevo retire aussi la balise",
       "cid:" not in build_payload(Outgoing(message_id="v", to_email="v@example.com",
@@ -182,6 +191,51 @@ check("Brevo retire aussi la balise",
 check("retirer_image_liee ne touche pas au reste",
       retirer_image_liee("<p>avant</p><img src=\'cid:creation\'><p>apres</p>")
       == "<p>avant</p><p>apres</p>")
+
+
+print("\n[9] Les pictos des reseaux, sous l'image")
+# Instagram, TikTok et le site : dans le message, comme la creation, et
+# cliquables.
+lies = {p["Content-ID"][1:-1]: p for p in liee.walk() if p["Content-ID"]}
+html_liee = html_part.get_content()
+cites = re.findall(r'src="cid:([^"]+)"', html_liee)
+check("quatre images liees : la creation et trois pictos", len(cites) == 4 and len(lies) == 4, (cites, list(lies)))
+check("chacune designe une partie du message", all(c in lies for c in cites))
+for adresse in ("https://www.instagram.com/aixam_officiel/", "https://www.tiktok.com/@aixam_officiel",
+                "https://www.aixam.com/"):
+    check(f"lien {adresse}", f'href="{adresse}"' in html_liee)
+texte_liee = next(p.get_content() for p in liee.walk() if p.get_content_type() == "text/plain")
+check("la version texte garde le nom et l'adresse",
+      "Instagram : https://www.instagram.com/aixam_officiel/" in texte_liee, texte_liee[-300:])
+brevo = build_payload(Outgoing(message_id="u", to_email="v@example.com", subject="s", body_html=vraie))["htmlContent"]
+check("Brevo : plus aucune image liee", "cid:" not in brevo)
+check("Brevo : les pictos deviennent leur nom, toujours cliquable",
+      re.search(r'href="https://www.tiktok.com/@aixam_officiel"[^>]*>\s*TikTok\s*</a>', brevo) is not None)
+# Un back-office qui n'aurait pas les fichiers (relais pas a jour) : le texte
+# alternatif plutot qu'un cadre casse.
+import app.services.transports as transports
+vrai_dossier = transports.IMAGES_GABARIT
+transports.IMAGES_GABARIT = Path(tempfile.mkdtemp())
+sans = build_message(Outgoing(message_id="t", to_email="v@example.com", subject="s", body_html=vraie,
+                              attachment=load_attachment(str(skin))))
+transports.IMAGES_GABARIT = vrai_dossier
+html_sans = next(p.get_content() for p in sans.walk() if p.get_content_type() == "text/html")
+check("picto absent : son nom a la place", ">Instagram" in html_sans.replace("\n", "").replace(" ", "")
+      and "cid:instagram" not in html_sans)
+
+print("\n[10] Le visuel de l'ecran 7")
+from PIL import Image
+from app.services.visuel_mail import LARGEUR, MOCKUP, composer
+rouge = render_design({"layers": [Layer(type="background", hex="#FF0000").model_dump(exclude_none=True)]})
+visuel = Image.open(io.BytesIO(composer(rouge))).convert("RGB")
+check("un PNG 16/9 a la largeur prevue", visuel.size == (LARGEUR, LARGEUR * 9 // 16), visuel.size)
+k = LARGEUR / 1920
+r, g, b = visuel.getpixel((round(1400 * k), round(500 * k)))
+check("la creation est posee sur la planche", r > 120 and r > 2 * g and r > 2 * b, (r, g, b))
+photo = Image.open(MOCKUP / "decor.png").convert("RGB").resize(visuel.size, Image.LANCZOS)
+ciel = (round(1400 * k), round(250 * k))
+check("hors du masque, la photo telle quelle", visuel.getpixel(ciel) == photo.getpixel(ciel),
+      (visuel.getpixel(ciel), photo.getpixel(ciel)))
 
 
 sys.exit(report())

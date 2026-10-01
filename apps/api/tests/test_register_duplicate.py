@@ -50,7 +50,7 @@ def inscrire(session: str, prenom: str = "Sameh", consent: bool = True):
 def dernier_code() -> str:
     with SessionLocal() as db:
         mail = db.scalars(select(EmailOutbox).order_by(EmailOutbox.created_at.desc())).first()
-        return re.search(r">\s*(\d{6})\s*<", mail.body_html).group(1)
+        return re.search(r">\s*(\d{4,8})\s*<", mail.body_html).group(1)
 
 
 def compter(modele) -> int:
