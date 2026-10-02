@@ -68,6 +68,13 @@ const FRAME_RADIUS = 14
  */
 const MAX_ROTATION_FOND = 7
 
+/**
+ * Plus petit cote d'un objet, en pixels de la planche : en dessous, le doigt
+ * ne le reprend plus. Sur le PLUS PETIT cote, pas la largeur : un objet tres
+ * allonge (« LET'S PLAY ») descendait sinon a quelques pixels de haut.
+ */
+const MIN_COTE_OBJET = 40
+
 type Props = {
   catalog: Catalog
   layers: Layer[]
@@ -664,7 +671,19 @@ export function SkinCanvas({
               anchorStrokeWidth={1.5}
               anchorFill="rgba(40, 183, 243, 0.5)"
               rotateAnchorOffset={30}
-              boundBoxFunc={(oldBox, newBox) => (newBox.width < 30 ? oldBox : newBox)}
+              // Tirer une poignee au-dela du coin oppose RETOURNAIT l'objet :
+              // une echelle negative, conservee au relachement, et une zone
+              // de selection invalide -- l'objet ne se reprenait plus.
+              flipEnabled={false}
+              // Seul un retrecissement sous le minimum est refuse : un objet
+              // deja plus petit doit pouvoir regrandir. Le Stage n'a pas
+              // d'echelle : ses pixels sont ceux de la planche.
+              boundBoxFunc={(oldBox, newBox) => {
+                // Une largeur ou une hauteur negative, c'est un retournement.
+                if (newBox.width <= 0 || newBox.height <= 0) return oldBox
+                const cote = (b: { width: number; height: number }) => Math.min(b.width, b.height)
+                return cote(newBox) < MIN_COTE_OBJET && cote(newBox) < cote(oldBox) ? oldBox : newBox
+              }}
             />
           )}
         </KLayer>
@@ -839,7 +858,9 @@ function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, reg
       }}
       onTransformEnd={(e) => {
         const node = e.target
-        const next = scale * node.scaleX()
+        // Valeur absolue : une echelle negative (objet retourne) rendait le
+        // calque insaisissable.
+        const next = scale * Math.abs(node.scaleX())
         // L'echelle du geste passe dans la largeur de l'image ; le groupe
         // revient a 1.
         node.scaleX(1)
@@ -885,6 +906,8 @@ function useTwoFingerGesture(opts: {
     y: number
     scale: number
     rotation: number
+    /** La plus forte reduction permise : le plus petit cote reste a MIN_COTE_OBJET. */
+    reduction: number
   } | null>(null)
 
   const touchesOf = (e: KonvaEventObject<TouchEvent>) => {
@@ -911,12 +934,14 @@ function useTwoFingerGesture(opts: {
     // Echelle de reference lue sur l'image rendue, pas sur layer.scale qui est
     // absent pour un fond en mode "cover".
     const child = node instanceof Konva.Group ? node.getChildren()[0] : node
+    const cote = Math.min(Math.abs(child?.width() || 0), Math.abs(child?.height() || 0))
     start.current = {
       ...t,
       x: node.x(),
       y: node.y(),
       scale: (child?.width() || node.width() || opts.skinWidth) / opts.skinWidth,
       rotation: node.rotation(),
+      reduction: cote > 0 ? Math.min(1, MIN_COTE_OBJET / cote) : 0,
     }
   }
 
@@ -929,7 +954,7 @@ function useTwoFingerGesture(opts: {
     const node = opts.getNode(opts.selectedIndex)
     if (!node) return
     const stageScale = node.getStage()?.getAbsoluteScale().x ?? 1
-    const ratio = opts.redimensionnable?.() === false ? 1 : t.dist / s.dist
+    const ratio = opts.redimensionnable?.() === false ? 1 : Math.max(t.dist / s.dist, s.reduction)
     node.scale({ x: ratio, y: ratio })
     node.rotation(s.rotation + (t.angle - s.angle))
     node.position({ x: s.x + (t.cx - s.cx) / stageScale, y: s.y + (t.cy - s.cy) / stageScale })
