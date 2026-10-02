@@ -33,7 +33,7 @@ const CELL_FOND = { width: 163, height: 92 }
 const OBJECT_MAX_WIDTH = 210
 const ORIGIN = { x: (STAGE.width - SKIN_WIDTH) / 2, y: 92 + BLEED.top }
 
-/** Cellule du swiper des fonds : la vignette « choisis ta couleur » ou un fond du catalogue. */
+/** Cellule du swiper des fonds : la vignette « choisis une couleur unie » ou un fond du catalogue. */
 type BackgroundTile = { id: string; kind: 'color' } | { id: string; kind: 'asset'; item: CatalogItem }
 
 const COLOR_SWATCHES = [

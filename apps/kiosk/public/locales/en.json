@@ -40,8 +40,8 @@
   "editor": {
     "backgroundsTitle": "Choose your background:",
     "objectsTitle": "Add the elements you like:",
-    "colorTile": "pick your colour",
-    "colorPickerTitle": "Pick your colour",
+    "colorTile": "pick a solid colour",
+    "colorPickerTitle": "Pick a solid colour",
     "hintEmpty": "Pick a background and objects to pimp your own skin.",
     "hintBackground": "Adjust your background with two fingers.",
     "hintObject": "Adjust your object with two fingers.",

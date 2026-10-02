@@ -40,8 +40,8 @@
   "editor": {
     "backgroundsTitle": "Choisis ton fond :",
     "objectsTitle": "Ajoute les éléments de ton choix :",
-    "colorTile": "choisis ta couleur",
-    "colorPickerTitle": "Choisis ta couleur",
+    "colorTile": "choisis une couleur unie",
+    "colorPickerTitle": "Choisis une couleur unie",
     "hintEmpty": "Choisis un fond et des objets pour pimper ton skin perso.",
     "hintBackground": "Modifie la disposition de ton fond avec deux doigts.",
     "hintObject": "Modifie la disposition de ton objet avec deux doigts.",

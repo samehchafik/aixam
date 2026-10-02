@@ -40,8 +40,8 @@
   "editor": {
     "backgroundsTitle": "Elige tu fondo:",
     "objectsTitle": "Añade los elementos que quieras:",
-    "colorTile": "elige tu color",
-    "colorPickerTitle": "Elige tu color",
+    "colorTile": "elige un color liso",
+    "colorPickerTitle": "Elige un color liso",
     "hintEmpty": "Elige un fondo y objetos para tunear tu skin.",
     "hintBackground": "Ajusta tu fondo con dos dedos.",
     "hintObject": "Ajusta tu objeto con dos dedos.",
