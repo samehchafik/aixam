@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ValidationError } from '../../api/client'
 import { useApp } from '../../app-context'
-import { enrichir, useI18n } from '../../i18n'
+import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { Popin, TexteLegal } from '../../components/Popin'
 import { EcranFormulaire } from './EcranFormulaire'
@@ -38,7 +38,7 @@ function valider(champ: string, valeur: string): string | null {
   return v.length >= 2 ? null : 'register.errors.name'
 }
 
-/** Les textes que les liens des mentions ouvrent dans la popin. */
+/** Le texte que la case du reglement ouvre dans la popin. */
 type Texte = 'rules'
 
 /** Le fichier de chaque texte, dans `public/legal/`. */
@@ -121,12 +121,6 @@ export function RegisterStep() {
     }
   }
 
-  const lien = (quoi: Texte, libelle: string) => (
-    <button type="button" className="lien-mention" onClick={() => setTexte(quoi)}>
-      {t(libelle)}
-    </button>
-  )
-
   return (
     <EcranFormulaire>
       {/* Un vrai formulaire : sur un ecran tactile, la touche de validation du
@@ -172,11 +166,7 @@ export function RegisterStep() {
         <p className="obligatoires">{t('register.required')}</p>
         <div className="mentions">
           {t('register.legal').split('\n').map((paragraphe, i) => (
-            <p key={i}>
-              {enrichir(paragraphe, {
-                reglement: lien('rules', 'register.rulesLink'),
-              })}
-            </p>
+            <p key={i}>{paragraphe}</p>
           ))}
         </div>
 

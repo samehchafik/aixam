@@ -5,7 +5,7 @@ corrigent ici, sans recompiler (un rechargement de la page suffit).
 
 | Fichier | Ouvert par |
 |---|---|
-| `reglement.<langue>.md` | le lien « cliquez ici » du règlement, et la case à cocher |
+| `reglement.<langue>.md` | la case « Valider et accepter le règlement » |
 
 `<langue>` vaut `fr`, `en` ou `es`. Une langue sans fichier affiche la version
 française. Les versions anglaise et espagnole du règlement sont des

@@ -159,13 +159,6 @@ body {
 .mentions p { margin: 0 0 2.5px; }
 .mentions p:nth-child(1) { letter-spacing: 0.011em; }
 .mentions p:nth-child(2) { letter-spacing: -0.008em; }
-/* La ligne du reglement du jeu, detachee des mentions legales au-dessus. */
-.mentions p:nth-child(3) { margin-top: 10px; }
-.lien-mention {
-  display: inline; margin: 0; padding: 0; border: none; background: none; cursor: pointer;
-  font: inherit; font-weight: 500; color: var(--blanc);
-}
-
 /* La case du reglement : une vraie case a cocher, dessinee a la charte. */
 .case {
   align-self: flex-start; display: flex; align-items: center; gap: 8.1px;

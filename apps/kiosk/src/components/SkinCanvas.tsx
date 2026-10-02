@@ -73,7 +73,7 @@ const MAX_ROTATION_FOND = 7
  * ne le reprend plus. Sur le PLUS PETIT cote, pas la largeur : un objet tres
  * allonge (« LET'S PLAY ») descendait sinon a quelques pixels de haut.
  */
-const MIN_COTE_OBJET = 40
+const MIN_COTE_OBJET = 28
 
 type Props = {
   catalog: Catalog
