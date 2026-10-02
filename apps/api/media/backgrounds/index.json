@@ -2,154 +2,243 @@
   "items": [
     {
       "id": "fond-1",
-      "file": "fond_1.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond01.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 1",
         "en": "Background 1",
         "es": "Fondo 1"
       },
-      "thumb": "Vignette_fond_1.svg"
+      "thumb": "Vignette_fond01.png"
     },
     {
       "id": "fond-2",
-      "file": "fond_2.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond02.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 2",
         "en": "Background 2",
         "es": "Fondo 2"
       },
-      "thumb": "Vignette_fond_2.svg"
+      "thumb": "Vignette_fond02.png"
     },
     {
       "id": "fond-3",
-      "file": "fond_3.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond03.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 3",
         "en": "Background 3",
         "es": "Fondo 3"
       },
-      "thumb": "Vignette_fond_3.svg"
+      "thumb": "Vignette_fond03.png"
     },
     {
       "id": "fond-4",
-      "file": "fond_4.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond04.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 4",
         "en": "Background 4",
         "es": "Fondo 4"
       },
-      "thumb": "Vignette_fond_4.svg"
+      "thumb": "Vignette_fond04.png"
     },
     {
       "id": "fond-5",
-      "file": "fond_5.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond05.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 5",
         "en": "Background 5",
         "es": "Fondo 5"
       },
-      "thumb": "Vignette_fond_5.svg"
+      "thumb": "Vignette_fond05.png"
     },
     {
       "id": "fond-6",
-      "file": "fond_6.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond06.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 6",
         "en": "Background 6",
         "es": "Fondo 6"
       },
-      "thumb": "Vignette_fond_6.svg",
-      "demo": true
+      "thumb": "Vignette_fond06.png"
     },
     {
       "id": "fond-7",
-      "file": "fond_7.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond07.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 7",
         "en": "Background 7",
         "es": "Fondo 7"
       },
-      "thumb": "Vignette_fond_7.svg",
-      "demo": true
+      "thumb": "Vignette_fond07.png"
     },
     {
       "id": "fond-8",
-      "file": "fond_8.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond08.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 8",
         "en": "Background 8",
         "es": "Fondo 8"
       },
-      "thumb": "Vignette_fond_8.svg",
-      "demo": true
+      "thumb": "Vignette_fond08.png"
     },
     {
       "id": "fond-9",
-      "file": "fond_9.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond09.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 9",
         "en": "Background 9",
         "es": "Fondo 9"
       },
-      "thumb": "Vignette_fond_9.svg",
-      "demo": true
+      "thumb": "Vignette_fond09.png"
     },
     {
       "id": "fond-10",
-      "file": "fond_10.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond10.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 10",
         "en": "Background 10",
         "es": "Fondo 10"
       },
-      "thumb": "Vignette_fond_10.svg",
-      "demo": true
+      "thumb": "Vignette_fond10.png"
     },
     {
       "id": "fond-11",
-      "file": "fond_11.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond11.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 11",
         "en": "Background 11",
         "es": "Fondo 11"
       },
-      "thumb": "Vignette_fond_11.svg",
-      "demo": true
+      "thumb": "Vignette_fond11.png"
     },
     {
       "id": "fond-12",
-      "file": "fond_12.svg",
-      "width": 3460.0,
-      "height": 690.0,
+      "file": "fond12.png",
+      "width": 3584.0,
+      "height": 715.0,
       "label": {
         "fr": "Fond 12",
         "en": "Background 12",
         "es": "Fondo 12"
       },
-      "thumb": "Vignette_fond_12.svg",
-      "demo": true
+      "thumb": "Vignette_fond12.png"
+    },
+    {
+      "id": "fond-13",
+      "file": "fond13.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 13",
+        "en": "Background 13",
+        "es": "Fondo 13"
+      },
+      "thumb": "Vignette_fond13.png"
+    },
+    {
+      "id": "fond-14",
+      "file": "fond14.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 14",
+        "en": "Background 14",
+        "es": "Fondo 14"
+      },
+      "thumb": "Vignette_fond14.png"
+    },
+    {
+      "id": "fond-15",
+      "file": "fond15.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 15",
+        "en": "Background 15",
+        "es": "Fondo 15"
+      },
+      "thumb": "Vignette_fond15.png"
+    },
+    {
+      "id": "fond-16",
+      "file": "fond16.png",
+      "width": 3600.0,
+      "height": 727.0,
+      "label": {
+        "fr": "Fond 16",
+        "en": "Background 16",
+        "es": "Fondo 16"
+      },
+      "thumb": "Vignette_fond16.png"
+    },
+    {
+      "id": "fond-17",
+      "file": "fond17.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 17",
+        "en": "Background 17",
+        "es": "Fondo 17"
+      },
+      "thumb": "Vignette_fond17.png"
+    },
+    {
+      "id": "fond-18",
+      "file": "fond18.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 18",
+        "en": "Background 18",
+        "es": "Fondo 18"
+      },
+      "thumb": "Vignette_fond18.png"
+    },
+    {
+      "id": "fond-19",
+      "file": "fond19.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 19",
+        "en": "Background 19",
+        "es": "Fondo 19"
+      },
+      "thumb": "Vignette_fond19.png"
+    },
+    {
+      "id": "fond-20",
+      "file": "fond20.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 20",
+        "en": "Background 20",
+        "es": "Fondo 20"
+      },
+      "thumb": "Vignette_fond20.png"
     }
   ]
 }

@@ -3,16 +3,27 @@
     python3 scripts/import_assets.py [dossier] [--demo]
     python3 scripts/import_assets.py --ecrans <livraison des ecrans>
 
-Le dossier attendu est `elements_creation_skins`, tel que le studio le livre :
+Deux formes de livraison sont reconnues.
+
+`elements_creation_skins`, la premiere, tout en SVG :
 
     Gabarit_skin.svg              silhouette exacte de la planche
     fonds_skin/fond_N.svg         le fond, 3460x690
     fonds_skin/Vignette_fond_N.svg  sa vignette 16:9 pour le panier
     objets_skin/objet_N.svg       un objet a poser
 
-Tout est en SVG, et le reste de la chaine aussi : la borne les affiche tels
-quels, le rendu serveur les rasterise a la volee. Il n'y a donc qu'une seule
-version de chaque element, celle du studio.
+La livraison « Smash » (octobre 2026), fonds en PNG :
+
+    fond/fondNN.png               le fond, 3584x715 (motif regulier)
+    obj/obj-NNN.svg               un objet a poser
+
+Un fond PNG n'a pas de vignette livree : on la decoupe dans le fond lui-meme
+(voir `vignette_png`). Sans gabarit dans la livraison, la silhouette de la
+planche en place est gardee.
+
+La borne affiche les elements tels quels, le rendu serveur rasterise les SVG a
+la volee et pose les PNG -- une seule version de chaque element, celle du
+studio.
 
 Le script ecrit dans apps/api/media/ :
     backgrounds/index.json, objects/index.json   ordre, dimensions, libelles
@@ -66,6 +77,9 @@ def dimensions(svg: Path) -> tuple[float, float]:
     d'apparition sur la planche : on les connait sans attendre le chargement
     de l'image.
     """
+    if svg.suffix.lower() != ".svg":
+        with Image.open(svg) as image:
+            return float(image.width), float(image.height)
     tete = svg.read_text(encoding="utf-8")[:1200]
     vb = re.search(r'viewBox="\s*([\d.eE+-]+)[ ,]+([\d.eE+-]+)[ ,]+([\d.eE+-]+)[ ,]+([\d.eE+-]+)', tete)
     if vb:
@@ -128,8 +142,32 @@ def verifier_polices(svg: Path) -> list[str]:
     lettres du mot, bien plus larges que la zone de dessin, donc tranchees a
     « pa ». C'est passe en production une fois ; on regarde desormais.
     """
+    if svg.suffix.lower() != ".svg":
+        return []
     contenu = svg.read_text(encoding="utf-8", errors="replace")
     return sorted(f for f in _polices_citees(contenu) if _police_installee(f) is False)
+
+
+# Vignette d'un fond PNG : 16/9, au double de l'affichage du panier
+# (334 x 187), pour rester nette sur l'ecran 4K.
+VIGNETTE = (668, 374)
+
+
+def vignette_png(fond: Path, sortie: Path) -> None:
+    """Decoupe la vignette d'un fond PNG dans le fond lui-meme.
+
+    Les fonds sont des motifs reguliers : un morceau au format 16/9, pris au
+    centre sur toute la hauteur, montre le motif tel qu'il sera sur la
+    planche. Il est ensuite reduit -- jamais agrandi.
+    """
+    with Image.open(fond) as image:
+        image = image.convert("RGB")
+        ratio = VIGNETTE[0] / VIGNETTE[1]
+        largeur = min(image.width, round(image.height * ratio))
+        hauteur = round(largeur / ratio)
+        x, y = (image.width - largeur) // 2, (image.height - hauteur) // 2
+        morceau = image.crop((x, y, x + largeur, y + hauteur))
+        morceau.resize(VIGNETTE, Image.LANCZOS).save(sortie, "PNG")
 
 
 def _que_du_texte(svg: Path) -> bool:
@@ -159,6 +197,22 @@ def _vue(svg: str) -> tuple[float, float, float, float] | None:
     return tuple(valeurs) if len(valeurs) == 4 else None
 
 
+def _cadrer(svg: str, x: float, y: float, w: float, h: float) -> str:
+    """Pose viewBox, width et height sur la balise <svg> -- et elle seule.
+
+    Un remplacement sur tout le fichier prenait le premier `width=` venu : un
+    SVG sans largeur sur sa racine (viewBox seul, comme la livraison Smash) y
+    perdait la largeur d'un de ses rectangles, demesurement etiree.
+    """
+    debut = svg.index("<svg")
+    fin = svg.index(">", debut)
+    tete = svg[debut:fin]
+    for nom, valeur in (("viewBox", f"{x:.2f} {y:.2f} {w:.2f} {h:.2f}"), ("width", f"{w:.2f}"), ("height", f"{h:.2f}")):
+        motif = re.compile(rf'\s{nom}="[^"]*"')
+        tete = motif.sub(f' {nom}="{valeur}"', tete, count=1) if motif.search(tete) else f'{tete} {nom}="{valeur}"'
+    return svg[:debut] + tete + svg[fin:]
+
+
 def _encre(svg: str, sonde: float) -> tuple[tuple[float, float, float, float], bool] | None:
     """Boite de l'encre en unites utilisateur, et si elle sature l'observation.
 
@@ -172,9 +226,7 @@ def _encre(svg: str, sonde: float) -> tuple[tuple[float, float, float, float], b
     x, y, w, h = vue
     X, Y = x - w * (sonde - 1) / 2, y - h * (sonde - 1) / 2
     W, H = w * sonde, h * sonde
-    essai = re.sub(r'viewBox="[^"]+"', f'viewBox="{X} {Y} {W} {H}"', svg, count=1)
-    essai = re.sub(r'\swidth="[^"]+"', f' width="{W:g}"', essai, count=1)
-    essai = re.sub(r'\sheight="[^"]+"', f' height="{H:g}"', essai, count=1)
+    essai = _cadrer(svg, X, Y, W, H)
     image = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=essai.encode(), output_width=1400)))
     boite = image.convert("RGBA").getchannel("A").getbbox()
     if not boite:
@@ -225,10 +277,7 @@ def recadrer_sur_encre(chemin: Path) -> tuple[tuple[float, float], tuple[float, 
     nx, ny = gx - marge, gy - marge
     nw, nh = (dx - gx) + 2 * marge, (dy - gy) + 2 * marge
 
-    svg = re.sub(r'viewBox="[^"]+"', f'viewBox="{nx:.2f} {ny:.2f} {nw:.2f} {nh:.2f}"', svg, count=1)
-    svg = re.sub(r'\swidth="[^"]+"', f' width="{nw:.2f}"', svg, count=1)
-    svg = re.sub(r'\sheight="[^"]+"', f' height="{nh:.2f}"', svg, count=1)
-    chemin.write_text(svg, encoding="utf-8")
+    chemin.write_text(_cadrer(svg, nx, ny, nw, nh), encoding="utf-8")
     return (w, h), (nw, nh)
 
 
@@ -282,6 +331,10 @@ def importer(
                 item["thumb"] = vig.name
             else:
                 print(f"  attention : pas de vignette pour {svg.name}")
+        elif svg.suffix.lower() == ".png" and groupe == "fond":
+            vig = dossier / f"Vignette_{svg.stem}.png"
+            vignette_png(copie, vig)
+            item["thumb"] = vig.name
         items.append(item)
 
     (dossier / "index.json").write_text(
@@ -1289,13 +1342,22 @@ def main() -> None:
     if not source.is_dir():
         raise SystemExit(f"dossier introuvable : {source}")
 
-    importer_gabarit(source / "Gabarit_skin.svg")
-    importer(source / "fonds_skin", "fond", "fond_*.svg", "backgrounds", "Vignette_fond_{n}.svg")
     # Les objets seuls sont recadres. Un fond, lui, est dessine AUX
     # proportions de la planche : elargir sa fenetre le deformerait, alors que
     # ce qui deborde chez lui est un fond perdu voulu, que le rendu recouvre
     # deja en « cover ».
-    importer(source / "objets_skin", "objet", "objet_*.svg", "objects", recadrer=True)
+    if (source / "fond").is_dir() and (source / "obj").is_dir():
+        # Livraison « Smash » : fonds PNG, vignettes decoupees, pas de gabarit.
+        if (source / "Gabarit_skin.svg").is_file():
+            importer_gabarit(source / "Gabarit_skin.svg")
+        else:
+            print("  pas de gabarit livre : la silhouette de la planche en place est gardee")
+        importer(source / "fond", "fond", "fond*.png", "backgrounds")
+        importer(source / "obj", "objet", "obj-*.svg", "objects", recadrer=True)
+    else:
+        importer_gabarit(source / "Gabarit_skin.svg")
+        importer(source / "fonds_skin", "fond", "fond_*.svg", "backgrounds", "Vignette_fond_{n}.svg")
+        importer(source / "objets_skin", "objet", "objet_*.svg", "objects", recadrer=True)
     if demo:
         completer(source)
     ecrire_note("backgrounds", "Fonds de skin", "fonds")

@@ -52,10 +52,17 @@ def _charger(rel: str, largeur: int) -> Image.Image:
     le visiteur a choisie. Le cache evite de recommencer pour chaque creation.
     """
     chemin = MEDIA / rel
+    largeur = max(1, largeur)
     if chemin.suffix.lower() == ".svg":
-        png = cairosvg.svg2png(url=str(chemin), output_width=max(1, largeur))
+        png = cairosvg.svg2png(url=str(chemin), output_width=largeur)
         return Image.open(io.BytesIO(png)).convert("RGBA")
-    return Image.open(chemin).convert("RGBA")
+    # Une image (les fonds PNG de la livraison Smash) : a la meme largeur que
+    # le ferait le vectoriel, sans quoi le fond serait pose a sa taille de
+    # fichier -- plus grand et decale par rapport a ce que la borne montre.
+    image = Image.open(chemin).convert("RGBA")
+    if image.width != largeur:
+        image = image.resize((largeur, max(1, round(image.height * largeur / image.width))), Image.LANCZOS)
+    return image
 
 
 def _hex_to_rgb(value: str) -> tuple[int, int, int]:

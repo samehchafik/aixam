@@ -1,0 +1,155 @@
+{
+  "items": [
+    {
+      "id": "fond-1",
+      "file": "fond_1.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 1",
+        "en": "Background 1",
+        "es": "Fondo 1"
+      },
+      "thumb": "Vignette_fond_1.svg"
+    },
+    {
+      "id": "fond-2",
+      "file": "fond_2.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 2",
+        "en": "Background 2",
+        "es": "Fondo 2"
+      },
+      "thumb": "Vignette_fond_2.svg"
+    },
+    {
+      "id": "fond-3",
+      "file": "fond_3.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 3",
+        "en": "Background 3",
+        "es": "Fondo 3"
+      },
+      "thumb": "Vignette_fond_3.svg"
+    },
+    {
+      "id": "fond-4",
+      "file": "fond_4.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 4",
+        "en": "Background 4",
+        "es": "Fondo 4"
+      },
+      "thumb": "Vignette_fond_4.svg"
+    },
+    {
+      "id": "fond-5",
+      "file": "fond_5.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 5",
+        "en": "Background 5",
+        "es": "Fondo 5"
+      },
+      "thumb": "Vignette_fond_5.svg"
+    },
+    {
+      "id": "fond-6",
+      "file": "fond_6.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 6",
+        "en": "Background 6",
+        "es": "Fondo 6"
+      },
+      "thumb": "Vignette_fond_6.svg",
+      "demo": true
+    },
+    {
+      "id": "fond-7",
+      "file": "fond_7.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 7",
+        "en": "Background 7",
+        "es": "Fondo 7"
+      },
+      "thumb": "Vignette_fond_7.svg",
+      "demo": true
+    },
+    {
+      "id": "fond-8",
+      "file": "fond_8.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 8",
+        "en": "Background 8",
+        "es": "Fondo 8"
+      },
+      "thumb": "Vignette_fond_8.svg",
+      "demo": true
+    },
+    {
+      "id": "fond-9",
+      "file": "fond_9.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 9",
+        "en": "Background 9",
+        "es": "Fondo 9"
+      },
+      "thumb": "Vignette_fond_9.svg",
+      "demo": true
+    },
+    {
+      "id": "fond-10",
+      "file": "fond_10.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 10",
+        "en": "Background 10",
+        "es": "Fondo 10"
+      },
+      "thumb": "Vignette_fond_10.svg",
+      "demo": true
+    },
+    {
+      "id": "fond-11",
+      "file": "fond_11.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 11",
+        "en": "Background 11",
+        "es": "Fondo 11"
+      },
+      "thumb": "Vignette_fond_11.svg",
+      "demo": true
+    },
+    {
+      "id": "fond-12",
+      "file": "fond_12.svg",
+      "width": 3460.0,
+      "height": 690.0,
+      "label": {
+        "fr": "Fond 12",
+        "en": "Background 12",
+        "es": "Fondo 12"
+      },
+      "thumb": "Vignette_fond_12.svg",
+      "demo": true
+    }
+  ]
+}

@@ -138,4 +138,24 @@ check("l'encoche est transparente",
 check("la planche est opaque", alpha.getpixel((PAD + W // 4, PAD + H // 4)) == 255,
       alpha.getpixel((PAD + W // 4, PAD + H // 4)))
 
+print("\n[7] Un fond PNG est pose a la largeur demandee, pas a sa taille de fichier")
+# Les fonds de la livraison Smash sont des PNG de 3584 px. Colles tels quels,
+# ils etaient plus grands que la planche (3218) et decales par rapport a ce
+# que la borne montre.
+import tempfile
+from app.services import renderer
+dossier = Path(tempfile.mkdtemp())
+Image.new("RGB", (3584, 715), (40, 160, 200)).save(dossier / "fond.png")
+renderer._charger.cache_clear()
+ancien_media = renderer.MEDIA
+renderer.MEDIA = dossier
+try:
+    for largeur in (3218, 3578):
+        image = renderer._charger("fond.png", largeur)
+        check(f"largeur {largeur} : l'image fait {largeur} px et garde ses proportions",
+              image.width == largeur and abs(image.height - round(715 * largeur / 3584)) <= 1, image.size)
+finally:
+    renderer.MEDIA = ancien_media
+    renderer._charger.cache_clear()
+
 sys.exit(report())
