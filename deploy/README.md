@@ -61,8 +61,7 @@ l'URL WebSocket en découle automatiquement en `wss://`.
 ```json
 {
   "apiBaseUrl": "",
-  "kioskToken": "<le token de Réglages → Bornes>",
-  "demoMode": false
+  "kioskToken": "<le token de Réglages → Bornes>"
 }
 ```
 

@@ -38,6 +38,15 @@ function valider(champ: string, valeur: string): string | null {
   return v.length >= 2 ? null : 'register.errors.name'
 }
 
+/**
+ * Le bouton « Je passe », qui saute l'inscription, ne parait qu'avec
+ * `?skip=true` dans l'adresse : pour les demonstrations et les essais, jamais
+ * devant les visiteurs du salon, dont l'adresse ne le porte pas.
+ */
+function inscriptionFacultative(): boolean {
+  return new URLSearchParams(window.location.search).get('skip') === 'true'
+}
+
 /** Le texte que la case du reglement ouvre dans la popin. */
 type Texte = 'rules'
 
@@ -52,7 +61,7 @@ const FICHIERS: Record<Texte, string> = { rules: 'reglement' }
  * bouton grise dont il ne comprend pas le refus.
  */
 export function RegisterStep() {
-  const { api, config } = useApp()
+  const { api } = useApp()
   const { t } = useI18n()
   const { sessionId, inscription: values, setInscription, setVisitor, setStep, reset } = useSession()
   // Le reglement est une condition de participation, pas une option.
@@ -196,8 +205,8 @@ export function RegisterStep() {
           {t('register.cancel')}
         </button>
 
-        {/* Mode demo (config.json) : on saute l'inscription, sans visiteur rattache. */}
-        {config.demoMode && (
+        {/* Avec ?skip=true seulement : on saute l'inscription, sans visiteur rattache. */}
+        {inscriptionFacultative() && (
           <button type="button" className="lien lien-carte" onClick={() => setStep('editor')}>
             {t('register.skip')}
           </button>

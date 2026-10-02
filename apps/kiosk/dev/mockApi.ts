@@ -36,7 +36,7 @@ export function mockApi(): Plugin {
 
         // Meme origine : apiBaseUrl vide, le front tape sur ce serveur Vite.
         if (url.split('?')[0] === '/config.json') {
-          return json({ apiBaseUrl: '', kioskToken: 'mock', displayMonitorIndex: 1, touchMonitorIndex: 0, idleTimeoutSeconds: 600, locale: 'fr', demoMode: true })
+          return json({ apiBaseUrl: '', kioskToken: 'mock', displayMonitorIndex: 1, touchMonitorIndex: 0, idleTimeoutSeconds: 600, locale: 'fr' })
         }
         if (url.startsWith('/api/kiosk/bootstrap')) {
           return json({

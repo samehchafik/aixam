@@ -11,4 +11,7 @@ En mode application Tauri, c'est la copie placee a cote de l'executable
 | `displayMonitorIndex` | Moniteur du grand ecran (0 = principal). Mode Tauri uniquement. |
 | `touchMonitorIndex` | Moniteur de l'ecran tactile. Mode Tauri uniquement. |
 | `idleTimeoutSeconds` | Retour a l'accueil apres inactivite (surcharge par le back-office). |
-| `demoMode` | `true` = bouton « Je passe » sur le formulaire (accès direct à l'éditeur). **À mettre à `false` pour le salon.** |
+
+Le bouton « Je passe » du formulaire (acces direct a l'editeur, sans inscription)
+n'est pas un reglage de ce fichier : il ne parait qu'avec `?skip=true` dans
+l'adresse de la borne, par exemple `https://aixam.ifrit.fr/?skip=true`.

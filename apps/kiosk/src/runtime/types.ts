@@ -7,8 +7,6 @@ export type KioskConfig = {
   touchMonitorIndex: number
   idleTimeoutSeconds: number
   locale: string
-  /** Mode demo : bouton « Je passe » sur le formulaire pour aller droit a l'editeur. */
-  demoMode?: boolean
   /**
    * Affiche le selecteur FR/EN/ES. Masque par defaut : le salon demarre en
    * francais seul. Les traductions restent chargees, il suffit de repasser ce

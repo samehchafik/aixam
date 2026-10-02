@@ -4,6 +4,5 @@
   "displayMonitorIndex": 1,
   "touchMonitorIndex": 0,
   "idleTimeoutSeconds": 90,
-  "locale": "fr",
-  "demoMode": true
+  "locale": "fr"
 }
