@@ -58,8 +58,8 @@
     {
       "id": "objet-6",
       "file": "obj-006.svg",
-      "width": 342.0,
-      "height": 72.0,
+      "width": 353.34,
+      "height": 83.34,
       "label": {
         "fr": "Objet 6",
         "en": "Object 6",
@@ -69,8 +69,8 @@
     {
       "id": "objet-7",
       "file": "obj-007.svg",
-      "width": 191.01,
-      "height": 239.38,
+      "width": 153.91,
+      "height": 263.2,
       "label": {
         "fr": "Objet 7",
         "en": "Object 7",
@@ -80,8 +80,8 @@
     {
       "id": "objet-8",
       "file": "obj-008.svg",
-      "width": 208.14,
-      "height": 255.77,
+      "width": 145.08,
+      "height": 250.08,
       "label": {
         "fr": "Objet 8",
         "en": "Object 8",
@@ -273,6 +273,39 @@
         "fr": "Objet 25",
         "en": "Object 25",
         "es": "Objeto 25"
+      }
+    },
+    {
+      "id": "objet-28",
+      "file": "obj-028.svg",
+      "width": 194.44,
+      "height": 190.91,
+      "label": {
+        "fr": "Objet 28",
+        "en": "Object 28",
+        "es": "Objeto 28"
+      }
+    },
+    {
+      "id": "objet-29",
+      "file": "obj-029.svg",
+      "width": 237.13,
+      "height": 240.73,
+      "label": {
+        "fr": "Objet 29",
+        "en": "Object 29",
+        "es": "Objeto 29"
+      }
+    },
+    {
+      "id": "objet-30",
+      "file": "obj-030.svg",
+      "width": 123.68,
+      "height": 265.78,
+      "label": {
+        "fr": "Objet 30",
+        "en": "Object 30",
+        "es": "Objeto 30"
       }
     }
   ]
