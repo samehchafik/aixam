@@ -239,6 +239,18 @@
         "es": "Fondo 20"
       },
       "thumb": "Vignette_fond20.png"
+    },
+    {
+      "id": "fond-21",
+      "file": "fond21.png",
+      "width": 3584.0,
+      "height": 715.0,
+      "label": {
+        "fr": "Fond 21",
+        "en": "Background 21",
+        "es": "Fondo 21"
+      },
+      "thumb": "Vignette_fond21.png"
     }
   ]
 }
