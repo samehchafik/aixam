@@ -182,6 +182,7 @@ export class ApiClient {
     last_name: string
     email: string
     postal_code: string
+    consent_marketing: boolean
     session_id: string
   }) {
     return this.request<{ visitor_id: string; verification_required: boolean }>(

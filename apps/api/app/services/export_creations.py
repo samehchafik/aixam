@@ -99,6 +99,7 @@ def _feuille(feuille, nom_feuille, lignes, styles, fuseau, titre_date, adresse_i
         ("Nom", 20),
         ("E-mail", 32),
         ("Code postal", 12),
+        ("Accepte les e-mails", 12),
         (titre_date, 17),
     ]
     # En tete : ce que contient la feuille, et ou sont les images.
@@ -109,7 +110,8 @@ def _feuille(feuille, nom_feuille, lignes, styles, fuseau, titre_date, adresse_i
     dossier_windows = "C:\\aixam\\" + DOSSIER_IMAGES.replace("/", "\\")
     explication = (
         f"Une ligne par création {nom_feuille.lower()[:-1]} ({len(lignes)}) : son aperçu, le nom de "
-        "son fichier image, l'auteur (vide si ses données ont été effacées à sa demande) et la date.\n"
+        "son fichier image, l'auteur (vide si ses données ont été effacées à sa demande), s'il accepte "
+        "de recevoir les e-mails d'AIXAM et la date.\n"
         "Les fichiers images (PNG) sont sur la machine qui héberge le back-office, dans le dossier "
         f"« {DOSSIER_IMAGES} » du projet AIXAM (sur la borne du salon : {dossier_windows})."
         + (f" Ils sont aussi en ligne : {adresse_images}<nom du fichier> — un clic sur un nom "
@@ -138,10 +140,12 @@ def _feuille(feuille, nom_feuille, lignes, styles, fuseau, titre_date, adresse_i
             visiteur.last_name if visiteur else "",
             visiteur.email if visiteur else "",
             visiteur.postal_code if visiteur else "",
+            # La case facultative du formulaire (newsletters et offres AIXAM).
+            ("oui" if visiteur.consent_marketing else "non") if visiteur else "",
         ]
         for i, valeur in enumerate(valeurs, start=2):
             feuille.write_string(n, i, valeur, texte)
-        feuille.write_datetime(n, 6, cree.replace(tzinfo=None) if isinstance(cree, datetime) else cree,
+        feuille.write_datetime(n, 2 + len(valeurs), cree.replace(tzinfo=None) if isinstance(cree, datetime) else cree,
                                styles["date"])
 
         apercu = _apercu(design.skin)

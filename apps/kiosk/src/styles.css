@@ -172,6 +172,10 @@ body {
 .case input:checked + .case-boite {
   background: var(--blanc) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23283371' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12.5l4.5 4.5L19 7.5'/></svg>") center / 80% no-repeat;
 }
+/* La case des e-mails, facultative, sous celle du reglement : son libelle
+   tient sur trois lignes, a la taille des mentions. */
+.case-emailing { align-items: flex-start; width: 516.5px; margin-top: 10px; font-size: 11.5px; line-height: 14px; }
+.case-emailing .case-boite { margin-top: 2px; }
 .case.en-erreur { color: #b90000; font-weight: 700; }
 .case.en-erreur .case-boite { border: 2px solid #b90000; background-color: var(--blanc); }
 

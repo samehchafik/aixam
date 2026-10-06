@@ -67,6 +67,8 @@ export function RegisterStep() {
   // Le reglement est une condition de participation, pas une option.
   const [accepte, setAccepte] = useState(false)
   const [caseOubliee, setCaseOubliee] = useState(false)
+  // Les e-mails d'AIXAM, eux, sont facultatifs : la case part decochee.
+  const [emailing, setEmailing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [texte, setTexte] = useState<Texte | null>(null)
@@ -105,6 +107,7 @@ export function RegisterStep() {
         last_name: values.last_name ?? '',
         email: values.email ?? '',
         postal_code: values.postal_code ?? '',
+        consent_marketing: emailing,
         session_id: sessionId,
       })
       setVisitor(res.visitor_id, values.first_name ?? '')
@@ -194,6 +197,12 @@ export function RegisterStep() {
           />
           <span className="case-boite" aria-hidden="true" />
           {t('register.rules')}
+        </label>
+
+        <label className="case case-emailing">
+          <input type="checkbox" checked={emailing} onChange={(e) => setEmailing(e.currentTarget.checked)} />
+          <span className="case-boite" aria-hidden="true" />
+          {t('register.emailing')}
         </label>
 
         {error && <p className="message-erreur">{error}</p>}

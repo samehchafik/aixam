@@ -33,7 +33,8 @@ skin = render_design({"layers": [Layer(type="background", hex="#E6B6B4").model_d
 creation = lambda nom, verdict: SimpleNamespace(  # noqa: E731
     skin=nom, moderation=verdict, created_at=datetime(2026, 10, 12, 14, 30, tzinfo=UTC)
 )
-anne = SimpleNamespace(first_name="Anne", last_name="Martin", email="anne@example.fr", postal_code="75011")
+anne = SimpleNamespace(first_name="Anne", last_name="Martin", email="anne@example.fr", postal_code="75011",
+                       consent_marketing=True)
 
 contenu = classeur_creations([
     ("Validées", [(creation(skin, "approved"), anne), (creation(skin, "approved"), None)]),   # une anonymisee
@@ -56,7 +57,7 @@ check("pas d'apercu sur Rejetées (fichier absent)", "xl/drawings/drawing2.xml" 
 
 print("\n[3] Les textes attendus")
 partages = archive.read("xl/sharedStrings.xml").decode("utf-8")
-for texte in ("Fichier", skin, "Anne", "Martin", "anne@example.fr", "75011", "image absente",
+for texte in ("Fichier", skin, "Anne", "Martin", "anne@example.fr", "75011", "Accepte les e-mails", "oui", "image absente",
               "Une ligne par création validée (2)", "Une ligne par création rejetée (1)"):
     check(f"« {texte} »", texte in partages)
 
@@ -64,7 +65,7 @@ print("\n[4] La date, a l'heure de Paris")
 feuille = archive.read("xl/worksheets/sheet1.xml").decode("utf-8")
 # 14 h 30 UTC le 12 octobre = 16 h 30 a Paris ; Excel stocke une fraction de jour.
 # Les donnees commencent en ligne 5, sous l'en-tete explicatif.
-valeurs = [float(v) for v in re.findall(r'<c r="G(?:[5-9]|\d{2,})"[^>]*><v>([\d.]+)</v>', feuille)]
+valeurs = [float(v) for v in re.findall(r'<c r="H(?:[5-9]|\d{2,})"[^>]*><v>([\d.]+)</v>', feuille)]
 heure = round((valeurs[0] % 1) * 24, 2) if valeurs else None
 check("16 h 30 et non 14 h 30", heure == 16.5, heure)
 
