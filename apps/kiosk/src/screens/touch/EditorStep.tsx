@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Anchor, Box, Button, ColorPicker, Modal, Paper, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { Anchor, Box, Button, ColorPicker, Modal, Paper, Text, UnstyledButton } from '@mantine/core'
 import { IconRefresh, IconTrash } from '@tabler/icons-react'
 import { AssetSwiper } from '../../components/AssetSwiper'
 import { Ribbon } from '../../components/chrome/Ribbon'
@@ -43,7 +43,7 @@ const COLOR_SWATCHES = [
 
 export function EditorStep() {
   const { api, bus } = useApp()
-  const { t, pick, locale } = useI18n()
+  const { t, locale } = useI18n()
   const {
     catalog, layers, selectedIndex, sessionId, firstName,
     setBackground, addObject, updateLayer, removeLayer, resetLayer, select, clearDesign,
@@ -163,11 +163,9 @@ export function EditorStep() {
                     <i className="color-wheel" />
                   </div>
                 ) : (
-                  <Tooltip label={pick(tile.item.label)} events={{ hover: true, focus: true, touch: true }} withArrow>
-                    <div className={`tile ${isSelected ? 'selected' : ''}`}>
-                      <img src={api.thumb(tile.item)} alt={pick(tile.item.label)} draggable={false} />
-                    </div>
-                  </Tooltip>
+                  <div className={`tile ${isSelected ? 'selected' : ''}`}>
+                    <img src={api.thumb(tile.item)} alt="" draggable={false} />
+                  </div>
                 )
               }
             />
@@ -191,11 +189,9 @@ export function EditorStep() {
                 api.track('object_added', { assetId: item.id }, sessionId)
               }}
               renderItem={(item, isSelected) => (
-                <Tooltip label={pick(item.label)} events={{ hover: true, focus: true, touch: true }} withArrow>
-                  <div className={`tile tile-object ${isSelected ? 'selected' : ''}`}>
-                    <img src={api.asset(item)} alt={pick(item.label)} draggable={false} />
-                  </div>
-                </Tooltip>
+                <div className={`tile tile-object ${isSelected ? 'selected' : ''}`}>
+                  <img src={api.asset(item)} alt="" draggable={false} />
+                </div>
               )}
             />
           </Paper>
