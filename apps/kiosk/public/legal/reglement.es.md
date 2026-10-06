@@ -206,7 +206,7 @@ Además, si ha marcado la casilla prevista a tal efecto, sus datos son tratados 
 
 Por ello, este tratamiento se basa en su consentimiento, de conformidad con el artículo 6.1.a del RGPD y el artículo L.34-5 del Código francés de Correos y Comunicaciones Electrónicas.
 
-Su consentimiento es libre y facultativo. Negarlo no le impide participar en el juego «[nom du jeu]».
+Su consentimiento es libre y facultativo. Negarlo no le impide participar en la animación «Crea tu SKIN EASY».
 
 Puede retirarlo en cualquier momento, de forma gratuita y tan fácilmente como lo otorgó:
 
@@ -241,7 +241,7 @@ La Sociedad Organizadora podrá solicitar cualquier justificante necesario para 
 
 Los datos recogidos en el marco de la Animación se conservan durante toda la duración de la operación.
 
-Al término de la Animación, podrán conservarse durante un plazo máximo de seis (6) meses con el fin de:
+Al término de la Animación, podrán conservarse con el fin de:
 
 - Justificar la participación;
 - Gestionar las posibles reclamaciones;

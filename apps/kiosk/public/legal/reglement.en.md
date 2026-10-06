@@ -206,7 +206,7 @@ In addition, if you have ticked the box provided for this purpose, your data is 
 
 As such, this processing is based on your consent, in accordance with Article 6.1.a of the GDPR and Article L.34-5 of the French Postal and Electronic Communications Code.
 
-Your consent is free and optional. Refusing it does not prevent you from taking part in the game "[nom du jeu]".
+Your consent is free and optional. Refusing it does not prevent you from taking part in the "Create your SKIN EASY" event.
 
 You may withdraw it at any time, free of charge and as easily as you gave it:
 
@@ -241,7 +241,7 @@ The Organising Company may request any document necessary to verify the identity
 
 The data collected as part of the Event is kept for the entire duration of the operation.
 
-At the end of the Event, it may be kept for a maximum of six (6) months in order to:
+At the end of the Event, it may be kept in order to:
 
 - Prove participation;
 - Handle any complaints;

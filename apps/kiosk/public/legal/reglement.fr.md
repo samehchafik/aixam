@@ -202,11 +202,11 @@ Le Participant exprime son consentement à la collecte et au traitement de ses d
 
 Si le Participant refuse la collecte et le traitement de ses données à caractère personnel, il est informé qu’il ne pourra pas valider sa participation à l’animation.
 
-Par ailleurs, si vous avez coché la case prévue à cet effet, vos données sont traitées par AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS immatriculée au RCS de Chambery sous le numéro 328 368 857, responsable de traitement, pour vous adresser des newsletters, offres commerciales et communications relatives à la marque AIXAM.
+Par ailleurs, si vous avez coché la case prévue à cet effet, vos données sont traitées par AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS immatriculée au RCS de Chambery sous le numéro 328 368 857 responsable de traitement, pour vous adresser des newsletters, offres commerciales et communications relatives à la marque AIXAM.
 
 A ce titre, ce traitement repose sur votre consentement, conformément à l'article 6.1.a du RGPD et à l'article L.34-5 du Code des postes et des communications électroniques.
 
-Votre consentement est libre et facultatif. Le refuser ne vous empêche pas de participer au jeu « [nom du jeu] ».
+Votre consentement est libre et facultatif. Le refuser ne vous empêche pas de participer à l’animation « Crée ton SKIN EASY ».
 
 Vous pouvez le retirer à tout moment, gratuitement et aussi simplement que vous l'avez donné :
 
@@ -241,7 +241,7 @@ La Société Organisatrice pourra demander tout justificatif nécessaire à la v
 
 Les données collectées dans le cadre de l’Animation sont conservées pendant toute la durée de l’opération.
 
-À l’issue de l’Animation, elles pourront être conservées pendant une durée maximale de six (6) mois afin de :
+À l’issue de l’Animation, elles pourront être conservées afin de :
 
 - Justifier de la participation ;
 - Gérer les éventuelles réclamations ;
