@@ -184,7 +184,13 @@ La Sociedad Organizadora y su Subcontratista recogen y tratan los datos personal
 
 Se hace todo lo posible para proteger su vida privada y garantizarle la máxima seguridad en la protección de sus datos personales.
 
-### 9.5 BASE JURÍDICA DEL TRATAMIENTO
+Con el consentimiento explícito del participante, estos datos también podrán ser utilizados por AIXAM MEGA para enviarle información, ofertas comerciales, novedades y boletines por correo electrónico.
+
+El participante puede retirar su consentimiento en cualquier momento haciendo clic en el enlace de baja que figura en las comunicaciones recibidas o dirigiendo su solicitud a la dirección indicada en la presente política de privacidad.
+
+Los datos se conservan de conformidad con la normativa vigente y solo son accesibles a las personas autorizadas a tratarlos.
+
+### 9.5 BASE JURÍDICA DEL TRATAMIENTO Y RETIRADA DEL CONSENTIMIENTO
 
 Al participar en la animación, los Participantes aceptan adherirse íntegramente y con pleno conocimiento a las presentes bases. El tratamiento de los datos personales se basa en el interés legítimo de la Sociedad Organizadora en organizar y administrar la Animación.
 
@@ -192,9 +198,23 @@ Los datos recogidos son estrictamente necesarios para la participación.
 
 Para participar en la animación, los Participantes deben autorizar explícitamente a la Sociedad Organizadora a tratar los datos personales que han facilitado en el formulario de participación de conformidad con las condiciones de las presentes bases y con las normas vigentes en Francia regidas por el RGPD, con el fin legítimo de la animación.
 
-El Participante expresa su consentimiento a la recogida y al tratamiento de sus datos personales marcando la casilla prevista a tal efecto: «He leído las bases de la animación «Crea tu SKIN EASY» y la política de protección de datos personales de AIXAM».
+El Participante expresa su consentimiento a la recogida y al tratamiento de sus datos personales marcando la casilla prevista a tal efecto: «Validar y aceptar las bases» y la política de protección de datos personales de AIXAM.
 
 Si el Participante rechaza la recogida y el tratamiento de sus datos personales, se le informa de que no podrá validar su participación en la animación.
+
+Además, si ha marcado la casilla prevista a tal efecto, sus datos son tratados por AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS, inscrita en el Registro Mercantil de Chambéry con el número 328 368 857, como responsable del tratamiento, para enviarle boletines, ofertas comerciales y comunicaciones relativas a la marca AIXAM.
+
+Por ello, este tratamiento se basa en su consentimiento, de conformidad con el artículo 6.1.a del RGPD y el artículo L.34-5 del Código francés de Correos y Comunicaciones Electrónicas.
+
+Su consentimiento es libre y facultativo. Negarlo no le impide participar en el juego «[nom du jeu]».
+
+Puede retirarlo en cualquier momento, de forma gratuita y tan fácilmente como lo otorgó:
+
+- haciendo clic en el enlace de baja que figura en cada mensaje;
+- respondiendo «STOP» a un SMS;
+- o escribiendo al responsable del tratamiento mencionado en el artículo 9.6 de las presentes bases.
+
+La retirada de su consentimiento no afecta a la licitud de los tratamientos realizados antes de dicha retirada.
 
 ### 9.6 DERECHOS DE LOS PARTICIPANTES
 
@@ -210,7 +230,8 @@ De conformidad con la normativa aplicable, cada Participante dispone:
 
 El Participante puede ejercer sus derechos dirigiendo su solicitud a la sociedad AIXAM MEGA o al delegado de protección de datos de AIXAM en la UE según los datos siguientes:
 
-Dirección postal: Polaris Sales Europe SARL, 2 place de l'Industrie, 1180 Rolle, Suiza. A la atención de: EU Data Protection Officer
+Dirección postal: Polaris Sales Europe SARL, 2 place de l'Industrie, 1180 Rolle, Suiza
+A la atención de: EU Data Protection Officer
 
 Dirección electrónica: privacy@polaris.com
 
@@ -225,8 +246,9 @@ Al término de la Animación, podrán conservarse durante un plazo máximo de se
 - Justificar la participación;
 - Gestionar las posibles reclamaciones;
 - Garantizar el seguimiento de las creaciones preseleccionadas.
+- Enviarle boletines, ofertas comerciales y comunicaciones relativas a la marca AIXAM si ha dado su consentimiento para ello.
 
-Al término de este plazo, los datos se suprimirán o se anonimizarán de conformidad con las obligaciones legales aplicables.
+Estos datos se conservan durante 3 años a partir de su último contacto con AIXAM. Al término de este plazo, podremos preguntarle si desea seguir recibiendo nuestras comunicaciones. Sin una respuesta positiva por su parte, sus datos se suprimirán.
 
 ## ARTÍCULO 10: PROHIBICIÓN DE REPRODUCIR LAS BASES DE LA ANIMACIÓN
 

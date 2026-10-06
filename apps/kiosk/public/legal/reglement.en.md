@@ -184,7 +184,13 @@ The Organising Company and its Subcontractor collect and process Participants' p
 
 Every effort is made to protect your privacy and to guarantee maximum security for the protection of your personal data.
 
-### 9.5 LEGAL BASIS FOR THE PROCESSING
+With the Participant's explicit consent, this data may also be used by AIXAM MEGA to send them information, commercial offers, news and newsletters by email.
+
+The Participant may withdraw their consent at any time by clicking on the unsubscribe link in the communications received or by sending their request to the address given in this privacy policy.
+
+The data is kept in accordance with the regulations in force and is only accessible to persons authorised to process it.
+
+### 9.5 LEGAL BASIS FOR THE PROCESSING AND WITHDRAWAL OF CONSENT
 
 By taking part in the Event, Participants agree to adhere fully and knowingly to these rules. The processing of personal data is based on the legitimate interest of the Organising Company in organising and administering the Event.
 
@@ -192,9 +198,23 @@ The data collected is strictly necessary for participation.
 
 To take part in the Event, Participants must explicitly authorise the Organising Company to process the personal data they have provided in the participation form in accordance with the conditions of these rules and with the rules in force in France governed by the GDPR, for the legitimate purpose of the Event.
 
-The Participant gives their consent to the collection and processing of their personal data by ticking the box provided for this purpose: "I have read the rules of the "Create your SKIN EASY" event and AIXAM's personal data protection policy."
+The Participant gives their consent to the collection and processing of their personal data by ticking the box provided for this purpose: "Validate and accept the rules" and AIXAM's personal data protection policy.
 
 If the Participant refuses the collection and processing of their personal data, they are informed that they will not be able to confirm their participation in the Event.
+
+In addition, if you have ticked the box provided for this purpose, your data is processed by AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS, registered with the Chambéry Trade and Companies Register under number 328 368 857, as data controller, in order to send you newsletters, commercial offers and communications relating to the AIXAM brand.
+
+As such, this processing is based on your consent, in accordance with Article 6.1.a of the GDPR and Article L.34-5 of the French Postal and Electronic Communications Code.
+
+Your consent is free and optional. Refusing it does not prevent you from taking part in the game "[nom du jeu]".
+
+You may withdraw it at any time, free of charge and as easily as you gave it:
+
+- by clicking on the unsubscribe link in each message;
+- by replying "STOP" to an SMS;
+- or by writing to the data controller mentioned in Article 9.6 of these rules.
+
+Withdrawing your consent does not affect the lawfulness of processing carried out before its withdrawal.
 
 ### 9.6 PARTICIPANTS' RIGHTS
 
@@ -210,7 +230,8 @@ In accordance with the applicable regulations, each Participant has:
 
 Participants may exercise their rights by sending their request to AIXAM MEGA or to AIXAM's EU Data Protection Officer using the details below:
 
-Postal address: Polaris Sales Europe SARL, 2 place de l'Industrie, 1180 Rolle, Switzerland. For the attention of: EU Data Protection Officer
+Postal address: Polaris Sales Europe SARL, 2 place de l'Industrie, 1180 Rolle, Switzerland
+For the attention of: EU Data Protection Officer
 
 Email address: privacy@polaris.com
 
@@ -225,8 +246,9 @@ At the end of the Event, it may be kept for a maximum of six (6) months in order
 - Prove participation;
 - Handle any complaints;
 - Follow up shortlisted creations.
+- Send you newsletters, commercial offers and communications relating to the AIXAM brand if you have given your consent for this purpose.
 
-At the end of this period, the data will be deleted or anonymised in accordance with the applicable legal obligations.
+This data is kept for 3 years from your last contact with AIXAM. At the end of this period, we may ask you whether you wish to continue receiving our communications. Without a positive response from you, your data will be deleted.
 
 ## ARTICLE 10: REPRODUCTION OF THE RULES OF THE EVENT PROHIBITED
 
