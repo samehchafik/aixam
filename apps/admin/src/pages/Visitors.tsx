@@ -79,7 +79,7 @@ export function Visitors() {
               .catch((e) => setErreur(e.message))
           }
         >
-          Export CSV (opt-in)
+          Export CSV (accepte les e-mails)
         </Button>
       </Group>
       {erreur && <Text c="red" fz="sm">Export impossible : {erreur}</Text>}
@@ -93,7 +93,7 @@ export function Visitors() {
                 <Table.Th>E-mail</Table.Th>
                 <Table.Th>CP</Table.Th>
                 <Table.Th>Vérifié</Table.Th>
-                <Table.Th>Opt-in</Table.Th>
+                <Table.Th>Accepte les e-mails</Table.Th>
                 <Table.Th>Date</Table.Th>
                 <Table.Th />
               </Table.Tr>

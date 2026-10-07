@@ -136,7 +136,7 @@ def visitors_csv(consented_only: bool = True, db: Session = Depends(get_db)) -> 
 
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=";")
-    writer.writerow(["prenom", "nom", "email", "code_postal", "opt_in", "date"])
+    writer.writerow(["prenom", "nom", "email", "code_postal", "accepte_emails", "date"])
     for v in db.scalars(stmt.order_by(Visitor.created_at)):
         writer.writerow(
             [v.first_name, v.last_name, v.email, v.postal_code, int(v.consent_marketing),
