@@ -128,28 +128,19 @@ def visitors(
 
 
 @router.get("/visitors.csv")
-def visitors_csv(consented_only: bool = True, db: Session = Depends(get_db)) -> StreamingResponse:
-    """Export pour le CRM.
-
-    Par defaut, la liste d'envoi : les visiteurs qui ont coche la case des
-    e-mails ET verifie leur adresse par le code -- les seuls a qui AIXAM peut
-    ecrire. `consented_only=false` : tous les visiteurs, avec ces deux
-    informations en colonnes.
-    """
-    stmt = select(Visitor)
-    if consented_only:
-        stmt = stmt.where(Visitor.email_verified_at.isnot(None), Visitor.consent_marketing.is_(True))
-
+def visitors_csv(db: Session = Depends(get_db)) -> StreamingResponse:
+    """Export pour le CRM : tous les visiteurs, et pour chacun s'il accepte
+    les e-mails d'AIXAM (la case facultative du formulaire)."""
     buffer = io.StringIO()
     # Le BOM : sans lui, Excel lit le fichier en Windows-1252 et ecorche les
     # prenoms accentues.
     buffer.write("\ufeff")
     writer = csv.writer(buffer, delimiter=";")
-    writer.writerow(["prenom", "nom", "email", "code_postal", "accepte_emails", "email_verifie", "date"])
-    for v in db.scalars(stmt.order_by(Visitor.created_at)):
+    writer.writerow(["prenom", "nom", "email", "code_postal", "accepte_emails", "date"])
+    for v in db.scalars(select(Visitor).order_by(Visitor.created_at)):
         writer.writerow(
-            [v.first_name, v.last_name, v.email, v.postal_code, int(v.consent_marketing),
-             int(v.email_verified_at is not None), v.created_at.isoformat()]
+            [v.first_name, v.last_name, v.email, v.postal_code, "oui" if v.consent_marketing else "non",
+             v.created_at.isoformat()]
         )
     buffer.seek(0)
     return StreamingResponse(

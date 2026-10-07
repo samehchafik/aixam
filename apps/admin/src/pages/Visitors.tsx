@@ -75,23 +75,12 @@ export function Visitors() {
         <Button
           variant="light"
           onClick={() =>
-            telecharger('/api/admin/visitors.csv?consented_only=false', 'visiteurs.csv')
+            telecharger('/api/admin/visitors.csv', 'visiteurs.csv')
               .catch((e) => setErreur(e.message))
           }
         >
-          Export CSV (tous)
+          Export CSV
         </Button>
-        <Tooltip label="Ceux qui ont coché la case des e-mails et vérifié leur adresse" withArrow>
-          <Button
-            variant="light"
-            onClick={() =>
-              telecharger('/api/admin/visitors.csv?consented_only=true', 'visiteurs-accepte-emails.csv')
-                .catch((e) => setErreur(e.message))
-            }
-          >
-            Export CSV (accepte les e-mails)
-          </Button>
-        </Tooltip>
       </Group>
       {erreur && <Text c="red" fz="sm">Export impossible : {erreur}</Text>}
 
