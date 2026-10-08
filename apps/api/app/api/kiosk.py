@@ -161,7 +161,7 @@ def _enregistrer(payload: RegisterIn, kiosk: Kiosk, db: Session) -> RegisterOut:
         mailer.queue_email(
             db,
             to_email=visitor.email,
-            subject="Votre code de verification AIXAM",
+            subject="Votre code de vérification AIXAM",
             body_html=mailer.render_template(
                 "verification.html", first_name=visitor.first_name, code=code
             ),
