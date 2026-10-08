@@ -165,6 +165,18 @@ export function SkinCanvas({
   }
   const hasBleed = marge.x > 0 || marge.top > 0 || marge.bottom > 0
 
+  /**
+   * Ramene le centre d'un objet dans la zone de debordement (en pixels de la
+   * planche). Sans borne, un objet glisse vers le bord finissait sous les
+   * panneaux ou hors de la scene, la ou le doigt ne l'atteint plus : perdu,
+   * impossible a reprendre. Le centre seul est borne -- la moitie de l'objet
+   * peut encore deborder, mais il en reste toujours une prise dans le cadre.
+   */
+  const borneObjet = (p: { x: number; y: number }) => ({
+    x: Math.max(-marge.x, Math.min(skinWidth + marge.x, p.x)),
+    y: Math.max(-marge.top, Math.min(skinHeight + marge.bottom, p.y)),
+  })
+
   const selectedLayer = selectedIndex === null ? null : (layers[selectedIndex] ?? null)
   const fondSelectionne = selectedLayer?.type === 'background'
 
@@ -422,7 +434,10 @@ export function SkinCanvas({
     getNode: (i) => nodes.current.get(i) ?? null,
     onChange,
     onLive: syncLive,
-    constrain: constrainBackground,
+    constrain: (node) => {
+      if (fondSelectionne) constrainBackground(node)
+      else node.position(borneObjet(node.position()))
+    },
     redimensionnable: () => !fondSelectionne,
   })
 
@@ -453,6 +468,7 @@ export function SkinCanvas({
           skinHeight={skinHeight}
           interactive={interactive && reel}
           onLive={syncLive}
+          borne={borneObjet}
           register={(node) => {
             const carte = reel ? nodes.current : ghostNodes.current
             if (node) carte.set(index, node)
@@ -739,6 +755,8 @@ type NodeProps = {
   interactive: boolean
   /** Appele a chaque mouvement (glisser, poignees) pour faire suivre le cadre. */
   onLive: () => void
+  /** Borne la position d'un objet (pixels de la planche) : voir `borneObjet`. */
+  borne: (p: { x: number; y: number }) => { x: number; y: number }
   register: (node: Konva.Node | null) => void
   onSelect: () => void
   onChange: (patch: Partial<Layer>) => void
@@ -799,7 +817,7 @@ export function effectiveScale(layer: Layer, image: HTMLImageElement | null, ski
   return Math.max(1, (image.width / image.height) * (skinHeight / skinWidth))
 }
 
-function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, register, onSelect, onChange }: NodeProps) {
+function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, borne, register, onSelect, onChange }: NodeProps) {
   const image = useImage(src)
 
   if (layer.type === 'background' && layer.hex) {
@@ -815,9 +833,14 @@ function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, reg
   const h = (image.height / image.width) * w
 
   const commit = (node: Konva.Node, extra: Partial<Layer> = {}) => {
+    // Les poignees deplacent aussi le centre : on le reborne au relachement.
+    const pos = fond ? node.position() : borne(node.position())
+    // Sur le noeud aussi : si la valeur bornee est celle d'avant le geste,
+    // react-konva ne voit rien changer et laisserait l'objet hors cadre.
+    if (!fond) node.position(pos)
     const patch: Partial<Layer> = {
-      x: node.x() / skinWidth,
-      y: node.y() / skinHeight,
+      x: pos.x / skinWidth,
+      y: pos.y / skinHeight,
       rotation: node.rotation(),
       ...extra,
     }
@@ -850,7 +873,10 @@ function LayerNode({ layer, src, skinWidth, skinHeight, interactive, onLive, reg
       listening={interactive && !fond}
       onMouseDown={onSelect}
       onTouchStart={onSelect}
-      onDragMove={onLive}
+      onDragMove={(e) => {
+        e.target.position(borne(e.target.position()))
+        onLive()
+      }}
       onTransform={onLive}
       onDragEnd={(e) => {
         commit(e.target)
