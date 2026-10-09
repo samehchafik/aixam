@@ -49,4 +49,6 @@ materiels.json
 !.gitignore
 !README.md
 apps/borne/target/
-bin/win/borne.exe
+# borne.exe, compile sur le Mac, voyage par le depot : la borne n'a pas de
+# chaine Rust, et `git pull` (mettre-a-jour.bat) l'y depose.
+!bin/win/borne.exe

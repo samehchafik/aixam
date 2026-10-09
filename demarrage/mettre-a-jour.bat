@@ -1,5 +1,6 @@
 @echo off
-rem Mise a jour de la borne : recupere le code, recompile, relance.
+rem Mise a jour de la borne : ferme les fenetres, recupere le code, recompile,
+rem relance.
 rem
 rem A lancer sur la borne elle-meme -- double-clic, cmd ou PowerShell. L'API
 rem doit repartir dans la session ouverte pour voir les ecrans : c'est la
@@ -18,6 +19,12 @@ if not exist "%BASH%" (
 rem Les scripts bin\*.sh sont des scripts bash : on les confie au bash de Git.
 rem CHERE_INVOKING : sans lui, le profil de Git Bash repart du dossier
 rem personnel au lieu de rester dans celui de la borne.
+rem Les fenetres d'abord : Windows refuse de remplacer bin\win\borne.exe tant
+rem qu'il tourne, et le git pull echouerait. start.bat les rouvre a la fin.
+echo == fermeture des fenetres de la borne
+call "%~dp0stop.bat"
+timeout /t 2 /nobreak >nul
+
 echo == recuperation du code, compilation, arret de l'API
 cd /d "%RACINE%"
 set "CHERE_INVOKING=1"
