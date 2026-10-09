@@ -84,6 +84,16 @@ export function RegisterStep() {
   // Le champ que le clavier de la borne remplit ; aucun : clavier range.
   const [actif, setActif] = useState<string | null>(null)
   const champs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  /** Ecrit dans un champ : depuis le clavier de la borne, ou un clavier branche. */
+  const ecrire = (champ: string, modifier: (valeur: string) => string) => {
+    // Lu dans le magasin, pas dans le rendu : deux frappes rapides, avant que
+    // la page ait repeint, partiraient sinon de la meme valeur.
+    const courant = useSession.getState().inscription
+    setInscription({ ...courant, [champ]: modifier(courant[champ] ?? '') })
+    // Le verdict du serveur portait sur l'ancienne valeur.
+    setServeur((s) => (s[champ] ? { ...s, [champ]: '' } : s))
+  }
   // Un champ ne signale sa faute qu'une fois quitte : corriger sous les doigts
   // du visiteur pendant qu'il tape serait plus penible qu'utile.
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -173,8 +183,24 @@ export function RegisterStep() {
                   className={valeur ? 'rempli' : ''}
                   type={field.type}
                   // Pas de clavier Windows : celui de la borne (ClavierVirtuel)
-                  // le remplace -- il passait sous la fenetre.
+                  // le remplace -- il passait sous la fenetre. `inputMode` seul
+                  // ne suffisait pas : Windows l'ouvrait quand meme, le champ
+                  // perdait le focus et notre clavier clignotait. Un champ en
+                  // lecture seule n'appelle aucun clavier ; il garde le focus.
+                  readOnly
                   inputMode="none"
+                  // Un clavier branche (poste de test) ecrit quand meme.
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey || e.altKey) return
+                    if (e.key === 'Backspace') {
+                      e.preventDefault()
+                      ecrire(field.key, (v) => v.slice(0, -1))
+                    } else if (e.key.length === 1) {
+                      e.preventDefault()
+                      const lettre = e.key
+                      ecrire(field.key, (v) => v + lettre)
+                    }
+                  }}
                   onFocus={() => setActif(field.key)}
                   autoComplete="off"
                   autoCapitalize={field.type === 'text' ? 'words' : 'off'}
@@ -185,9 +211,8 @@ export function RegisterStep() {
                     setActif((a) => (a === field.key ? null : a))
                   }}
                   onChange={(e) => {
-                    setInscription({ ...values, [field.key]: e.currentTarget.value })
-                    // Le verdict du serveur portait sur l'ancienne valeur.
-                    setServeur((s) => (s[field.key] ? { ...s, [field.key]: '' } : s))
+                    const saisie = e.currentTarget.value
+                    ecrire(field.key, () => saisie)
                   }}
                 />
                 {message && <p className="message-erreur">{message}</p>}
@@ -251,10 +276,7 @@ export function RegisterStep() {
           mode={CLAVIER[actif]}
           majusculeAuto={actif === 'first_name' || actif === 'last_name'}
           valeur={values[actif] ?? ''}
-          onChange={(v) => {
-            setInscription({ ...values, [actif]: v })
-            setServeur((s) => (s[actif] ? { ...s, [actif]: '' } : s))
-          }}
+          onChange={(modifier) => ecrire(actif, modifier)}
           onOk={() => {
             // Champ suivant ; apres le dernier, on range le clavier.
             const i = FIELDS.findIndex((f) => f.key === actif)

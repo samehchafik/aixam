@@ -39,8 +39,14 @@ const PAVE = [
 
 type Props = {
   mode: ModeClavier
+  /** La valeur affichee : sert a la majuscule de debut de mot. */
   valeur: string
-  onChange: (valeur: string) => void
+  /**
+   * Une touche, appliquee a la valeur LA PLUS RECENTE. Pas `valeur + touche` :
+   * deux appuis rapides, avant que la page ait repeint, partiraient tous deux
+   * de la meme valeur et le second effacerait le premier.
+   */
+  onChange: (modifier: (valeur: string) => string) => void
   /** La touche OK : champ suivant, ou validation. */
   onOk: () => void
   /** Majuscule d'office en debut de mot (prenom, nom). */
@@ -62,10 +68,11 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
   }
 
   const touche = (cle: string) => {
-    if (cle === 'EFFACER') return onChange(valeur.slice(0, -1))
+    if (cle === 'EFFACER') return onChange((v) => v.slice(0, -1))
     if (cle === 'OK') return onOk()
     if (cle === 'MAJ') return setMaj((m) => !m)
-    onChange(valeur + (majuscule ? cle.toUpperCase() : cle))
+    const lettre = majuscule ? cle.toUpperCase() : cle
+    onChange((v) => v + lettre)
     // Une majuscule pour une lettre, comme sur un telephone.
     setMaj(false)
   }
@@ -126,7 +133,7 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
           type="button"
           tabIndex={-1}
           className="touche touche-espace"
-          onPointerDown={(e) => appui(e, () => onChange(valeur + ' '))}
+          onPointerDown={(e) => appui(e, () => onChange((v) => v + ' '))}
         >
           {t('clavier.espace')}
         </button>
@@ -136,7 +143,7 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
             type="button"
             tabIndex={-1}
             className="touche touche-domaine"
-            onPointerDown={(e) => appui(e, () => onChange(valeur + '.com'))}
+            onPointerDown={(e) => appui(e, () => onChange((v) => v + '.com'))}
           >
             .com
           </button>

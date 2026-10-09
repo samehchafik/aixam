@@ -54,6 +54,14 @@ export function VerifyStep() {
           if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
             e.preventDefault()
             submit()
+          } else if (/^\d$/.test(e.key)) {
+            // Les cases sont en lecture seule : un clavier branche (poste de
+            // test) passe par ici.
+            e.preventDefault()
+            setCode((c) => (c + e.key).slice(0, longueur))
+          } else if (e.key === 'Backspace') {
+            e.preventDefault()
+            setCode((c) => c.slice(0, -1))
           }
         }}
       >
@@ -63,7 +71,9 @@ export function VerifyStep() {
           classNames={{ root: 'code', input: 'code-case' }}
           length={longueur}
           type="number"
-          // Le pave de la borne remplace le clavier de Windows (voir ClavierVirtuel).
+          // Le pave de la borne remplace le clavier de Windows (voir
+          // ClavierVirtuel) ; en lecture seule, Windows n'ouvre pas le sien.
+          readOnly
           inputMode="none"
           // Une espace, pas rien : `:placeholder-shown` distingue alors une
           // case vide (bleu pale) d'une case remplie (blanche).
@@ -85,7 +95,7 @@ export function VerifyStep() {
         mode="code"
         className="clavier-code"
         valeur={code}
-        onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, longueur))}
+        onChange={(modifier) => setCode((c) => modifier(c).replace(/\D/g, '').slice(0, longueur))}
         onOk={submit}
       />
     </EcranFormulaire>
