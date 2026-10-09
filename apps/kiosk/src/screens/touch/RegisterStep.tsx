@@ -207,6 +207,12 @@ export function RegisterStep() {
                   spellCheck={false}
                   value={valeur}
                   onBlur={() => {
+                    // La fenetre qui perd le focus (une autre fenetre, la barre
+                    // des taches) fait aussi perdre le sien au champ : on garde
+                    // alors le clavier ouvert -- le champ le retrouvera avec la
+                    // fenetre. Sans cela, sous borne.exe, chaque aller-retour
+                    // du focus le fermait et le rouvrait : il clignotait.
+                    if (!document.hasFocus()) return
                     setTouched((s) => ({ ...s, [field.key]: true }))
                     setActif((a) => (a === field.key ? null : a))
                   }}

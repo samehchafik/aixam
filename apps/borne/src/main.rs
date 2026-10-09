@@ -279,38 +279,19 @@ mod clavier {
     }
 }
 
-/// Le clavier tactile et la fenetre « toujours au premier plan ».
-///
-/// Une fenetre topmost qui recoit le focus remonte en tete de la bande des
-/// topmost -- au-dessus du clavier : au premier appui du visiteur sur la page,
-/// le clavier passait dessous. Tant qu'il est a l'ecran, la fenetre perd donc
-/// son attribut ; elle le reprend, avec le focus, quand il se range.
-fn veiller_clavier(handle: tauri::AppHandle) {
-    let volet = clavier::Volet::ouvrir();
-    let mut ouvert = false;
-    loop {
-        std::thread::sleep(Duration::from_millis(200));
-        let visible = clavier::visible(volet.as_ref());
-        if visible == ouvert {
-            continue;
-        }
-        ouvert = visible;
-        let Some(f) = handle.get_webview_window("borne") else { continue };
-        let _ = f.set_always_on_top(!visible);
-        if !visible {
-            let _ = f.set_focus();
-        }
-    }
-}
-
 /// Le clavier tactile est-il ouvert ? Pour le fil qui reprend le focus.
 fn clavier_tactile_ouvert() -> bool {
     clavier::visible(clavier::Volet::ouvrir().as_ref())
 }
 
 /// Quelqu'un a pris le focus -- la barre des taches touchee, une notification.
-/// On le reprend, sauf tant que le clavier tactile est ouvert : le visiteur
-/// tape, et `veiller_clavier` rendra le focus quand il se rangera.
+/// On le reprend, sauf tant que le clavier tactile de Windows est ouvert.
+///
+/// La borne a desormais son propre clavier, dans la page, et ses champs
+/// n'appellent plus celui de Windows. Un fil qui retirait le premier plan a la
+/// fenetre tant que ce dernier etait ouvert, et lui rendait le focus a sa
+/// fermeture, a ete retire : ses allers-retours du focus faisaient clignoter
+/// le clavier de la page.
 fn reprendre_focus(fenetre: tauri::Window) {
     std::thread::sleep(Duration::from_millis(1500));
     if fenetre.is_focused().unwrap_or(false) || clavier_tactile_ouvert() {
@@ -378,9 +359,6 @@ fn main() {
                     std::process::exit(2);
                 }
             }
-
-            let veilleur = app.handle().clone();
-            std::thread::spawn(move || veiller_clavier(veilleur));
 
             // Windows recompose le bureau quand un capot se ferme ou qu'un
             // cable bouge : le moniteur vise change de place. On regarde
