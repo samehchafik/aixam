@@ -13,6 +13,17 @@ set "RACINE=%~dp0.."
 set "PORT=8080"
 for /f "usebackq tokens=1,* delims==" %%a in ("%RACINE%\.env") do if /i "%%a"=="API_PORT" set "PORT=%%b"
 set "HOTE=http://localhost:%PORT%"
+rem Mode distant, facultatif : la borne sur le serveur en ligne plutot que sur
+rem l'API locale, avec une ligne dans .env :
+rem   BORNE_SERVEUR=https://aixam.ifrit.fr
+rem La page de la borne doit alors s'y ouvrir sans identifiants (KIOSK_BASIC_*
+rem vides dans le .env du serveur) : personne ne repondrait a la demande devant
+rem les visiteurs. Sans BORNE_SERVEUR, rien ne change : l'API locale.
+set "SERVEUR="
+for /f "usebackq tokens=1,* delims==" %%a in ("%RACINE%\.env") do if /i "%%a"=="BORNE_SERVEUR" set "SERVEUR=%%b"
+set "ARGS_LANCEUR="
+if defined SERVEUR set "HOTE=%SERVEUR%"
+if defined SERVEUR set "ARGS_LANCEUR= -ApiHost '%SERVEUR%'"
 rem La tache planifiee lance ce script sans fenetre : sans journal, un echec
 rem au demarrage ne laisse aucune trace.
 set "JOURNAL=%RACINE%\.run\demarrage.log"
@@ -36,6 +47,7 @@ rem ligne ne laisserait sinon aucune trace. En UTF-8 : la redirection *>> de
 rem PowerShell ecrit en UTF-16, illisible a cote des lignes de ce .bat.
 start "" /b powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "& '%RACINE%\scripts\arret-clavier.ps1' -FichierPid '%RACINE%\.run\arret-clavier.pid' *>&1 | Out-File -FilePath '%RACINE%\.run\arret-clavier.log' -Append -Encoding utf8"
 
+if defined SERVEUR call :dire "== mode distant : %SERVEUR%"
 call :dire "== attente de l'API sur %HOTE%"
 set /a ESSAIS=0
 :attente
@@ -68,7 +80,7 @@ if not exist "%LANCEUR%" (
 )
 rem Pas Tee-Object : il ecrit en UTF-16, illisible avec les lignes du .bat.
 rem *>&1 et pas 2>&1 : Write-Host passe par le flux d'information, que 2>&1 ignore.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%LANCEUR%' *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& '%LANCEUR%'%ARGS_LANCEUR% *>&1 | ForEach-Object { $_; [IO.File]::AppendAllText('%JOURNAL%', \"$_`r`n\", [Text.Encoding]::UTF8) }"
 exit /b 0
 
 :dire
