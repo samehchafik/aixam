@@ -21,7 +21,14 @@ export function Login() {
       })
       auth.set(res.access_token)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      const message = e instanceof Error ? e.message : 'Erreur'
+      setError(
+        message === 'Identifiants invalides'
+          ? 'E-mail ou mot de passe incorrect pour le back-office de cette machine.'
+          : message === 'Failed to fetch'
+            ? "L'API ne répond pas : est-elle démarrée ?"
+            : message,
+      )
     } finally {
       setBusy(false)
     }

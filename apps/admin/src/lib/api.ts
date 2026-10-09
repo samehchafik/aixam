@@ -71,7 +71,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...(init.headers ?? {}),
     },
   })
-  if (res.status === 401) {
+  // Un 401 sur la connexion elle-meme, c'est un mot de passe refuse, pas une
+  // session finie : il se lisait « Session expiree », et l'on cherchait la
+  // panne ailleurs que dans les identifiants.
+  if (res.status === 401 && path !== '/api/auth/login') {
     auth.clear('expiration')
     throw new Unauthorized('Session expiree')
   }
@@ -104,7 +107,10 @@ export async function telecharger(path: string, nom: string): Promise<void> {
   })
   // Un telechargement passe hors de `api()` : sans ce test, une session
   // expiree rendait un fichier contenant le refus de l'API.
-  if (res.status === 401) {
+  // Un 401 sur la connexion elle-meme, c'est un mot de passe refuse, pas une
+  // session finie : il se lisait « Session expiree », et l'on cherchait la
+  // panne ailleurs que dans les identifiants.
+  if (res.status === 401 && path !== '/api/auth/login') {
     auth.clear('expiration')
     throw new Unauthorized('Session expiree')
   }
