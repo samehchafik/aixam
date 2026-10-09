@@ -23,6 +23,10 @@
     "emailing": "I agree to receive AIXAM newsletters, commercial offers and news by email, published by AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS, registered with the Chambéry Trade and Companies Register under number 328 368 857.",
     "cancel": "Cancel"
   },
+  "clavier": {
+    "ok": "OK",
+    "espace": "space"
+  },
   "legal": {
     "rules": {
       "title": "EASY event rules",

@@ -4,6 +4,7 @@ import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { EcranFormulaire } from './EcranFormulaire'
+import { ClavierVirtuel } from '../../components/ClavierVirtuel'
 
 /** Longueur du code quand l'API ne la donne pas : celle d'avant les cinq cases. */
 const LONGUEUR_PAR_DEFAUT = 6
@@ -62,7 +63,8 @@ export function VerifyStep() {
           classNames={{ root: 'code', input: 'code-case' }}
           length={longueur}
           type="number"
-          inputMode="numeric"
+          // Le pave de la borne remplace le clavier de Windows (voir ClavierVirtuel).
+          inputMode="none"
           // Une espace, pas rien : `:placeholder-shown` distingue alors une
           // case vide (bleu pale) d'une case remplie (blanche).
           placeholder=" "
@@ -79,6 +81,13 @@ export function VerifyStep() {
           {t('verify.back')}
         </button>
       </form>
+      <ClavierVirtuel
+        mode="code"
+        className="clavier-code"
+        valeur={code}
+        onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, longueur))}
+        onOk={submit}
+      />
     </EcranFormulaire>
   )
 }

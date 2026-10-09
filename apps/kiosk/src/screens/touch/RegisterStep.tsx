@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ValidationError } from '../../api/client'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
 import { useSession } from '../../state/session'
 import { Popin, TexteLegal } from '../../components/Popin'
+import { ClavierVirtuel, type ModeClavier } from '../../components/ClavierVirtuel'
 import { EcranFormulaire } from './EcranFormulaire'
 
 const FIELDS = [
@@ -12,6 +13,14 @@ const FIELDS = [
   { key: 'email', label: 'register.email', type: 'email' },
   { key: 'postal_code', label: 'register.postalCode', type: 'text' },
 ] as const
+
+/** Le clavier de chaque champ : lettres, adresse, ou chiffres d'abord. */
+const CLAVIER: Record<string, ModeClavier> = {
+  first_name: 'texte',
+  last_name: 'texte',
+  email: 'email',
+  postal_code: 'nombre',
+}
 
 // Exige un point dans le domaine : c'est ce qui attrape le « gmail;com » tape
 // au pouce sur un clavier tactile, ou le point-virgule est voisin du point.
@@ -72,6 +81,9 @@ export function RegisterStep() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [texte, setTexte] = useState<Texte | null>(null)
+  // Le champ que le clavier de la borne remplit ; aucun : clavier range.
+  const [actif, setActif] = useState<string | null>(null)
+  const champs = useRef<Record<string, HTMLInputElement | null>>({})
   // Un champ ne signale sa faute qu'une fois quitte : corriger sous les doigts
   // du visiteur pendant qu'il tape serait plus penible qu'utile.
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -155,14 +167,23 @@ export function RegisterStep() {
               <div>
                 <input
                   id={`champ-${field.key}`}
+                  ref={(el) => {
+                    champs.current[field.key] = el
+                  }}
                   className={valeur ? 'rempli' : ''}
                   type={field.type}
-                  inputMode={field.type === 'email' ? 'email' : undefined}
+                  // Pas de clavier Windows : celui de la borne (ClavierVirtuel)
+                  // le remplace -- il passait sous la fenetre.
+                  inputMode="none"
+                  onFocus={() => setActif(field.key)}
                   autoComplete="off"
                   autoCapitalize={field.type === 'text' ? 'words' : 'off'}
                   spellCheck={false}
                   value={valeur}
-                  onBlur={() => setTouched((s) => ({ ...s, [field.key]: true }))}
+                  onBlur={() => {
+                    setTouched((s) => ({ ...s, [field.key]: true }))
+                    setActif((a) => (a === field.key ? null : a))
+                  }}
                   onChange={(e) => {
                     setInscription({ ...values, [field.key]: e.currentTarget.value })
                     // Le verdict du serveur portait sur l'ancienne valeur.
@@ -221,6 +242,28 @@ export function RegisterStep() {
           </button>
         )}
       </form>
+
+      {actif && (
+        <ClavierVirtuel
+          // Une cle par champ : chacun repart sur sa disposition.
+          key={actif}
+          className="clavier-inscription"
+          mode={CLAVIER[actif]}
+          majusculeAuto={actif === 'first_name' || actif === 'last_name'}
+          valeur={values[actif] ?? ''}
+          onChange={(v) => {
+            setInscription({ ...values, [actif]: v })
+            setServeur((s) => (s[actif] ? { ...s, [actif]: '' } : s))
+          }}
+          onOk={() => {
+            // Champ suivant ; apres le dernier, on range le clavier.
+            const i = FIELDS.findIndex((f) => f.key === actif)
+            const suivant = FIELDS[i + 1]
+            if (suivant) champs.current[suivant.key]?.focus()
+            else champs.current[actif]?.blur()
+          }}
+        />
+      )}
 
       {texte && (
         <Popin

@@ -23,6 +23,10 @@
     "emailing": "Acepto recibir por correo electrónico los boletines, ofertas comerciales y novedades de AIXAM, editados por AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS, inscrita en el Registro Mercantil de Chambéry con el número 328 368 857.",
     "cancel": "Cancelar"
   },
+  "clavier": {
+    "ok": "OK",
+    "espace": "espacio"
+  },
   "legal": {
     "rules": {
       "title": "Bases de la animación EASY",

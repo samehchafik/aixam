@@ -23,6 +23,10 @@
     "emailing": "J’accepte de recevoir par e-mail les newsletters, offres commerciales et actualités d’AIXAM, éditée par AIXAM MEGA, 56 ROUTE DE PUGNY, 73100 AIX-LES-BAINS immatriculée au RCS de Chambery sous le numéro 328 368 857.",
     "cancel": "Annuler"
   },
+  "clavier": {
+    "ok": "OK",
+    "espace": "espace"
+  },
   "legal": {
     "rules": {
       "title": "Règlement de l’animation EASY",
