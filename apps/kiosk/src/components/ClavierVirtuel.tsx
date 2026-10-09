@@ -71,8 +71,13 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
     if (cle === 'EFFACER') return onChange((v) => v.slice(0, -1))
     if (cle === 'OK') return onOk()
     if (cle === 'MAJ') return setMaj((m) => !m)
-    const lettre = majuscule ? cle.toUpperCase() : cle
-    onChange((v) => v + lettre)
+    // Le debut de mot se juge sur la valeur la plus recente, comme le reste :
+    // tape vite, chaque lettre se croyait sinon en debut de mot.
+    const forcee = maj
+    onChange((v) => {
+      const debut = majusculeAuto && (v === '' || /[\s-]$/.test(v))
+      return v + (forcee !== debut ? cle.toUpperCase() : cle)
+    })
     // Une majuscule pour une lettre, comme sur un telephone.
     setMaj(false)
   }

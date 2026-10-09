@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { ValidationError } from '../../api/client'
 import { useApp } from '../../app-context'
 import { useI18n } from '../../i18n'
@@ -54,6 +54,31 @@ function valider(champ: string, valeur: string): string | null {
  */
 function inscriptionFacultative(): boolean {
   return new URLSearchParams(window.location.search).get('skip') === 'true'
+}
+
+/**
+ * Le curseur du champ que remplit le clavier de la borne, en fin de texte.
+ *
+ * Les champs sont en lecture seule (sans quoi Windows ouvrirait son propre
+ * clavier) et un champ en lecture seule n'affiche pas de curseur : sans lui,
+ * le visiteur ne savait plus ou il tapait. On mesure le texte a la police du
+ * champ, et l'on fait defiler celui-ci jusqu'au bout quand il deborde.
+ */
+function Curseur({ champ, valeur }: { champ: HTMLInputElement | null; valeur: string }) {
+  const [gauche, setGauche] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    if (!champ) return
+    const style = getComputedStyle(champ)
+    const ctx = document.createElement('canvas').getContext('2d')
+    if (!ctx) return
+    ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+    ctx.letterSpacing = style.letterSpacing
+    champ.scrollLeft = champ.scrollWidth
+    const debut = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+    const x = debut + ctx.measureText(valeur).width - champ.scrollLeft
+    setGauche(Math.min(Math.max(x, debut), champ.offsetWidth - debut))
+  }, [champ, valeur])
+  return gauche === null ? null : <span className="curseur" style={{ left: gauche }} aria-hidden="true" />
 }
 
 /** Le texte que la case du reglement ouvre dans la popin. */
@@ -175,52 +200,55 @@ export function RegisterStep() {
             <div key={field.key} className={`champ ${message ? 'en-erreur' : ''}`}>
               <label htmlFor={`champ-${field.key}`}>{t(field.label)}*</label>
               <div>
-                <input
-                  id={`champ-${field.key}`}
-                  ref={(el) => {
-                    champs.current[field.key] = el
-                  }}
-                  className={valeur ? 'rempli' : ''}
-                  type={field.type}
-                  // Pas de clavier Windows : celui de la borne (ClavierVirtuel)
-                  // le remplace -- il passait sous la fenetre. `inputMode` seul
-                  // ne suffisait pas : Windows l'ouvrait quand meme, le champ
-                  // perdait le focus et notre clavier clignotait. Un champ en
-                  // lecture seule n'appelle aucun clavier ; il garde le focus.
-                  readOnly
-                  inputMode="none"
-                  // Un clavier branche (poste de test) ecrit quand meme.
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey || e.altKey) return
-                    if (e.key === 'Backspace') {
-                      e.preventDefault()
-                      ecrire(field.key, (v) => v.slice(0, -1))
-                    } else if (e.key.length === 1) {
-                      e.preventDefault()
-                      const lettre = e.key
-                      ecrire(field.key, (v) => v + lettre)
-                    }
-                  }}
-                  onFocus={() => setActif(field.key)}
-                  autoComplete="off"
-                  autoCapitalize={field.type === 'text' ? 'words' : 'off'}
-                  spellCheck={false}
-                  value={valeur}
-                  onBlur={() => {
-                    // La fenetre qui perd le focus (une autre fenetre, la barre
-                    // des taches) fait aussi perdre le sien au champ : on garde
-                    // alors le clavier ouvert -- le champ le retrouvera avec la
-                    // fenetre. Sans cela, sous borne.exe, chaque aller-retour
-                    // du focus le fermait et le rouvrait : il clignotait.
-                    if (!document.hasFocus()) return
-                    setTouched((s) => ({ ...s, [field.key]: true }))
-                    setActif((a) => (a === field.key ? null : a))
-                  }}
-                  onChange={(e) => {
-                    const saisie = e.currentTarget.value
-                    ecrire(field.key, () => saisie)
-                  }}
-                />
+                <div className="saisie">
+                  <input
+                    id={`champ-${field.key}`}
+                    ref={(el) => {
+                      champs.current[field.key] = el
+                    }}
+                    className={valeur ? 'rempli' : ''}
+                    type={field.type}
+                    // Pas de clavier Windows : celui de la borne (ClavierVirtuel)
+                    // le remplace -- il passait sous la fenetre. `inputMode` seul
+                    // ne suffisait pas : Windows l'ouvrait quand meme, le champ
+                    // perdait le focus et notre clavier clignotait. Un champ en
+                    // lecture seule n'appelle aucun clavier ; il garde le focus.
+                    readOnly
+                    inputMode="none"
+                    // Un clavier branche (poste de test) ecrit quand meme.
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey || e.altKey) return
+                      if (e.key === 'Backspace') {
+                        e.preventDefault()
+                        ecrire(field.key, (v) => v.slice(0, -1))
+                      } else if (e.key.length === 1) {
+                        e.preventDefault()
+                        const lettre = e.key
+                        ecrire(field.key, (v) => v + lettre)
+                      }
+                    }}
+                    onFocus={() => setActif(field.key)}
+                    autoComplete="off"
+                    autoCapitalize={field.type === 'text' ? 'words' : 'off'}
+                    spellCheck={false}
+                    value={valeur}
+                    onBlur={() => {
+                      // La fenetre qui perd le focus (une autre fenetre, la barre
+                      // des taches) fait aussi perdre le sien au champ : on garde
+                      // alors le clavier ouvert -- le champ le retrouvera avec la
+                      // fenetre. Sans cela, sous borne.exe, chaque aller-retour
+                      // du focus le fermait et le rouvrait : il clignotait.
+                      if (!document.hasFocus()) return
+                      setTouched((s) => ({ ...s, [field.key]: true }))
+                      setActif((a) => (a === field.key ? null : a))
+                    }}
+                    onChange={(e) => {
+                      const saisie = e.currentTarget.value
+                      ecrire(field.key, () => saisie)
+                    }}
+                  />
+                  {actif === field.key && <Curseur champ={champs.current[field.key]} valeur={valeur} />}
+                </div>
                 {message && <p className="message-erreur">{message}</p>}
               </div>
             </div>
