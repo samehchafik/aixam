@@ -255,8 +255,8 @@ chaîne Rust : l'exe se compile sur le poste de développement et se dépose en
 `bin\win\borne.exe` (ignoré par git).
 
 ```bash
-cargo install cargo-xwin                       # une fois : le SDK Windows pour le Mac
-cd apps/borne && PATH="/usr/local/opt/llvm/bin:$PATH" cargo xwin build --release --target x86_64-pc-windows-msvc
+cargo install cargo-xwin && brew install llvm lld   # une fois : le SDK Windows pour le Mac
+cd apps/borne && PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/lld/bin:$PATH" cargo xwin build --release --target x86_64-pc-windows-msvc
 scp target/x86_64-pc-windows-msvc/release/borne.exe durango@192.168.1.17:C:/aixam/bin/win/borne.exe
 ```
 

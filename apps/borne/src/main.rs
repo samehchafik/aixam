@@ -169,53 +169,154 @@ document.addEventListener('contextmenu', e => e.preventDefault(), true);
 document.addEventListener('gesturestart', e => e.preventDefault(), true);
 "#;
 
-/// Le clavier tactile de Windows a-t-il le premier plan ? TabTip (Windows 10)
-/// a sa classe ; sous Windows 11 c'est une CoreWindow de TextInputHost.
+/// Le clavier tactile de Windows est-il a l'ecran ?
+///
+/// IFrameworkInputPane est l'API prevue pour cela : elle rend le rectangle du
+/// clavier, vide quand il est range -- pour TabTip (Windows 10) comme pour
+/// TextInputHost (Windows 11). Regarder qui a le premier plan ne suffisait
+/// pas : le clavier ne prend pas le focus (il active l'Explorateur), si bien
+/// que la borne le croyait absent, reprenait la main et passait devant lui.
+/// A defaut de l'API, on se rabat sur la fenetre de TabTip et sur le premier
+/// plan.
 #[cfg(windows)]
-fn clavier_tactile_devant() -> bool {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow, GetWindowTextW};
-    unsafe {
-        let h = GetForegroundWindow();
-        if h.is_null() {
-            return false;
+mod clavier {
+    use std::ffi::c_void;
+    use windows_sys::core::{GUID, HRESULT};
+    use windows_sys::Win32::Foundation::RECT;
+    use windows_sys::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, CLSCTX_LOCAL_SERVER, COINIT_APARTMENTTHREADED,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        FindWindowW, GetClassNameW, GetForegroundWindow, GetWindowTextW, IsWindowVisible,
+    };
+
+    const CLSID_FRAMEWORK_INPUT_PANE: GUID = GUID::from_u128(0xD5120AA3_46BA_44C5_822D_CA8092C1FC72);
+    const IID_IFRAMEWORK_INPUT_PANE: GUID = GUID::from_u128(0x5752238B_24F0_495A_82F1_2FD593056796);
+
+    /// La table de IFrameworkInputPane : IUnknown, puis Advise,
+    /// AdviseWithHWND, Unadvise et Location -- seule cette derniere sert.
+    #[repr(C)]
+    struct Table {
+        _iunknown: [usize; 3],
+        _advise: [usize; 3],
+        location: unsafe extern "system" fn(*mut c_void, *mut RECT) -> HRESULT,
+    }
+
+    /// Le volet du clavier, cree une fois par fil (COM y est initialise).
+    pub struct Volet(*mut c_void);
+
+    impl Volet {
+        pub fn ouvrir() -> Option<Volet> {
+            unsafe {
+                CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as u32);
+                let mut ptr: *mut c_void = std::ptr::null_mut();
+                let hr = CoCreateInstance(
+                    &CLSID_FRAMEWORK_INPUT_PANE,
+                    std::ptr::null_mut(),
+                    CLSCTX_INPROC_SERVER | CLSCTX_LOCAL_SERVER,
+                    &IID_IFRAMEWORK_INPUT_PANE,
+                    &mut ptr,
+                );
+                (hr >= 0 && !ptr.is_null()).then_some(Volet(ptr))
+            }
         }
+
+        /// Some(vrai) si le clavier occupe un rectangle, None si l'API echoue.
+        fn rectangle(&self) -> Option<bool> {
+            unsafe {
+                let table = *(self.0 as *const *const Table);
+                let mut r = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+                if ((*table).location)(self.0, &mut r) < 0 {
+                    return None;
+                }
+                Some(r.right > r.left && r.bottom > r.top)
+            }
+        }
+    }
+
+    fn texte(f: unsafe extern "system" fn(*mut c_void, *mut u16, i32) -> i32, h: *mut c_void) -> String {
         let mut tampon = [0u16; 128];
-        let n = GetClassNameW(h, tampon.as_mut_ptr(), tampon.len() as i32);
-        let classe = String::from_utf16_lossy(&tampon[..n.max(0) as usize]);
-        if classe == "IPTip_Main_Window" {
-            return true;
+        let n = unsafe { f(h, tampon.as_mut_ptr(), tampon.len() as i32) };
+        String::from_utf16_lossy(&tampon[..n.max(0) as usize])
+    }
+
+    pub fn visible(volet: Option<&Volet>) -> bool {
+        if let Some(oui) = volet.and_then(Volet::rectangle) {
+            return oui;
         }
-        if classe == "Windows.UI.Core.CoreWindow" {
-            let n = GetWindowTextW(h, tampon.as_mut_ptr(), tampon.len() as i32);
-            let titre = String::from_utf16_lossy(&tampon[..n.max(0) as usize]).to_lowercase();
-            return titre.contains("text input") || titre.contains("clavier");
+        unsafe {
+            let classe: Vec<u16> = "IPTip_Main_Window\0".encode_utf16().collect();
+            let tabtip = FindWindowW(classe.as_ptr(), std::ptr::null());
+            if !tabtip.is_null() && IsWindowVisible(tabtip) != 0 {
+                return true;
+            }
+            let h = GetForegroundWindow();
+            if h.is_null() {
+                return false;
+            }
+            match texte(GetClassNameW, h).as_str() {
+                "IPTip_Main_Window" => true,
+                "Windows.UI.Core.CoreWindow" => {
+                    let titre = texte(GetWindowTextW, h).to_lowercase();
+                    titre.contains("text input") || titre.contains("clavier") || titre.contains("entrée")
+                }
+                _ => false,
+            }
         }
-        false
     }
 }
 
 #[cfg(not(windows))]
-fn clavier_tactile_devant() -> bool {
-    false
+mod clavier {
+    pub struct Volet;
+    impl Volet {
+        pub fn ouvrir() -> Option<Volet> {
+            None
+        }
+    }
+    pub fn visible(_: Option<&Volet>) -> bool {
+        false
+    }
+}
+
+/// Le clavier tactile et la fenetre « toujours au premier plan ».
+///
+/// Une fenetre topmost qui recoit le focus remonte en tete de la bande des
+/// topmost -- au-dessus du clavier : au premier appui du visiteur sur la page,
+/// le clavier passait dessous. Tant qu'il est a l'ecran, la fenetre perd donc
+/// son attribut ; elle le reprend, avec le focus, quand il se range.
+fn veiller_clavier(handle: tauri::AppHandle) {
+    let volet = clavier::Volet::ouvrir();
+    let mut ouvert = false;
+    loop {
+        std::thread::sleep(Duration::from_millis(200));
+        let visible = clavier::visible(volet.as_ref());
+        if visible == ouvert {
+            continue;
+        }
+        ouvert = visible;
+        let Some(f) = handle.get_webview_window("borne") else { continue };
+        let _ = f.set_always_on_top(!visible);
+        if !visible {
+            let _ = f.set_focus();
+        }
+    }
+}
+
+/// Le clavier tactile est-il ouvert ? Pour le fil qui reprend le focus.
+fn clavier_tactile_ouvert() -> bool {
+    clavier::visible(clavier::Volet::ouvrir().as_ref())
 }
 
 /// Quelqu'un a pris le focus -- la barre des taches touchee, une notification.
-/// On le reprend, sauf tant que c'est le clavier tactile : le visiteur tape.
+/// On le reprend, sauf tant que le clavier tactile est ouvert : le visiteur
+/// tape, et `veiller_clavier` rendra le focus quand il se rangera.
 fn reprendre_focus(fenetre: tauri::Window) {
     std::thread::sleep(Duration::from_millis(1500));
-    // Au plus cinq minutes : un clavier peut rester ouvert le temps d'un
-    // formulaire, pas d'une pause dejeuner.
-    for _ in 0..600 {
-        if fenetre.is_focused().unwrap_or(false) {
-            return;
-        }
-        if clavier_tactile_devant() {
-            std::thread::sleep(Duration::from_millis(500));
-            continue;
-        }
-        let _ = fenetre.set_focus();
+    if fenetre.is_focused().unwrap_or(false) || clavier_tactile_ouvert() {
         return;
     }
+    let _ = fenetre.set_focus();
 }
 
 /// L'exe est en sous-systeme graphique -- pas de console qui clignote au
@@ -277,6 +378,9 @@ fn main() {
                     std::process::exit(2);
                 }
             }
+
+            let veilleur = app.handle().clone();
+            std::thread::spawn(move || veiller_clavier(veilleur));
 
             // Windows recompose le bureau quand un capot se ferme ou qu'un
             // cable bouge : le moniteur vise change de place. On regarde

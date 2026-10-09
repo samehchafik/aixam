@@ -15,11 +15,10 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 
-# Pour savoir si le clavier tactile de Windows est au premier plan avant de
-# reprendre le focus : le lui reprendre pendant que le visiteur tape le
-# refermerait sous ses doigts.
+# Pour savoir si le clavier tactile de Windows est a l'ecran (IFrameworkInputPane,
+# par COM) : tant qu'il l'est, la fenetre laisse le premier plan et le focus.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
 strip = true
