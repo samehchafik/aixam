@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, HashRouter as Router, Routes } from 'react-ro
 import { AppShell, Box, Burger, Group, NavLink as MantineNavLink, Stack, Text, UnstyledButton } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { auth } from './lib/api'
+import { COMPLET } from './lib/mode'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { Visitors } from './pages/Visitors'
@@ -26,8 +27,7 @@ import { Settings } from './pages/Settings'
 // donc le mode ou l'on est.
 //
 // Ce n'est pas une permission : qui a le mot de passe garde l'API entiere.
-// C'est un ecran plus court, rien de plus.
-const COMPLET = /(^|\/)full\/?$/.test(window.location.pathname)
+// C'est un ecran plus court, rien de plus. (COMPLET : lib/mode.ts)
 
 const NAV = [
   { to: '/', label: 'Tableau de bord', end: true, complet: true },

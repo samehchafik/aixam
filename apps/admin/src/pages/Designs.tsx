@@ -5,6 +5,8 @@ import {
   TextInput, Title, UnstyledButton,
 } from '@mantine/core'
 import { api, telecharger } from '../lib/api'
+import { COMPLET } from '../lib/mode'
+import { RemiseAZero } from '../components/RemiseAZero'
 
 type Verdict = 'pending' | 'approved' | 'rejected'
 
@@ -245,6 +247,14 @@ export function Designs() {
           >
             Export des images (zip)
           </Button>
+          {COMPLET && (
+            <RemiseAZero
+              libelle="Supprimer toutes les créations"
+              explication="Toutes les créations de cette base disparaissent du back-office et du grand écran. Les visiteurs sont conservés, les fichiers images aussi."
+              adresse="/api/admin/designs"
+              onFait={actualiser}
+            />
+          )}
         </Group>
       </Group>
       {erreurExport && <Text c="red" fz="sm">Export impossible : {erreurExport}</Text>}

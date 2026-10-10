@@ -3,6 +3,8 @@ import {
   ActionIcon, Badge, Button, Group, Pagination, Paper, Stack, Table, Text, TextInput, Title, Tooltip,
 } from '@mantine/core'
 import { api, telecharger } from '../lib/api'
+import { COMPLET } from '../lib/mode'
+import { RemiseAZero } from '../components/RemiseAZero'
 
 type Row = {
   id: string
@@ -81,6 +83,19 @@ export function Visitors() {
         >
           Export CSV
         </Button>
+        {COMPLET && (
+          <Group ml="auto">
+            <RemiseAZero
+              libelle="Supprimer tous les visiteurs"
+              explication="Tous les visiteurs de cette base sont effacés, comme pour une demande RGPD : leurs créations sont conservées, mais anonymisées."
+              adresse="/api/admin/visitors"
+              onFait={() => {
+                setPage(1)
+                load()
+              }}
+            />
+          </Group>
+        )}
       </Group>
       {erreur && <Text c="red" fz="sm">Export impossible : {erreur}</Text>}
 

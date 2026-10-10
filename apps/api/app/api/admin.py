@@ -12,7 +12,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from starlette.background import BackgroundTask
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -482,6 +482,46 @@ def write_settings(payload: dict, db: Session = Depends(get_db)) -> dict:
             set_setting(db, key, value)
     db.commit()
     return read_settings(db)
+
+
+# --- Remise a zero (back-office complet) ---
+#
+# Pour repartir d'une base propre apres des essais, avant l'ouverture du stand.
+# Le mot a taper en confirmation est verifie ICI, pas seulement dans l'ecran :
+# un appel lance par erreur ne vide rien.
+MOT_DE_CONFIRMATION = "SUPPRIMER"
+
+
+def _confirmer(confirmation: str) -> None:
+    if confirmation != MOT_DE_CONFIRMATION:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"Confirmation manquante : taper {MOT_DE_CONFIRMATION}"
+        )
+
+
+@router.delete("/designs")
+def reset_designs(confirmation: str = "", db: Session = Depends(get_db)) -> dict:
+    """Supprime toutes les creations de cette base.
+
+    Les fichiers PNG restent dans media/renders : un e-mail encore en file y
+    prend sa piece jointe, et un fichier nomme par son empreinte ne gene
+    personne. Rien n'est supprime sur le serveur ou cette base remonte.
+    """
+    _confirmer(confirmation)
+    n = db.execute(delete(Design)).rowcount
+    db.commit()
+    return {"supprimees": n}
+
+
+@router.delete("/visitors")
+def reset_visitors(confirmation: str = "", db: Session = Depends(get_db)) -> dict:
+    """Supprime tous les visiteurs de cette base, comme autant de demandes
+    d'effacement : leurs creations restent, anonymisees, et leurs codes de
+    verification partent avec eux."""
+    _confirmer(confirmation)
+    n = db.execute(delete(Visitor)).rowcount
+    db.commit()
+    return {"supprimes": n}
 
 
 @router.delete("/visitors/{visitor_id}", status_code=status.HTTP_204_NO_CONTENT)
