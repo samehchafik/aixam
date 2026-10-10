@@ -90,6 +90,10 @@ class Settings(BaseSettings):
     cors_origins: str = ""
 
     media_dir: str = "media"
+    # Les sauvegardes prises d'office avant une remise a zero du back-office
+    # (voir services/sauvegarde_reset.py). Relatif au dossier de l'API, comme
+    # media : apps/api/backup en local, /app/backup -- monte -- sous docker.
+    backup_dir: str = "backup"
     # Ou l'API depose le releve des ecrans. Vide : a la racine du projet, a
     # cote du lanceur qui s'en sert.
     materiel_file: str = ""

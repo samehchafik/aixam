@@ -41,7 +41,7 @@ from app.schemas import (
     StatsOut,
 )
 from app.security import generate_relay_token, generate_token, hash_secret, token_indice
-from app.services import mailer
+from app.services import mailer, sauvegarde_reset
 from app.services.export_creations import ExportIndisponible, classeur_creations
 from app.services.renderer import RENDERS, skin_present, skin_url, skins_stockes
 from app.services.settings_store import get_setting, set_setting
@@ -492,6 +492,17 @@ def write_settings(payload: dict, db: Session = Depends(get_db)) -> dict:
 MOT_DE_CONFIRMATION = "SUPPRIMER"
 
 
+def _sauvegarder(sauver, db: Session):
+    """La sauvegarde d'abord ; si elle echoue, on ne supprime rien."""
+    try:
+        return sauver(db)
+    except Exception as exc:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Sauvegarde impossible, rien n'a ete supprime : {exc}",
+        ) from exc
+
+
 def _confirmer(confirmation: str) -> None:
     if confirmation != MOT_DE_CONFIRMATION:
         raise HTTPException(
@@ -501,16 +512,18 @@ def _confirmer(confirmation: str) -> None:
 
 @router.delete("/designs")
 def reset_designs(confirmation: str = "", db: Session = Depends(get_db)) -> dict:
-    """Supprime toutes les creations de cette base.
+    """Supprime toutes les creations de cette base, apres les avoir
+    sauvegardees -- avec leurs visiteurs et leurs images -- dans backup/.
 
     Les fichiers PNG restent dans media/renders : un e-mail encore en file y
     prend sa piece jointe, et un fichier nomme par son empreinte ne gene
     personne. Rien n'est supprime sur le serveur ou cette base remonte.
     """
     _confirmer(confirmation)
+    sauvegarde, _ = _sauvegarder(sauvegarde_reset.sauver_creations, db)
     n = db.execute(delete(Design)).rowcount
     db.commit()
-    return {"supprimees": n}
+    return {"supprimees": n, "sauvegarde": sauvegarde.name}
 
 
 @router.delete("/visitors")
@@ -519,9 +532,10 @@ def reset_visitors(confirmation: str = "", db: Session = Depends(get_db)) -> dic
     d'effacement : leurs creations restent, anonymisees, et leurs codes de
     verification partent avec eux."""
     _confirmer(confirmation)
+    sauvegarde, _ = _sauvegarder(sauvegarde_reset.sauver_visiteurs, db)
     n = db.execute(delete(Visitor)).rowcount
     db.commit()
-    return {"supprimes": n}
+    return {"supprimes": n, "sauvegarde": sauvegarde.name}
 
 
 @router.delete("/visitors/{visitor_id}", status_code=status.HTTP_204_NO_CONTENT)

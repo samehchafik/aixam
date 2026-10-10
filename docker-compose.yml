@@ -76,6 +76,9 @@ services:
       # emails partaient alors sans l'image, en silence.
       - ./apps/api/media/relay:/app/media/relay
       - ./apps/api/static:/app/static:ro
+      # Les sauvegardes prises avant une remise a zero du back-office : sur
+      # l'hote, pour survivre au conteneur (voir services/sauvegarde_reset.py).
+      - ./apps/api/backup:/app/backup
       # Releve des ecrans de la machine hote -- voir MATERIEL_FILE ci-dessus.
       - ./.run/materiel:/app/materiel
 
