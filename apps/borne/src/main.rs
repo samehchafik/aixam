@@ -313,6 +313,40 @@ fn reprendre_focus(fenetre: tauri::Window) {
     let _ = fenetre.set_focus();
 }
 
+/// Le journal de borne.exe : `.run/borne.log` du projet (deux dossiers au-dessus
+/// de bin/win/), a defaut le dossier temporaire. Une ligne par evenement, avec
+/// l'heure UTC, le pid et le titre : les deux fenetres y ecrivent ensemble, et
+/// c'est ce qui dit laquelle s'arrete, et pourquoi.
+static TITRE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+fn journal() -> std::path::PathBuf {
+    let run = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent()?.parent()?.parent().map(|r| r.join(".run")))
+        .filter(|d| d.is_dir());
+    run.unwrap_or_else(std::env::temp_dir).join("borne.log")
+}
+
+fn noter(message: &str) {
+    use std::io::Write;
+    let s = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let ligne = format!(
+        "{:02}:{:02}:{:02} UTC  pid {}  {}  {}\n",
+        (s / 3600) % 24,
+        (s / 60) % 60,
+        s % 60,
+        std::process::id(),
+        TITRE.get().map(String::as_str).unwrap_or("?"),
+        message
+    );
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(journal()) {
+        let _ = f.write_all(ligne.as_bytes());
+    }
+}
+
 /// L'exe est en sous-systeme graphique -- pas de console qui clignote au
 /// demarrage de la borne --, donc rien de ce qu'il ecrirait sur stderr ne se
 /// verrait. Une erreur d'usage se dit dans une boite de message.
@@ -352,6 +386,9 @@ fn main() {
         }
     };
     let ecran = options.ecran.clone();
+    let _ = TITRE.set(options.titre.clone());
+    noter(&format!("demarrage : {} --ecran {:?} (borne.exe {})", options.url, ecran, env!("CARGO_PKG_VERSION")));
+    std::panic::set_hook(Box::new(|info| noter(&format!("PANIQUE : {info}"))));
 
     tauri::Builder::default()
         .setup(move |app| {
@@ -364,9 +401,24 @@ fn main() {
                 .user_agent(&agent_utilisateur())
                 .initialization_script(GARDE_FOUS)
                 .build()?;
+            let vus: Vec<String> = app
+                .available_monitors()
+                .unwrap_or_default()
+                .iter()
+                .map(|m| {
+                    let (x, y, l, h) = rect(m);
+                    format!("{l}x{h} en {x},{y}")
+                })
+                .collect();
+            noter(&format!("ecrans vus : {}", vus.join(" ; ")));
             match choisir_moniteur(app.handle(), &ecran) {
-                Some(m) => poser(&fenetre, &m),
+                Some(m) => {
+                    let (x, y, l, h) = rect(&m);
+                    noter(&format!("ecran choisi : {l}x{h} en {x},{y}"));
+                    poser(&fenetre, &m)
+                }
                 None => {
+                    noter("ecran demande introuvable : sortie (code 2)");
                     let n = app.available_monitors().map(|m| m.len()).unwrap_or(0);
                     dire("borne", &format!(
                         "ecran demande introuvable ({ecran:?}) : cette machine en compte {n}.\n\n                         Un numero designe un moniteur (0, 1, ...) ; pour une position, il faut\n                         les deux valeurs, par exemple --ecran 3840,0."));
@@ -387,6 +439,7 @@ fn main() {
                     };
                     let r = rect(&m);
                     if dernier.is_some() && dernier != Some(r) {
+                        noter(&format!("ecran deplace : {}x{} en {},{} -- fenetre reposee", r.2, r.3, r.0, r.1));
                         poser(&f, &m);
                     }
                     dernier = Some(r);
@@ -396,17 +449,27 @@ fn main() {
         })
         .on_window_event(|fenetre, evenement| match evenement {
             // Alt+F4, ou n'importe quelle demande de fermeture : on quitte.
-            WindowEvent::CloseRequested { .. } => fenetre.app_handle().exit(0),
+            WindowEvent::CloseRequested { .. } => {
+                noter("fermeture demandee (Alt+F4 ou Windows) : sortie");
+                fenetre.app_handle().exit(0)
+            }
+            WindowEvent::Destroyed => noter("fenetre detruite"),
             WindowEvent::Focused(false) => {
                 let f = fenetre.clone();
                 std::thread::spawn(move || reprendre_focus(f));
             }
             _ => {}
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .unwrap_or_else(|e| {
+            noter(&format!("lancement impossible : {e}"));
             dire("borne", &format!("lancement impossible : {e}"));
             std::process::exit(1);
+        })
+        .run(|_, evenement| match evenement {
+            tauri::RunEvent::ExitRequested { code, .. } => noter(&format!("sortie demandee (code {code:?})")),
+            tauri::RunEvent::Exit => noter("fin du programme"),
+            _ => {}
         });
 }
 
