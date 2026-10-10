@@ -94,6 +94,7 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
       key={cle}
       type="button"
       tabIndex={-1}
+      onMouseDown={(e) => e.preventDefault()}
       className={`touche ${classe} ${cle === 'MAJ' && majuscule ? 'active' : ''}`}
       onPointerDown={(e) => appui(e, () => touche(cle))}
     >
@@ -127,6 +128,7 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
         <button
           type="button"
           tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault()}
           className="touche touche-bascule"
           onPointerDown={(e) => appui(e, () => setDisposition((d) => (d === 'lettres' ? 'symboles' : 'lettres')))}
         >
@@ -137,6 +139,7 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
         <button
           type="button"
           tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault()}
           className="touche touche-espace"
           onPointerDown={(e) => appui(e, () => onChange((v) => v + ' '))}
         >
@@ -147,6 +150,7 @@ export function ClavierVirtuel({ mode, valeur, onChange, onOk, majusculeAuto = f
           <button
             type="button"
             tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}
             className="touche touche-domaine"
             onPointerDown={(e) => appui(e, () => onChange((v) => v + '.com'))}
           >

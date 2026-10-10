@@ -232,13 +232,25 @@ export function RegisterStep() {
                     autoCapitalize={field.type === 'text' ? 'words' : 'off'}
                     spellCheck={false}
                     value={valeur}
-                    onBlur={() => {
+                    onBlur={(e) => {
                       // La fenetre qui perd le focus (une autre fenetre, la barre
                       // des taches) fait aussi perdre le sien au champ : on garde
                       // alors le clavier ouvert -- le champ le retrouvera avec la
                       // fenetre. Sans cela, sous borne.exe, chaque aller-retour
                       // du focus le fermait et le rouvrait : il clignotait.
                       if (!document.hasFocus()) return
+                      // Au doigt, une touche du clavier de la borne peut prendre
+                      // le focus malgre tout : ce n'est pas quitter le champ. On
+                      // le lui rend, et le clavier reste.
+                      const champ = e.currentTarget
+                      if ((e.relatedTarget as HTMLElement | null)?.closest?.('.clavier')) {
+                        // Seulement si la touche l'a encore : entre-temps, OK a
+                        // pu donner la main au champ suivant.
+                        setTimeout(() => {
+                          if ((document.activeElement as HTMLElement | null)?.closest?.('.clavier')) champ.focus()
+                        }, 0)
+                        return
+                      }
                       setTouched((s) => ({ ...s, [field.key]: true }))
                       setActif((a) => (a === field.key ? null : a))
                     }}
@@ -313,10 +325,16 @@ export function RegisterStep() {
           onChange={(modifier) => ecrire(actif, modifier)}
           onOk={() => {
             // Champ suivant ; apres le dernier, on range le clavier.
+            // Apres l'appui, pas pendant : au doigt, la fin du geste peut
+            // encore deplacer le focus, et le champ suivant le reperdait --
+            // la saisie s'arretait en chemin.
             const i = FIELDS.findIndex((f) => f.key === actif)
             const suivant = FIELDS[i + 1]
-            if (suivant) champs.current[suivant.key]?.focus()
-            else champs.current[actif]?.blur()
+            const courant = champs.current[actif]
+            setTimeout(() => {
+              if (suivant) champs.current[suivant.key]?.focus()
+              else courant?.blur()
+            }, 0)
           }}
         />
       )}

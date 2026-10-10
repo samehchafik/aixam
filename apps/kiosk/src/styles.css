@@ -431,7 +431,9 @@ body {
   position: absolute; z-index: 40; display: flex; flex-direction: column; gap: 9px;
   padding: 16px; border-radius: 26px;
   background: rgba(31, 40, 71, 0.94); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-  touch-action: manipulation;
+  /* Aucun geste du navigateur sur le clavier : pas de defilement, pas de zoom,
+     pas de clic de compatibilite qui deplacerait le focus. */
+  touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .clavier .rangee { display: flex; justify-content: center; gap: 9px; }
 .touche {
