@@ -169,6 +169,19 @@ document.addEventListener('contextmenu', e => e.preventDefault(), true);
 document.addEventListener('gesturestart', e => e.preventDefault(), true);
 "#;
 
+/// L'agent utilisateur de borne.exe : celui d'Edge -- le moteur est le meme,
+/// WebView2 --, suivi de `SAMS-Borne/<version>`. C'est ce qui distingue, cote
+/// serveur, la borne d'un navigateur qui ouvrirait la meme page (voir
+/// app/services/client.py). Une marque, pas une securite : un navigateur peut
+/// l'imiter. La version de Chrome n'est qu'indicative, rien ne s'en sert.
+fn agent_utilisateur() -> String {
+    format!(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) \
+         Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0 SAMS-Borne/{}",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
 /// Le clavier tactile de Windows est-il a l'ecran ?
 ///
 /// IFrameworkInputPane est l'API prevue pour cela : elle rend le rectangle du
@@ -348,6 +361,7 @@ fn main() {
                 .decorations(false)
                 .resizable(false)
                 .always_on_top(true)
+                .user_agent(&agent_utilisateur())
                 .initialization_script(GARDE_FOUS)
                 .build()?;
             match choisir_moniteur(app.handle(), &ecran) {
@@ -439,6 +453,15 @@ mod tests {
         assert!(!dans_rect(0, 0, 3200, 2000, 3200, 0));
         assert!(dans_rect(3200, 0, 1920, 1080, 3200, 0));
         assert!(!dans_rect(3200, 0, 1920, 1080, 5120, 0));
+    }
+
+    #[test]
+    fn l_agent_utilisateur_porte_la_marque_de_la_borne() {
+        // Le serveur cherche cette marque (app/services/client.py).
+        let ua = agent_utilisateur();
+        assert!(ua.ends_with(&format!(" SAMS-Borne/{}", env!("CARGO_PKG_VERSION"))), "{ua}");
+        assert!(ua.starts_with("Mozilla/5.0 (Windows NT 10.0"), "{ua}");
+        assert!(!ua.contains("  "), "{ua}");
     }
 
     #[test]

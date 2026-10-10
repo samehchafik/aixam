@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -37,6 +37,7 @@ from app.schemas import (
 from app.security import generate_numeric_code, hash_secret, verify_secret
 from app.services import mailer, materiel
 from app.services.assets import load_catalog
+from app.services.client import nature_client, version_borne
 from app.services.renderer import render_design, skin_present, skin_url
 from app.services.settings_store import get_setting
 
@@ -321,16 +322,22 @@ def creations_recentes(
 @router.post("/events", status_code=status.HTTP_204_NO_CONTENT)
 def track(
     payload: EventIn,
+    request: Request,
     kiosk: Kiosk = Depends(current_kiosk),
     db: Session = Depends(get_db),
 ):
+    # D'ou vient l'evenement : borne.exe ou un navigateur ordinaire (voir
+    # services/client.py). Pose ici, pas par la page : elle n'en sait rien.
+    donnees = {**(payload.payload or {}), "client": nature_client(request)}
+    if version := version_borne(request):
+        donnees["borne_version"] = version
     db.add(
         Event(
             kiosk_id=kiosk.id,
             visitor_id=payload.visitor_id,
             session_id=payload.session_id,
             name=payload.name,
-            payload=payload.payload,
+            payload=donnees,
         )
     )
     db.commit()
