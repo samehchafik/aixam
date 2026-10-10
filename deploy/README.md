@@ -511,3 +511,6 @@ Trois réglages restent nécessaires quoi qu'il arrive :
 - `KIOSK_BASIC_USER` / `KIOSK_BASIC_PASSWORD` dans `.env` ajoutent un HTTP
   Basic devant la borne. nginx transmet l'en-tête `Authorization`, donc ça
   fonctionne tel quel derrière le proxy.
+  `borne.exe` passe sans identifiants : le serveur le reconnaît à son agent
+  utilisateur (`SAMS-Borne/<version>`). Une marque qu'un navigateur peut
+  imiter : un confort pour la borne, pas une protection.

@@ -13,6 +13,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import AdminUser, Kiosk, RelayClient
 from app.security import decode_access_token, split_relay_token, verify_secret
+from app.services.client import version_borne
 
 
 def current_admin(
@@ -54,6 +55,12 @@ def require_kiosk_basic_auth(request: Request) -> None:
     configuration a moitie faite, pas une protection a appliquer quand meme.
     """
     if not settings.kiosk_basic_user or not settings.kiosk_basic_password:
+        return
+    # borne.exe se signe dans son agent utilisateur (SAMS-Borne/<version>) :
+    # il ouvre la page en plein ecran, sans personne pour taper un mot de
+    # passe, et passe donc sans identifiants. Une marque qu'un navigateur peut
+    # imiter : c'est un confort pour la borne, pas une protection.
+    if version_borne(request):
         return
 
     header = request.headers.get("authorization", "")

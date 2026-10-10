@@ -16,9 +16,9 @@ set "HOTE=http://localhost:%PORT%"
 rem Mode distant, facultatif : la borne sur le serveur en ligne plutot que sur
 rem l'API locale, avec une ligne dans .env :
 rem   BORNE_SERVEUR=https://aixam.ifrit.fr
-rem La page de la borne doit alors s'y ouvrir sans identifiants (KIOSK_BASIC_*
-rem vides dans le .env du serveur) : personne ne repondrait a la demande devant
-rem les visiteurs. Sans BORNE_SERVEUR, rien ne change : l'API locale.
+rem Le serveur laisse passer borne.exe sans identifiants, meme si la page y est
+rem protegee (KIOSK_BASIC_*) : il le reconnait a son agent utilisateur,
+rem SAMS-Borne/<version>. Sans BORNE_SERVEUR, rien ne change : l'API locale.
 set "SERVEUR="
 for /f "usebackq tokens=1,* delims==" %%a in ("%RACINE%\.env") do if /i "%%a"=="BORNE_SERVEUR" set "SERVEUR=%%b"
 set "ARGS_LANCEUR="
