@@ -215,6 +215,14 @@ def kiosk_racine() -> RedirectResponse:
 
 @app.get("/kiosk/{sub_path:path}", dependencies=[Depends(require_kiosk_basic_auth)])
 def kiosk_spa(sub_path: str = "") -> FileResponse:
+    # Derriere le nginx de aixam.ifrit.fr, la borne est servie a la racine
+    # (`/` -> `/kiosk/`) : une adresse en /kiosk/... y arrive donc ici en
+    # /kiosk/kiosk/..., et tout -- scripts compris -- retombait sur index.html.
+    # La borne restait blanche. On retire ce prefixe double : /kiosk/ marche
+    # alors sur ce domaine comme en local, et c'est l'adresse qu'ouvre le
+    # lanceur de borne.exe (mode distant de start.bat).
+    if sub_path == "kiosk" or sub_path.startswith("kiosk/"):
+        sub_path = sub_path[len("kiosk"):].lstrip("/")
     return _serve_spa(STATIC / "kiosk", sub_path)
 
 
