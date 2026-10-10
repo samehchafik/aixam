@@ -23,7 +23,6 @@ set "SERVEUR="
 for /f "usebackq tokens=1,* delims==" %%a in ("%RACINE%\.env") do if /i "%%a"=="BORNE_SERVEUR" set "SERVEUR=%%b"
 set "ARGS_LANCEUR="
 if defined SERVEUR set "HOTE=%SERVEUR%"
-if defined SERVEUR set "ARGS_LANCEUR= -ApiHost '%SERVEUR%'"
 rem La tache planifiee lance ce script sans fenetre : sans journal, un echec
 rem au demarrage ne laisse aucune trace.
 set "JOURNAL=%RACINE%\.run\demarrage.log"
@@ -76,6 +75,19 @@ if not exist "%LANCEUR%" (
   ) else (
     call :dire "lanceur absent : le generer depuis Reglages puis Ecrans, ou scripts\regenerer_lanceur.py"
     exit /b 1
+  )
+)
+rem Mode distant : l'adresse du serveur, et la borne a sa racine --
+rem https://aixam.ifrit.fr/ et /#/display, pas /kiosk/. -ALaRacine n'existe que
+rem dans un lanceur genere depuis le 10/10/2026 : un plus ancien la refuserait
+rem et n'ouvrirait rien. Il ouvre alors /kiosk/, que le serveur sert aussi.
+if defined SERVEUR (
+  findstr /c:"ALaRacine" "%LANCEUR%" >nul 2>&1
+  if errorlevel 1 (
+    set "ARGS_LANCEUR= -ApiHost '%SERVEUR%'"
+    call :dire "lanceur ancien : /kiosk/ au lieu de la racine. Le regenerer depuis Reglages puis Ecrans."
+  ) else (
+    set "ARGS_LANCEUR= -ApiHost '%SERVEUR%' -ALaRacine"
   )
 )
 rem Pas Tee-Object : il ecrit en UTF-16, illisible avec les lignes du .bat.

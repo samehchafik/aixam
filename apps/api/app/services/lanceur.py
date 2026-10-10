@@ -45,6 +45,10 @@ _WINDOWS = {
 #   powershell -ExecutionPolicy Bypass -File {fichier}
 param(
   [string]$ApiHost = "{hote}",
+  # Le serveur sert la borne a sa racine (aixam.ifrit.fr) : /kiosk/ devient /,
+  # /kiosk/#/display devient /#/display. Passe par demarrage\\start.bat en mode
+  # distant (BORNE_SERVEUR).
+  [switch]$ALaRacine,
   [int]$AttenteMax = 180,
   [string]$Exe = ""
 )
@@ -96,6 +100,8 @@ $script:Lances = @()
 
 function Ouvrir-Borne {{
   param($Profil, $Libelle, $Chemin, $X, $Y)
+  if ($ALaRacine) {{ $Chemin = $Chemin -replace '^/kiosk(?=/|$)', '' }}
+  if (-not $Chemin.StartsWith("/")) {{ $Chemin = "/$Chemin" }}
   $url = "$ApiHost$Chemin"
   # Le titre porte le ROLE, pas le libelle du moniteur : il sert a reconnaitre
   # la fenetre dans un diagnostic, et un libelle peut etre vide ou changer
